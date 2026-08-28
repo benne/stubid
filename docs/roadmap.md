@@ -4,8 +4,8 @@ Status of the first emulated surface, Signaturgruppen Broker ("Nets eID Broker")
 
 | | Milestone | Status |
 | --- | --- | --- |
-| M0 | Repository, licence, CI, day-zero probes | in progress |
-| M1 | Recordings that need no login (discovery, JWKS, error shapes) | not started |
+| M0 | Repository, licence, CI, day-zero probes | done |
+| M1 | Recordings that need no login (discovery, JWKS, error shapes) | done |
 | M1.5 | The manual recording pass (one login, signing, error paths) | not started |
 | M2 | Token writer, keys, JWKS | not started |
 | M3 | First working login: a stock ASP.NET Core app signs in — **v0.1** | not started |
