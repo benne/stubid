@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Byte-level primitives: tokens, keys, hashes and identifiers. No ASP.NET.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../StubId.Abstractions/StubId.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

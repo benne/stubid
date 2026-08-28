@@ -1,10 +1,12 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/StubId.Abstractions/StubId.Abstractions.csproj" />
+    <Project Path="src/StubId.Wire/StubId.Wire.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/StubId.Abstractions.Tests/StubId.Abstractions.Tests.csproj" />
     <Project Path="tests/StubId.Fixtures.Tests/StubId.Fixtures.Tests.csproj" />
+    <Project Path="tests/StubId.Wire.Tests/StubId.Wire.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/StubId.CaptureHarness/StubId.CaptureHarness.csproj" />
