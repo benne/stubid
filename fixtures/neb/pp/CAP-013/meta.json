@@ -1,0 +1,10 @@
+{
+  "id": "CAP-013",
+  "description": "Authorize with a malformed simulation mode",
+  "settles": "That the simulation parameter is not processed for a client without the entitlement. A client that had it would reject this value, so reaching the login page is the evidence that recordings cannot be automated.",
+  "disposition": "LoginRedirect",
+  "status": 302,
+  "byteLength": 0,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}

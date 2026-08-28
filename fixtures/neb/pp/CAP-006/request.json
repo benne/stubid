@@ -1,0 +1,5 @@
+{
+  "method": "GET",
+  "url": "https://netseidbroker.dk/op/.well-known/openid-configuration",
+  "headers": []
+}

@@ -1,0 +1,11 @@
+{
+  "id": "CAP-005",
+  "description": "Discovery is not served at the host root",
+  "settles": "That the issuer\u0027s path segment is load-bearing: metadata exists only under /op.",
+  "disposition": "NotFound",
+  "status": 404,
+  "contentType": "text/html",
+  "byteLength": 9880,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}

@@ -1,0 +1,10 @@
+{
+  "method": "POST",
+  "url": "https://pp.netseidbroker.dk/op/api/v1/mitid/matchCpr",
+  "headers": [
+    {
+      "name": "Content-Type",
+      "value": "application/json"
+    }
+  ]
+}

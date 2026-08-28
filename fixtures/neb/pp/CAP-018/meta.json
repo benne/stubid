@@ -1,0 +1,10 @@
+{
+  "id": "CAP-018",
+  "description": "CPR match without a token",
+  "settles": "That this endpoint challenges differently from userinfo. Two endpoints on one host with two different WWW-Authenticate strings is the kind of detail a generated emulator would smooth over.",
+  "disposition": "Challenge",
+  "status": 401,
+  "byteLength": 0,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}

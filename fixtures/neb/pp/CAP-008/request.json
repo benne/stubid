@@ -1,0 +1,5 @@
+{
+  "method": "GET",
+  "url": "https://pp.netseidbroker.dk/op/connect/authorize?client_id=00000000-0000-0000-0000-000000000000\u0026response_type=code\u0026redirect_uri=http%3A%2F%2Flocalhost%3A5099%2Fcallback\u0026scope=openid%20mitid\u0026state=capture\u0026nonce=capture",
+  "headers": []
+}

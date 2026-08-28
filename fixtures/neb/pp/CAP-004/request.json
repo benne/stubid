@@ -1,0 +1,5 @@
+{
+  "method": "GET",
+  "url": "https://pp.netseidbroker.dk/.well-known/oauth-authorization-server/op",
+  "headers": []
+}

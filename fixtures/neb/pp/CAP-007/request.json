@@ -1,0 +1,5 @@
+{
+  "method": "GET",
+  "url": "https://pp.netseidbroker.dk/op/api/v1/documentation/errorcodes",
+  "headers": []
+}

@@ -1,0 +1,14 @@
+{
+  "id": "CAP-009",
+  "description": "Authorize naming an identity provider that does not exist",
+  "settles": "That idp_values is validated at the authorize endpoint, and rejected the same way as an unknown client.",
+  "disposition": "ErrorPage",
+  "status": 302,
+  "byteLength": 0,
+  "volatileHeaders": [
+    "Location"
+  ],
+  "volatileBodyPatterns": [
+    "errorId=[A-Za-z0-9_\\-]\u002B"
+  ]
+}

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<title>Nets eID Broker</title>
+		<link rel="icon" href="data:image/x-icon;base64,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" type="image/x-icon"/>
+
+		<style>
+			html {
+				min-height: 100%;
+				display: flex;
+				justify-content: center;
+				align-items: center;
+			}
+			
+			body {
+				display: flex;
+				font-family: sans-serif;
+				font-size: 90%;
+				height: 100%;
+				width: 100%;
+				padding: 2rem;
+				flex-direction: column;
+				text-align: center;
+				-webkit-animation: fadeInDelayed 2s;
+				animation: fadeInDelayed 2s;
+				background-color: #f5f5f5;
+			}
+
+			h2 {
+				margin-bottom: 0;
+				opacity: .5;
+			}
+
+			h1 {
+				margin-top: 0;
+				color: #424242;
+			}
+
+			.error-page {
+				max-width: 500px;
+				margin: 0 auto;
+			}
+
+			.console-like {
+				width: auto;
+				border-radius: 0.5rem;
+				animation-fill-mode: forwards;
+				animation-delay: 2s;
+				animation: 3s show;
+				margin: 2rem auto;
+				background: #fff;
+				border: 1px solid rgb(220,220,220);
+				box-shadow: 10px 10px 20px #e9e9e9, -10px -10px 20px #ffffff;
+				text-align: center;
+			}
+
+			.console-like header {
+				border-bottom: 1px solid rgb(220,220,220);
+				box-sizing: border-box;
+				padding: 1rem;
+				padding-left: 2rem;
+				height: auto !important;
+				display: block;
+				border-radius: 0.5rem 0.5rem 0 0;
+				font-family: sans-serif;
+				font-weight: 700;
+				opacity: 1;
+				margin-bottom: 0 !important;
+			}
+
+			.console-like .console-output {
+				padding: 2rem;
+			}
+
+			.console-like h1 {
+				margin-top: 0;
+				margin-bottom: 2rem;
+			}
+
+			.causation-id {
+				opacity: 0.5;
+				line-height: 2;
+	        }
+
+			.console-like h2 {
+				font-weight: normal;
+				font-size: 100%;
+				color: #00aeef;
+				display: inline;
+				opacity: 1;
+			}
+
+			.console-like *:last-child {
+				margin-bottom: 0;
+			}
+
+			.console-like label {
+				font-weight: bold;
+			}
+			
+			@keyframes fadeInDelayed {
+				0% {
+					background:none;
+					opacity: 0;
+				}
+				99% {
+					background: none;
+					opacity: 0;
+				}
+				100% {
+					opacity: 1;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container body-content">
+			<div class="error-page">
+				<h2>We apologize</h2>
+				<h1>
+					An error occured
+				</h1>
+
+				<div class="console-like">
+					<header>Error Details</header>
+					<div class="console-output">
+						<h2>Error code: <label>404</label></h2>
+						<p>Not Found</p>
+						<div class="causation-id">Causation ID: <label>?</label></div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

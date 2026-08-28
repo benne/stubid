@@ -1,0 +1,11 @@
+{
+  "id": "CAP-019",
+  "description": "Pushed authorisation request without client authentication",
+  "settles": "How PAR refuses an unauthenticated push. Discovery advertises the endpoint, so .NET clients use it by default and reach this path first.",
+  "disposition": "BareJson",
+  "status": 400,
+  "contentType": "application/json; charset=UTF-8",
+  "byteLength": 26,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}

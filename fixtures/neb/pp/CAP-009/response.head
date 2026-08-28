@@ -1,0 +1,17 @@
+HTTP 302 Moved Temporarily
+Server: nginx
+Location: https://pp.netseidbroker.dk/op/Error?errorId=CfDJ8GkI9WY4WHFIr8bacZFlWDRM535MflQMbIDfyye3M3iRTGhGe2TiwYdCikiP1KjGRvyg7zrlEsNHCv6PD9QWw1-x8XP0ENh7ME9btB_JWV6J02tsP2VHiJu_JArGVKSxvIrCXqPc1skmIGdPOHQjTqPpcF185eEjYA3JfGFcNFHbSpo6LPGitN-IR0GioXBAxPkPoKf5idCwuBxR6KvMxPHyVpd2Kpsvtce-FmYThKRjtmPV09WizQQga9yQipbj_xOLCHmmXYkOZZIHqReHCfd6gtPU29tiC7dVAUBWeQt8LA8gRpYCdSmVf-RJnTByEH4bYobsGWBpzEb6jfqeL62OMHtlwfnFZd4VpUJBeDxWrDR5pKmUqHiIa3w33AnQnrw9djRaQe7SsiB_3rhoKka6GzT8fbxTxBnH2Mzxqar5gc_HJo6h8uMM9hJLnoR1hzif7mIPfhZO2trjBPtvWbT72jYL3GBuHfu7OIMlU_gzcegcQfI5kMQMndvrrkD7Sg
+Strict-Transport-Security: max-age=31536000; includeSubdomains; preload
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+X-Neb-Site: neb
+X-Frame-Options: SAMEORIGIN
+Content-Security-Policy: frame-ancestors *; default-src 'self'; connect-src 'self' blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; img-src * data:; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; frame-src 'self' https://www.signaturgruppen.dk
+Cache-Control: no-store, no-cache, max-age=0
+Pragma: no-cache
+Date: Fri, 28 Aug 2026 21:31:32 GMT
+Connection: keep-alive
+Set-Cookie: X-Correlation-Id=b1b0b62d-b879-463a-9e19-73fc0303316c; expires=Mon, 31 Aug 2026 21:31:32 GMT; path=/; secure; samesite=none; httponly
+Set-Cookie: nebcausationid=329b5ec3-1675-4487-8adb-a5e1313642ab; expires=Mon, 31 Aug 2026 21:31:32 GMT; path=/; secure; samesite=none; httponly
+Content-Length: 0
+Expires: Fri, 28 Aug 2026 21:31:32 GMT

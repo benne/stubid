@@ -1,0 +1,11 @@
+{
+  "id": "CAP-016",
+  "description": "Client credentials for a scope the client may not have",
+  "settles": "unauthorized_client, the third distinct token error shape.",
+  "disposition": "BareJson",
+  "status": 400,
+  "contentType": "application/json; charset=UTF-8",
+  "byteLength": 31,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}

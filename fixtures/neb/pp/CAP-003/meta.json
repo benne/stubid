@@ -1,0 +1,11 @@
+{
+  "id": "CAP-003",
+  "description": "RFC 8414 discovery layout is not served",
+  "settles": "That StubID must answer 404 here. Spring probes the OpenID layout first and succeeds, so serving this would let a broken client pass.",
+  "disposition": "NotFound",
+  "status": 404,
+  "contentType": "text/html",
+  "byteLength": 9880,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}

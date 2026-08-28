@@ -1,0 +1,16 @@
+HTTP 400 Bad Request
+Server: nginx
+Strict-Transport-Security: max-age=31536000; includeSubdomains; preload
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+X-Neb-Site: neb
+X-Frame-Options: SAMEORIGIN
+Content-Security-Policy: frame-ancestors *; default-src 'self'; connect-src 'self' blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; img-src * data:; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; frame-src 'self' https://www.signaturgruppen.dk
+Cache-Control: no-store, no-cache, max-age=0
+Pragma: no-cache
+Date: Fri, 28 Aug 2026 21:31:33 GMT
+Connection: close
+Set-Cookie: X-Correlation-Id=f00fefe0-856a-4c48-922e-83d2e1bb61be; expires=Mon, 31 Aug 2026 21:31:33 GMT; path=/; secure; samesite=none; httponly
+Content-Type: application/json; charset=UTF-8
+Content-Length: 31
+Expires: Fri, 28 Aug 2026 21:31:33 GMT

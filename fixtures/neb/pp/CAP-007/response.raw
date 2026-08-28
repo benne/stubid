@@ -1,0 +1,175 @@
+{
+  "Version": "v1.0",
+  "ErrorCodes": {
+    "declined_user_consent": {
+      "En": "Mandatory user consent was declined."
+    },
+    "idp_correlation_failure": {
+      "En": "User is missing external idp correlation cookie. This can happen, but is not exclusive, on Safari browsers on devices with an incorrect date and time, as Safari uses the local device time for expiration checks of cookies. "
+    },
+    "idp_no_ctx": {
+      "En": "Missing state when validating external IDP response."
+    },
+    "idp_remote_error": {
+      "En": "A technical error occured when user returned from the external idp."
+    },
+    "internal_error": {
+      "En": "An unexpected internal error."
+    },
+    "invalid_consent_id": {
+      "En": "Invalid consent_id in the authorization request."
+    },
+    "invalid_idp_configuration_or_parameter": {
+      "En": "Invalid idp_params parameter or idp configuration for specific flow. This can be a combination of configuration and request parameters."
+    },
+    "invalid_idp_params": {
+      "En": "Invalid idp_params parameter. Typically, invalid encoding of this parameter. For GET requests, these need to be in URL encoded JSON format.For POST request, these need to be in JSON format."
+    },
+    "invalid_tin": {
+      "Da": "Ugyldigt CVR-nummer.",
+      "En": "Invalid Tax Identification Number."
+    },
+    "invalid_user_for_user_consent": {
+      "En": "Invalid user for providing the specific user consents."
+    },
+    "missing_user_consent": {
+      "En": "User consent flow does not exist for the user or is expired."
+    },
+    "missing_user_in_session": {
+      "Da": "En bruger eksisterer ikke i sessionen.",
+      "En": "Missing user in session."
+    },
+    "mitid_anti_forgery_validation_error": {
+      "En": "The MitID flow encountered an invalid anti forgery cookie validation. This can happen if the end-user re-visits an earlier page in the flow ex. by clicking back in the browser.",
+      "Idp": "mitid"
+    },
+    "mitid_auth_code_already_used": {
+      "En": "The MitID Auth code was already used. This can happen if the browser re-posts the last step of the MitID browser flow and is blocked for security reasons.",
+      "Idp": "mitid"
+    },
+    "mitid_browser_not_supported": {
+      "En": "The user browser is not supported by MitID.",
+      "Idp": "mitid"
+    },
+    "mitid_core_client_error": {
+      "En": "A technical error occured in the MitID browser client.",
+      "Idp": "mitid"
+    },
+    "mitid_core_client_error_user_abort": {
+      "En": "User chose to abort the MitID flow after one or more failed MitID flow attempts.",
+      "Idp": "mitid"
+    },
+    "mitid_cpr_match_failed": {
+      "En": "MitID CPR match failed.",
+      "Idp": "mitid"
+    },
+    "mitid_erhverv_api_error": {
+      "En": "Error communicating with MitID Erhverv backend services.",
+      "Idp": "mitid_erhverv"
+    },
+    "mitid_erhverv_unexpected_user_navigation": {
+      "En": "Unexpected user navigation detected. Most likely due to user navigating back with browser back button.",
+      "Idp": "mitid_erhverv"
+    },
+    "mitid_erhverv_user_aborted": {
+      "En": "User aborted the MitID Erhverv flow.",
+      "Idp": "mitid_erhverv"
+    },
+    "mitid_erhverv.no_identities": {
+      "En": "No MitID Erhverv professional identities found from the authenticated MitID identity.",
+      "Idp": "mitid_erhverv"
+    },
+    "mitid_identity_not_found": {
+      "En": "MitID identity not found from requested parameters.",
+      "Idp": "mitid"
+    },
+    "mitid_internal_error": {
+      "En": "An internal error occured in MitID.",
+      "Idp": "mitid"
+    },
+    "mitid_invalid_transfer_token_code": {
+      "En": "Invalid MitID tontrolled transfer token code.",
+      "Idp": "mitid"
+    },
+    "mitid_no_ctx": {
+      "En": "No context or session found for the user. In some circumstances, we can redirect the user back to the service with this error code. This can be due to expired signed request, due to clicking back in browsers or similarproblems.",
+      "Idp": "mitid"
+    },
+    "mitid_simulation_error_parameter": {
+      "En": "Invalid simulation parameters.",
+      "Idp": "mitid"
+    },
+    "mitid_simulation_unknown_user": {
+      "En": "Unable to simulate MitID user. Verify that the user exist.",
+      "Idp": "mitid"
+    },
+    "mitid_timeout": {
+      "En": "A timeout occured in the communication with the MitID backend.",
+      "Idp": "mitid"
+    },
+    "mitid_transaction_signing_failed": {
+      "En": "A technical error occured during the MitID transaction signing flow.",
+      "Idp": "mitid"
+    },
+    "mitid_transfer_token_exchange_code_already_used": {
+      "En": "Invalid attempt made to reuse MitID transfer token exchange code more than once.",
+      "Idp": "mitid"
+    },
+    "mitid_unexpected_error": {
+      "En": "An unexpected technical error. This is typically internal errors at the MitID backend or simmilar technical problems with the MitID APIs.",
+      "Idp": "mitid"
+    },
+    "mitid_user_aborted": {
+      "En": "User clicked abort.",
+      "Idp": "mitid"
+    },
+    "mitid_user_navigation_error_empty_state": {
+      "En": "User navigation error",
+      "Idp": "mitid"
+    },
+    "mitid_uuid_hint_malformed": {
+      "En": "The specified MitID UUID is malformed.",
+      "Idp": "mitid"
+    },
+    "no_ctx": {
+      "En": "No context or session found for the user. In some circumstances, we can redirect the user back to the service with this error code. This can be due to expired signed request, due to clicking back in browsers or similarproblems."
+    },
+    "no_ctx_idp_params": {
+      "En": "Missing or invalid idp parameters."
+    },
+    "oidc_correlation_continue_failed": {
+      "En": "The authentication retry link is invalid or has expired. Return to the service and try again."
+    },
+    "private_to_business_user_aborted": {
+      "En": "User aborted the Private to Business flow."
+    },
+    "privilege_cvr_select_user_aborted": {
+      "En": "User aborted privilege CVR selection."
+    },
+    "transaction_signing_hash_mismatch": {
+      "En": "Validation of transaction signing text checksum failed."
+    },
+    "transaction_signing_lokal_idp_correlation_error": {
+      "En": "Correlation of signing ID for started and completed flow failed.",
+      "Idp": "mitid_erhverv"
+    },
+    "user_aborted": {
+      "En": "User aborted the flow."
+    },
+    "user_is_missing_cookies": {
+      "En": "User is not accepting required cookies."
+    },
+    "user_missing_timed_cookies": {
+      "En": "User is missing timed cookies. This is typically seen on Safari browsers on devices with an incorrect date and time, as Safari uses the local device time for expiration checks of cookies."
+    },
+    "user_navigation_error": {
+      "En": "Error in user validation. Examples of such errors includes when the user clicks browser-back or refreshes an incorrect URL in a flow."
+    },
+    "user_navigation_error_empty_state": {
+      "En": "Missing browser user state, most likely due to invalid user navigation like using the browser back button."
+    },
+    "workflow_signing_aborted": {
+      "En": "User aborted the workflow signing flow."
+    }
+  }
+}

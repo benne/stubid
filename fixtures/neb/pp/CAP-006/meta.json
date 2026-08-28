@@ -1,0 +1,11 @@
+{
+  "id": "CAP-006",
+  "description": "Production discovery document",
+  "settles": "That production and pre-production differ only by host, which is what lets one profile serve both.",
+  "disposition": "Success",
+  "status": 200,
+  "contentType": "application/json; charset=UTF-8",
+  "byteLength": 2853,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}

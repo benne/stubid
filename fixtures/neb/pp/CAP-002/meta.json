@@ -1,0 +1,11 @@
+{
+  "id": "CAP-002",
+  "description": "Pre-production signing keys",
+  "settles": "JWKS shape: no alg member, uppercase 40-hex kid, x5t, single-element x5c, member order. Decoding the certificates also identifies which key signs which token type.",
+  "disposition": "Success",
+  "status": 200,
+  "contentType": "application/json; charset=UTF-8",
+  "byteLength": 6286,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}

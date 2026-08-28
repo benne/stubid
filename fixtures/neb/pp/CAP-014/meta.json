@@ -1,0 +1,11 @@
+{
+  "id": "CAP-014",
+  "description": "Token endpoint with a bad client secret",
+  "settles": "That token errors are bare JSON with no error_description and no error_uri.",
+  "disposition": "BareJson",
+  "status": 400,
+  "contentType": "application/json; charset=UTF-8",
+  "byteLength": 26,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}

@@ -1,0 +1,11 @@
+{
+  "id": "CAP-001",
+  "description": "Pre-production discovery document",
+  "settles": "The member set, member order, and the three keys the broker omits: scopes_supported, claims_supported and acr_values_supported. Also the two auth-method arrays advertised for endpoints that are never published.",
+  "disposition": "Success",
+  "status": 200,
+  "contentType": "application/json; charset=UTF-8",
+  "byteLength": 2877,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}

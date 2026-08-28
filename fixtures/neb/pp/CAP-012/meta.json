@@ -1,0 +1,10 @@
+{
+  "id": "CAP-012",
+  "description": "Authorize with a valid request",
+  "settles": "The accepted path: a 302 to the broker\u0027s login page whose ReturnUrl carries the original query re-encoded under /op/connect/authorize/callback. Also confirms an arbitrary localhost redirect_uri is accepted.",
+  "disposition": "LoginRedirect",
+  "status": 302,
+  "byteLength": 0,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}

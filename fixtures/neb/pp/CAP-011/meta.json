@@ -1,0 +1,14 @@
+{
+  "id": "CAP-011",
+  "description": "Authorize without response_type",
+  "settles": "Whether a missing required parameter is refused the same way as an invalid one.",
+  "disposition": "ErrorPage",
+  "status": 302,
+  "byteLength": 0,
+  "volatileHeaders": [
+    "Location"
+  ],
+  "volatileBodyPatterns": [
+    "errorId=[A-Za-z0-9_\\-]\u002B"
+  ]
+}

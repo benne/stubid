@@ -1,0 +1,11 @@
+{
+  "id": "CAP-007",
+  "description": "Error code catalogue",
+  "settles": "The PascalCase envelope, the code count, and that per-code members are sparse rather than uniform.",
+  "disposition": "Success",
+  "status": 200,
+  "contentType": "application/json; charset=utf-8",
+  "byteLength": 7158,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}

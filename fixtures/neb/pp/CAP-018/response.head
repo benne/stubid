@@ -1,0 +1,16 @@
+HTTP 401 Unauthorized
+Server: nginx
+WWW-Authenticate: Bearer
+Strict-Transport-Security: max-age=31536000; includeSubdomains; preload
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+X-Neb-Site: neb
+X-Frame-Options: SAMEORIGIN
+Content-Security-Policy: frame-ancestors *; default-src 'self'; connect-src 'self' blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; img-src * data:; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; frame-src 'self' https://www.signaturgruppen.dk
+Cache-Control: no-store, no-cache, max-age=0
+Pragma: no-cache
+Date: Fri, 28 Aug 2026 21:31:34 GMT
+Connection: close
+Set-Cookie: X-Correlation-Id=e9216550-b3f0-4d7e-9a98-1a42407408a5; expires=Mon, 31 Aug 2026 21:31:34 GMT; path=/; secure; samesite=none; httponly
+Content-Length: 0
+Expires: Fri, 28 Aug 2026 21:31:34 GMT

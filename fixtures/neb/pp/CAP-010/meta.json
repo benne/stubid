@@ -1,0 +1,14 @@
+{
+  "id": "CAP-010",
+  "description": "Authorize with a malformed uuid_hint",
+  "settles": "That values inside idp_params are NOT validated at the authorize endpoint, even though idp_values is (CAP-009). A malformed uuid_hint is accepted here and only fails later in the MitID flow, which is why the broker publishes a mitid_uuid_hint_malformed error code at all. StubID must not reject it up front.",
+  "disposition": "LoginRedirect",
+  "status": 302,
+  "byteLength": 0,
+  "volatileHeaders": [
+    "Location"
+  ],
+  "volatileBodyPatterns": [
+    "errorId=[A-Za-z0-9_\\-]\u002B"
+  ]
+}

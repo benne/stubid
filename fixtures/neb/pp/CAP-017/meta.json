@@ -1,0 +1,10 @@
+{
+  "id": "CAP-017",
+  "description": "Userinfo without a token",
+  "settles": "The WWW-Authenticate byte string, including the absence of a space after the comma, and that the body is empty rather than a JSON error.",
+  "disposition": "Challenge",
+  "status": 401,
+  "byteLength": 0,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}

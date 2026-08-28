@@ -1,0 +1,11 @@
+{
+  "id": "CAP-015",
+  "description": "Token endpoint with a valid client and an unusable code",
+  "settles": "invalid_grant, and that a correctly authenticated client gets no more detail than a badly authenticated one.",
+  "disposition": "BareJson",
+  "status": 400,
+  "contentType": "application/json; charset=UTF-8",
+  "byteLength": 25,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}
