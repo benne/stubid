@@ -35,11 +35,13 @@ public class FixtureGuardTests
     {
         var text = File.ReadAllText(Path.Combine(Repository.Fixtures, relativePath));
 
-        // The broker publishes its open test-client secrets, but a recorded exchange
-        // containing something secret-shaped trips every scanner pointed at this repo.
-        Assert.DoesNotContain("rnlguc7CM", text, StringComparison.Ordinal);
-        Assert.DoesNotContain("HrlMPtMS", text, StringComparison.Ordinal);
-        Assert.DoesNotContain("AfvRfDFt", text, StringComparison.Ordinal);
+        // Checks the shape rather than a list of known secrets, so it also catches the ones
+        // nobody thought to add to the list. A credential-bearing field should hold a
+        // placeholder, or a value the case deliberately made useless.
+        var match = Scrubber.FindUnscrubbedCredential(text);
+
+        Assert.False(match.Success,
+            $"{relativePath} carries an unscrubbed credential at offset {match.Index}.");
     }
 
     [Theory]

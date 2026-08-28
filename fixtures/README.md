@@ -20,9 +20,22 @@ destroy both.
 
 ## Numbering
 
-- **CAP-001 to CAP-019** need no login and run unattended. `dotnet run --project
-  tools/StubId.CaptureHarness -- capture` re-records them; `verify` re-records and compares
-  against what is committed.
+- **CAP-001 to CAP-019** need no login and run unattended.
+
+  ```
+  export STUBID_NEB_PP_CODE_CLIENT_SECRET=...      # only needed to re-record
+  dotnet run --project tools/StubId.CaptureHarness -- verify     # check for drift
+  dotnet run --project tools/StubId.CaptureHarness -- capture    # re-record
+  ```
+
+  Use `verify` day to day. It re-requests everything and compares against what is committed,
+  masking the values a fixture does not promise. `capture` overwrites the recordings, and
+  since response headers carry a `Date` that shows up as a diff on every run, so reach for it
+  only when something has genuinely changed.
+
+  The credential is the broker's own published test-client secret, kept out of the repository
+  rather than committed. Its documentation is where to get it. Cases needing it stop with a
+  message rather than recording a confusing rejection.
 - **CAP-020 onwards** need a human to complete a login in MitID's test tool. They settle the
   things only a finished authentication reveals: the `amr` wire form, the id_token member
   set and order, the types of the userinfo values, and the transaction token's claim names.

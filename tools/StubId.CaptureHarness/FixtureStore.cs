@@ -42,7 +42,7 @@ public sealed class FixtureStore(string root)
             .AppendLine(exchange.ReasonPhrase ?? "");
         foreach (var (name, value) in exchange.ResponseHeaders)
         {
-            head.Append(name).Append(": ").AppendLine(Scrubber.Scrub(value));
+            head.Append(name).Append(": ").AppendLine(value);
         }
         await File.WriteAllTextAsync(Path.Combine(dir, "response.head"), head.ToString(), ct);
 

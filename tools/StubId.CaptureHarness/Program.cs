@@ -38,7 +38,19 @@ async Task<int> CaptureAsync()
 
     foreach (var @case in cases)
     {
-        var exchange = await recorder.RecordAsync(@case, cancellation.Token);
+        RecordedExchange exchange;
+        try
+        {
+            exchange = await recorder.RecordAsync(@case, cancellation.Token);
+        }
+        catch (InvalidOperationException error)
+        {
+            // A missing credential is a setup problem, not a crash. Say what to do and stop
+            // before the manifest is rewritten from a half-finished run.
+            Console.Error.WriteLine($"  {@case.Id}  cannot record: {error.Message}");
+            return 2;
+        }
+
         await store.WriteAsync(@case, exchange, cancellation.Token);
 
         var actual = DispositionClassifier.Classify(exchange);

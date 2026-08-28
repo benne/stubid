@@ -3,42 +3,51 @@ using System.Text.RegularExpressions;
 namespace StubId.CaptureHarness;
 
 /// <summary>
-/// Replaces values that must not sit in the repository with stable placeholders, and puts
-/// them back when a fixture is replayed.
+/// Keeps credentials out of the fixtures, and puts them back when a case is replayed.
 /// </summary>
 /// <remarks>
-/// Substitution is a byte-level splice on purpose. Parsing a document and re-serialising it
-/// would normalise whitespace and member order, which are exactly the facts the fixtures
-/// exist to pin.
+/// <para>
+/// The broker publishes credentials for its open test clients so anyone can exercise
+/// pre-production, so these are not confidential. They are still kept out of the repository
+/// and out of the fixtures. Something secret-shaped in a recorded exchange trips every
+/// scanner pointed at a public repository, and "that one is published on purpose" is not an
+/// argument anyone should have to have twice.
+/// </para>
+/// <para>
+/// Supply the value through the environment when recording. The broker's own documentation
+/// is where to get it.
+/// </para>
 /// </remarks>
 public static partial class Scrubber
 {
-    /// <summary>
-    /// The broker publishes these credentials openly so anyone can exercise its test
-    /// environment. They are still replaced in fixtures: a recorded HTTP exchange
-    /// containing something shaped like a secret trips every scanner that looks at this
-    /// repository, and the argument "but that one is fine" does not survive review.
-    /// </summary>
-    private static readonly (string Placeholder, string Value)[] Secrets =
+    private static readonly (string Placeholder, string Variable)[] Credentials =
     [
-        ("{{NEB_PP_OPEN_CLIENT_CODE_SECRET}}",
-            "rnlguc7CM/wmGSti4KCgCkWBQnfslYr0lMDZeIFsCJweROTROy2ajEigEaPQFl76Py6AVWnhYofl/0oiSAgdtg=="),
+        ("{{NEB_PP_OPEN_CLIENT_CODE_SECRET}}", "STUBID_NEB_PP_CODE_CLIENT_SECRET"),
     ];
 
-    public static string Scrub(string text)
-    {
-        foreach (var (placeholder, value) in Secrets)
-        {
-            text = text.Replace(value, placeholder, StringComparison.Ordinal);
-        }
-
-        return text;
-    }
-
+    /// <summary>
+    /// Substitutes real credentials into a value about to be sent. Throws rather than
+    /// sending a placeholder to the broker, which would record a confusing 400 instead of
+    /// the exchange the case is meant to capture.
+    /// </summary>
     public static string Unscrub(string text)
     {
-        foreach (var (placeholder, value) in Secrets)
+        foreach (var (placeholder, variable) in Credentials)
         {
+            if (!text.Contains(placeholder, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var value = Environment.GetEnvironmentVariable(variable);
+            if (string.IsNullOrEmpty(value))
+            {
+                throw new InvalidOperationException(
+                    $"Set {variable} to record this case. The broker publishes the secret for "
+                    + "its open test clients in its integration documentation; it is kept out "
+                    + "of this repository on purpose.");
+            }
+
             text = text.Replace(placeholder, value, StringComparison.Ordinal);
         }
 
@@ -51,6 +60,14 @@ public static partial class Scrubber
     /// should stop rather than quietly mask it.
     /// </summary>
     public static Match FindCprShapedText(string candidate) => CprPattern().Match(candidate);
+
+    /// <summary>
+    /// Finds a form field carrying something other than a placeholder where a credential
+    /// belongs. This is the check that would have caught a real secret reaching a fixture,
+    /// and unlike a list of known secrets it also catches the ones nobody thought of.
+    /// </summary>
+    public static Match FindUnscrubbedCredential(string candidate) =>
+        UnscrubbedCredentialPattern().Match(candidate);
 
     /// <summary>
     /// Ten digits opening with a plausible day and month, standing alone rather than sitting
@@ -66,4 +83,11 @@ public static partial class Scrubber
     /// </summary>
     [GeneratedRegex(@"(?<![0-9A-Za-z])(0[1-9]|[12]\d|3[01])(0[1-9]|1[0-2])\d{6}(?![0-9A-Za-z])")]
     private static partial Regex CprPattern();
+
+    // A credential-bearing field whose value is neither a placeholder nor obviously inert.
+    // Covers both shapes a body can take: form encoding and JSON. Percent-encoded braces are
+    // how a placeholder looks once a form has been encoded.
+    [GeneratedRegex(
+        @"(client_secret|password|assertion)""?\s*[:=]\s*""?(?!%7B%7B|\{\{|wrong-|not-a-)[^&"",\s}]{12,}")]
+    private static partial Regex UnscrubbedCredentialPattern();
 }
