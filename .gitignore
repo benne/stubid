@@ -1,0 +1,15 @@
+bin/
+obj/
+node_modules/
+dist/
+*.user
+.vs/
+.idea/
+TestResults/
+artifacts/
+
+# Local capture secrets: HMAC salt used to scrub CPRs out of fixtures.
+capture.local.json
+
+# Local Claude Code session settings.
+.claude/settings.local.json
