@@ -1,0 +1,6 @@
+* text=auto eol=lf
+
+# Recordings are byte-exact: their hashes are checked against MANIFEST.json, and the
+# member order and whitespace of a captured document are part of what they pin. Git must
+# not translate anything inside them, on any platform.
+fixtures/** -text

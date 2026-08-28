@@ -9,7 +9,9 @@ namespace StubId.Fixtures.Tests;
 public class ScrubberTests
 {
     [Theory]
-    [InlineData("client_secret=rnlguc7CM%2FwmGSti4KCgCkWBQnfslYr0lMDZeIFsCJweROTROy2ajEig")]
+    // Obviously fake on purpose. The guard checks shape, so the sample does not need to be
+    // a real credential, and a real one here would trip the secret scanner that backs it up.
+    [InlineData("client_secret=NOT%2FA%2FREAL%2FSECRET%2Fvalue1234567890")]
     [InlineData("client_secret=aVeryLongLookingSecretValue123456")]
     [InlineData("password=hunter2hunter2hunter2")]
     [InlineData("""{"assertion":"aVeryLongLookingSecretValue123456"}""")]

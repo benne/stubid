@@ -37,6 +37,10 @@ jobs:
 
       # Fixtures are recorded from a real broker. This is the backstop for the scrubbing
       # step, not a replacement for it.
-      - uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #
+      # Run gitleaks directly rather than through its action: the action scans git history
+      # and fails on this repository with "stderr is not empty", and scanning the working
+      # tree is what we actually want.
+      - run: |
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest \
+            dir /repo --redact --no-banner
