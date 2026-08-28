@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>StubId.CaptureHarness</RootNamespace>
+    <Description>Records the broker exchanges that StubID's fidelity tests assert against.</Description>
+  </PropertyGroup>
+
+</Project>
