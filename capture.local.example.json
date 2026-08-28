@@ -1,0 +1,14 @@
+{
+  "//": "Copy to capture.local.json, which is gitignored. Environment variables of the same name win.",
+
+  "STUBID_NEB_PP_CODE_CLIENT_SECRET": "the broker's published open code-flow client secret",
+
+  "STUBID_NEB_PP_CLIENT_ID": "a private pre-production client, if you have one",
+  "STUBID_NEB_PP_CLIENT_SECRET": "its secret",
+
+  "redact": {
+    "//": "Anything else that must not reach a fixture. A transaction token names the receiving organisation, so its name and CVR number belong here before recording one.",
+    "{{ORGANISATION_NAME}}": "Example A/S",
+    "{{ORGANISATION_CVR}}": "12345678"
+  }
+}

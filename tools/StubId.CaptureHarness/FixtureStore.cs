@@ -42,11 +42,12 @@ public sealed class FixtureStore(string root)
             .AppendLine(exchange.ReasonPhrase ?? "");
         foreach (var (name, value) in exchange.ResponseHeaders)
         {
-            head.Append(name).Append(": ").AppendLine(value);
+            head.Append(name).Append(": ").AppendLine(Scrubber.Scrub(value));
         }
         await File.WriteAllTextAsync(Path.Combine(dir, "response.head"), head.ToString(), ct);
 
-        await File.WriteAllBytesAsync(Path.Combine(dir, "response.raw"), exchange.ResponseBody, ct);
+        await File.WriteAllBytesAsync(
+            Path.Combine(dir, "response.raw"), ScrubBody(exchange.ResponseBody), ct);
 
         var meta = new
         {
@@ -62,6 +63,25 @@ public sealed class FixtureStore(string root)
         };
         await File.WriteAllTextAsync(
             Path.Combine(dir, "meta.json"), JsonSerializer.Serialize(meta, Json) + "\n", ct);
+    }
+
+    /// <summary>
+    /// Scrubs a body only when it survives a UTF-8 round trip unchanged. A response that is
+    /// not valid UTF-8 is written through untouched rather than corrupted, since the bytes as
+    /// served are the point.
+    /// </summary>
+    private static byte[] ScrubBody(byte[] body)
+    {
+        var text = Encoding.UTF8.GetString(body);
+        if (!Encoding.UTF8.GetBytes(text).AsSpan().SequenceEqual(body))
+        {
+            return body;
+        }
+
+        var scrubbed = Scrubber.Scrub(text);
+        return ReferenceEquals(scrubbed, text) || scrubbed == text
+            ? body
+            : Encoding.UTF8.GetBytes(scrubbed);
     }
 
     public async Task WriteManifestAsync(string capturedAtUtc, CancellationToken ct)

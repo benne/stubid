@@ -20,9 +20,11 @@ namespace StubId.CaptureHarness;
 /// </remarks>
 public static partial class Scrubber
 {
-    private static readonly (string Placeholder, string Variable)[] Credentials =
+    private static readonly (string Placeholder, string Setting)[] Credentials =
     [
         ("{{NEB_PP_OPEN_CLIENT_CODE_SECRET}}", "STUBID_NEB_PP_CODE_CLIENT_SECRET"),
+        ("{{NEB_PP_CLIENT_ID}}", "STUBID_NEB_PP_CLIENT_ID"),
+        ("{{NEB_PP_CLIENT_SECRET}}", "STUBID_NEB_PP_CLIENT_SECRET"),
     ];
 
     /// <summary>
@@ -32,23 +34,57 @@ public static partial class Scrubber
     /// </summary>
     public static string Unscrub(string text)
     {
-        foreach (var (placeholder, variable) in Credentials)
+        foreach (var (placeholder, setting) in Credentials)
         {
             if (!text.Contains(placeholder, StringComparison.Ordinal))
             {
                 continue;
             }
 
-            var value = Environment.GetEnvironmentVariable(variable);
+            var value = LocalSettings.Get(setting);
             if (string.IsNullOrEmpty(value))
             {
                 throw new InvalidOperationException(
-                    $"Set {variable} to record this case. The broker publishes the secret for "
-                    + "its open test clients in its integration documentation; it is kept out "
-                    + "of this repository on purpose.");
+                    $"Set {setting} to record this case, in the environment or in "
+                    + "capture.local.json at the repository root. Credentials are kept out of "
+                    + "this repository on purpose.");
             }
 
             text = text.Replace(placeholder, value, StringComparison.Ordinal);
+        }
+
+        return text;
+    }
+
+    /// <summary>
+    /// Puts placeholders back before a recording is written.
+    /// </summary>
+    /// <remarks>
+    /// Applies to responses as well as requests, because the broker echoes things. A valid
+    /// authorize request redirects to a login URL carrying the client_id, so recording with a
+    /// private client would publish it without this. Anything listed under "redact" in
+    /// capture.local.json is replaced too: a transaction token names the receiving
+    /// organisation, and a fixture is not the place for a company's CVR number.
+    /// </remarks>
+    public static string Scrub(string text)
+    {
+        foreach (var (placeholder, setting) in Credentials)
+        {
+            var value = LocalSettings.Get(setting);
+            if (!string.IsNullOrEmpty(value))
+            {
+                text = text.Replace(value, placeholder, StringComparison.Ordinal);
+                text = text.Replace(Uri.EscapeDataString(value), placeholder, StringComparison.Ordinal);
+            }
+        }
+
+        foreach (var (placeholder, value) in LocalSettings.Redactions())
+        {
+            if (!string.IsNullOrEmpty(value))
+            {
+                text = text.Replace(value, placeholder, StringComparison.Ordinal);
+                text = text.Replace(Uri.EscapeDataString(value), placeholder, StringComparison.Ordinal);
+            }
         }
 
         return text;

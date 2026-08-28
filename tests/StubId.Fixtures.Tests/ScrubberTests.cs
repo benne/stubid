@@ -48,6 +48,40 @@ public class ScrubberTests
     }
 
     [Fact]
+    public void A_configured_credential_is_replaced_wherever_it_is_echoed()
+    {
+        // The broker echoes the client_id back in the login redirect, so recording with a
+        // private client would publish it unless responses are scrubbed too. Both the plain
+        // and the percent-encoded form appear in practice.
+        var original = Environment.GetEnvironmentVariable("STUBID_NEB_PP_CLIENT_ID");
+        Environment.SetEnvironmentVariable("STUBID_NEB_PP_CLIENT_ID", "a-private-client/id");
+
+        try
+        {
+            Assert.Equal(
+                "client_id={{NEB_PP_CLIENT_ID}}",
+                Scrubber.Scrub("client_id=a-private-client/id"));
+
+            Assert.Equal(
+                "ReturnUrl=%2Fop%3Fclient_id%3D{{NEB_PP_CLIENT_ID}}",
+                Scrubber.Scrub("ReturnUrl=%2Fop%3Fclient_id%3Da-private-client%2Fid"));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("STUBID_NEB_PP_CLIENT_ID", original);
+        }
+    }
+
+    [Fact]
+    public void Nothing_is_replaced_when_nothing_is_configured()
+    {
+        // Recording with the published open client must leave the committed fixtures alone.
+        const string text = """{"keys":[{"kid":"7FF447FA0FB65A7E749E8B43AC635862381F0CC3"}]}""";
+
+        Assert.Equal(text, Scrubber.Scrub(text));
+    }
+
+    [Fact]
     public void Recording_refuses_to_run_without_the_credential_rather_than_sending_a_placeholder()
     {
         // Sending the placeholder would record a confusing 400 in place of the exchange the
