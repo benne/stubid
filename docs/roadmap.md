@@ -8,7 +8,7 @@ Status of the first emulated surface, Signaturgruppen Broker ("Nets eID Broker")
 | M1 | Recordings that need no login (discovery, JWKS, error shapes) | done |
 | M1.5 | The manual recording pass (one login, signing, error paths) | not started |
 | M2 | Token writer, keys, JWKS | done |
-| M3 | First working login: a stock ASP.NET Core app signs in — **v0.1** | not started |
+| M3 | First working login: a stock ASP.NET Core app signs in — **v0.1** | done, in process; container and Node/Spring outstanding |
 | M4 | Broker profile seam, routing, fidelity ledger | not started |
 | M5 | Sessions, approval resolution, citizens | not started |
 | M6 | Full request surface, error fidelity, logout | not started |

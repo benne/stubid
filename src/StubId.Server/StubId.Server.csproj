@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <Description>The emulated broker surface.</Description>
+    <RootNamespace>StubId.Server</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../StubId.Wire/StubId.Wire.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      The recorded documents are the source of truth for what we serve, so they are compiled
+      in rather than reproduced by hand. Emitting a document a serialiser rebuilt would lose
+      member order and the members the broker leaves out.
+    -->
+    <EmbeddedResource Include="../../fixtures/neb/pp/CAP-001/response.raw" Link="Fixtures/discovery.json" LogicalName="discovery.json" />
+  </ItemGroup>
+
+</Project>
