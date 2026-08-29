@@ -47,7 +47,9 @@ public sealed class Keys : IDisposable
 
         if (!File.Exists(file))
         {
-            var notBefore = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+            // From the clock rather than a literal: a fixed date eventually generates a
+            // certificate that is already expired.
+            var notBefore = TimeProvider.System.GetUtcNow().AddDays(-1);
             using var created = CertificateFactory.Create($"StubID {name}", notBefore, notBefore.AddYears(5));
             File.WriteAllBytes(file, created.Export(X509ContentType.Pkcs12, Password));
         }

@@ -153,6 +153,58 @@ public class SliceTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
+    public async Task The_key_set_carries_base64_characters_unescaped()
+    {
+        // The default JSON encoder escapes '+' as \u002B, and standard base64 is full of
+        // them. The recording carries the character itself, and this document is compared
+        // byte for byte, so the escaping would be a real divergence hiding behind a parser.
+        var jwks = await _client.GetStringAsync("/op/.well-known/openid-configuration/jwks", Ct);
+
+        Assert.DoesNotContain("\\u002B", jwks, StringComparison.Ordinal);
+        Assert.DoesNotContain("\\u002F", jwks, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Userinfo_answers_with_the_subject_the_id_token_carried()
+    {
+        // The subject is scoped to the receiving organisation, so it depends on who is
+        // asking. Userinfo previously answered with the first registered client's subject
+        // for every token, which a real client reports as IDX21338 and refuses to sign in.
+        const string secondClient = "c0beb4dc-69d1-4316-8167-2d0a62816103";
+
+        var authorize = await _client.GetAsync(
+            $"/op/connect/authorize?client_id={secondClient}&response_type=code" +
+            $"&redirect_uri={Uri.EscapeDataString(RedirectUri)}&scope=openid%20mitid&state=s", Ct);
+
+        var query = System.Web.HttpUtility.ParseQueryString(
+            authorize.Headers.Location!.ToString().Split('?')[1]);
+
+        using var token = await _client.PostAsync("/op/connect/token", new FormUrlEncodedContent(
+        [
+            new("grant_type", "authorization_code"),
+            new("code", query["code"]!),
+            new("redirect_uri", RedirectUri),
+            new("client_id", secondClient),
+            new("client_secret", "any"),
+        ]), Ct);
+
+        using var body = JsonDocument.Parse(await token.Content.ReadAsStringAsync(Ct));
+        using var payload = JsonDocument.Parse(
+            Base64Url.Decode(body.RootElement.GetProperty("id_token").GetString()!.Split('.')[1]));
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/op/connect/userinfo");
+        request.Headers.Authorization = new AuthenticationHeaderValue(
+            "Bearer", body.RootElement.GetProperty("access_token").GetString());
+        using var userinfo = await _client.SendAsync(request, Ct);
+
+        using var claims = JsonDocument.Parse(await userinfo.Content.ReadAsStringAsync(Ct));
+
+        Assert.Equal(
+            payload.RootElement.GetProperty("sub").GetString(),
+            claims.RootElement.GetProperty("sub").GetString());
+    }
+
+    [Fact]
     public async Task An_authorization_code_cannot_be_used_twice()
     {
         var (code, _) = await Authorize();
@@ -216,6 +268,7 @@ public class SliceTests : IClassFixture<WebApplicationFactory<Program>>
         using var pushed = await _client.PostAsync("/op/connect/par", new FormUrlEncodedContent(
         [
             new("client_id", CodeClient),
+            new("client_secret", "any"),
             new("response_type", "code"),
             new("redirect_uri", RedirectUri),
             new("scope", "openid mitid"),
@@ -235,6 +288,80 @@ public class SliceTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Equal(HttpStatusCode.Redirect, authorize.StatusCode);
         Assert.Contains("code=", authorize.Headers.Location!.ToString(), StringComparison.Ordinal);
         Assert.Contains("state=par-state", authorize.Headers.Location!.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task An_unauthenticated_push_is_refused()
+    {
+        // CAP-019. This test previously pushed without credentials and asserted the push
+        // succeeded, which pinned the opposite of what the broker does.
+        using var response = await _client.PostAsync("/op/connect/par", new FormUrlEncodedContent(
+        [
+            new("client_id", CodeClient),
+            new("response_type", "code"),
+            new("redirect_uri", RedirectUri),
+            new("scope", "openid mitid"),
+        ]), Ct);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("""{"error":"invalid_client"}""", await response.Content.ReadAsStringAsync(Ct));
+    }
+
+    [Fact]
+    public async Task A_client_credentials_grant_is_refused_the_way_the_broker_refuses_it()
+    {
+        // CAP-016: unauthorized_client, not a complaint about the grant type. The grant
+        // exists; this client may not use it.
+        using var response = await _client.PostAsync("/op/connect/token", new FormUrlEncodedContent(
+        [
+            new("grant_type", "client_credentials"),
+            new("scope", "signtext_api"),
+            new("client_id", CodeClient),
+            new("client_secret", "any"),
+        ]), Ct);
+
+        Assert.Equal("""{"error":"unauthorized_client"}""", await response.Content.ReadAsStringAsync(Ct));
+    }
+
+    [Fact]
+    public async Task The_cpr_match_endpoint_challenges_with_a_bare_bearer()
+    {
+        // CAP-018: deliberately unlike userinfo's challenge. Two endpoints, two strings.
+        using var response = await _client.PostAsync("/op/api/v1/mitid/matchCpr",
+            new StringContent("{}", System.Text.Encoding.UTF8, "application/json"), Ct);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("Bearer", response.Headers.WwwAuthenticate.ToString());
+        Assert.Empty(await response.Content.ReadAsByteArrayAsync(Ct));
+    }
+
+    [Theory]
+    [InlineData("/op/.well-known/openid-configuration/")]
+    [InlineData("/OP/.well-known/openid-configuration")]
+    [InlineData("/op/.well-known/OpenID-Configuration")]
+    public async Task Metadata_is_served_only_at_the_exact_path(string path)
+    {
+        // Routing forgives case and a trailing slash; the broker does not, and a client that
+        // finds metadata here but not against pre-production is the false pass we exist to
+        // prevent.
+        var response = await _client.GetAsync(path, Ct);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task A_malformed_basic_credential_is_a_bad_request_not_a_crash()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/op/connect/token")
+        {
+            Content = new FormUrlEncodedContent([new("grant_type", "authorization_code")]),
+        };
+        request.Headers.TryAddWithoutValidation("Authorization", "Basic not-base64!!");
+
+        using var response = await _client.SendAsync(request, Ct);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("""{"error":"invalid_client"}""", await response.Content.ReadAsStringAsync(Ct));
     }
 
     [Fact]

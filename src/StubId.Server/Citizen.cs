@@ -20,6 +20,14 @@ public sealed record Citizen(
     string Amr = "code_app",
     string Loa = "Substantial")
 {
-    public int Age(DateTimeOffset now) =>
-        (int)((now - DateTimeOffset.Parse(DateOfBirth, System.Globalization.CultureInfo.InvariantCulture)).TotalDays / 365.2425);
+    public int Age(DateTimeOffset now)
+    {
+        // Calendar arithmetic, not days divided by an average year, which lands a year low on
+        // the birthday itself in three years out of four.
+        var born = DateOnly.Parse(DateOfBirth, System.Globalization.CultureInfo.InvariantCulture);
+        var today = DateOnly.FromDateTime(now.UtcDateTime);
+
+        var age = today.Year - born.Year;
+        return today < born.AddYears(age) ? age - 1 : age;
+    }
 }

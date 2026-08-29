@@ -13,15 +13,27 @@ public static class Endpoints
 
     public static void MapBroker(this WebApplication app)
     {
+        // ASP.NET routing matches case-insensitively and forgives a trailing slash. The
+        // broker forgives neither, and a client that reaches metadata here but 404s against
+        // pre-production is the false pass this project exists to prevent.
         app.MapGet("/op/.well-known/openid-configuration", (HttpContext http, Documents documents) =>
-            Json(documents.Discovery(BaseUrl(http))));
+            Exactly(http, "/op/.well-known/openid-configuration")
+                ? Json(documents.Discovery(BaseUrl(http)))
+                : Results.NotFound());
 
-        app.MapGet("/op/.well-known/openid-configuration/jwks", (Keys keys) => Json(keys.Ring.ToJwks()));
+        app.MapGet("/op/.well-known/openid-configuration/jwks", (HttpContext http, Keys keys) =>
+            Exactly(http, "/op/.well-known/openid-configuration/jwks")
+                ? Json(keys.Ring.ToJwks())
+                : Results.NotFound());
 
         app.MapPost("/op/connect/par", async (HttpContext http, BrokerState state) =>
         {
             var form = await http.Request.ReadFormAsync();
-            if (!state.IsKnownClient(form["client_id"]))
+            var (parClientId, parSecret) = ClientCredentials(http, form);
+
+            // CAP-019: an unauthenticated push is refused the same way the token endpoint
+            // refuses one, and by the same rule.
+            if (!state.IsKnownClient(parClientId) || string.IsNullOrEmpty(parSecret))
             {
                 return OAuthError(http, "invalid_client");
             }
@@ -64,10 +76,14 @@ public static class Endpoints
                 return ErrorPage(http, protection, "invalid_request", "Invalid redirect_uri.");
             }
 
-            if (!request.ResponseType.Split(' ').Contains("code"))
+            // Only the code flow is served. A hybrid request was previously answered with a
+            // code-only response, which is worse than refusing: the client waits for an
+            // id_token that never arrives. Inventing the hybrid bytes is not an option either,
+            // since no recording pins them.
+            if (request.ResponseType != "code")
             {
                 return ErrorPage(http, protection, "unsupported_response_type",
-                    $"Response type '{request.ResponseType}' is not supported yet.");
+                    $"Response type '{request.ResponseType}' is not implemented by this emulator.");
             }
 
             // The slice approves immediately. Parking the request for a decision is the next
@@ -83,9 +99,14 @@ public static class Endpoints
             // Advertised in the discovery document, so a client may enforce its presence.
             response["iss"] = Issuer(http);
 
-            return request.ResponseMode == "form_post"
-                ? FormPost(request.RedirectUri, response)
-                : Results.Redirect(QueryHelpers(request.RedirectUri, response));
+            return request.ResponseMode switch
+            {
+                "form_post" => FormPost(request.RedirectUri, response),
+                "query" => Results.Redirect(Append(request.RedirectUri, response, '?')),
+                "fragment" => Results.Redirect(Append(request.RedirectUri, response, '#')),
+                _ => ErrorPage(http, protection, "invalid_request",
+                    $"Response mode '{request.ResponseMode}' is not supported."),
+            };
         });
 
         app.MapPost("/op/connect/token", async (HttpContext http, BrokerState state, Tokens tokens, TimeProvider clock) =>
@@ -98,7 +119,15 @@ public static class Endpoints
                 return OAuthError(http, "invalid_client");
             }
 
-            if (form["grant_type"] != "authorization_code")
+            var grantType = form["grant_type"].ToString();
+            if (grantType == "client_credentials")
+            {
+                // CAP-016: the broker answers unauthorized_client rather than complaining
+                // about the grant, because the grant exists and the client may not use it.
+                return OAuthError(http, "unauthorized_client");
+            }
+
+            if (grantType != "authorization_code")
             {
                 return OAuthError(http, "unsupported_grant_type");
             }
@@ -151,7 +180,7 @@ public static class Endpoints
             using (var json = new Utf8JsonWriter(buffer))
             {
                 json.WriteStartObject();
-                foreach (var claim in tokens.UserInfo(ClientOf(issued, state), issued))
+                foreach (var claim in tokens.UserInfo(issued.ClientId, issued))
                 {
                     json.WritePropertyName(claim.Name);
                     using var value = JsonDocument.Parse(claim.RawJson);
@@ -162,6 +191,16 @@ public static class Endpoints
             }
 
             return Json(Encoding.UTF8.GetString(buffer.ToArray()));
+        });
+
+        app.MapPost("/op/api/v1/mitid/matchCpr", (HttpContext http) =>
+        {
+            // CAP-018: a bare challenge, unlike userinfo's. Two endpoints on one host with two
+            // different WWW-Authenticate strings is exactly what a generated emulator smooths
+            // over. Matching a CPR needs a session, which arrives with the approval engine.
+            http.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+            http.Response.Headers.WWWAuthenticate = "Bearer";
+            return Results.Empty;
         });
 
         app.MapGet("/op/Error", (HttpContext http, IDataProtectionProvider protection) =>
@@ -182,9 +221,6 @@ public static class Endpoints
                 """, "text/html; charset=utf-8");
         });
     }
-
-    private static string ClientOf(IssuedAccessToken token, BrokerState state) =>
-        state.Clients.Keys.First();
 
     private static async Task<Dictionary<string, string>> ReadParameters(HttpContext http)
     {
@@ -219,17 +255,30 @@ public static class Endpoints
         var header = http.Request.Headers.Authorization.ToString();
         if (header.StartsWith("Basic ", StringComparison.Ordinal))
         {
-            var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(header[6..]));
-            var separator = decoded.IndexOf(':', StringComparison.Ordinal);
-            if (separator > 0)
+            // A malformed header is a bad request, not a crash. Convert.FromBase64String
+            // throws on anything that is not base64, which answered 500 with an empty body.
+            Span<byte> credentials = new byte[header.Length];
+            if (Convert.TryFromBase64String(header[6..], credentials, out var written))
             {
-                return (Uri.UnescapeDataString(decoded[..separator]), Uri.UnescapeDataString(decoded[(separator + 1)..]));
+                var decoded = Encoding.UTF8.GetString(credentials[..written]);
+                var separator = decoded.IndexOf(':', StringComparison.Ordinal);
+                if (separator > 0)
+                {
+                    return (Uri.UnescapeDataString(decoded[..separator]),
+                            Uri.UnescapeDataString(decoded[(separator + 1)..]));
+                }
             }
+
+            return (null, null);
         }
 
         return (Optional(form.ToDictionary(f => f.Key, f => f.Value.ToString()), "client_id"),
                 Optional(form.ToDictionary(f => f.Key, f => f.Value.ToString()), "client_secret"));
     }
+
+    /// <summary>Whether the path arrived exactly as written, case and trailing slash included.</summary>
+    private static bool Exactly(HttpContext http, string path) =>
+        string.Equals(http.Request.Path.Value, path, StringComparison.Ordinal);
 
     private static string BaseUrl(HttpContext http) =>
         http.RequestServices.GetRequiredService<IConfiguration>()["StubId:PublicBaseUrl"]
@@ -237,7 +286,11 @@ public static class Endpoints
 
     private static string Issuer(HttpContext http) => $"{BaseUrl(http)}/op";
 
-    private static IResult Json(string body) => Results.Text(body, "application/json");
+    /// <summary>
+    /// The charset is part of what the recordings carry, and the uppercase spelling is the
+    /// broker's. Passing the literal keeps it; the encoding overload would lowercase it.
+    /// </summary>
+    private static IResult Json(string body) => Results.Text(body, "application/json; charset=UTF-8");
 
     /// <summary>A bare error object: no description, no uri, exactly as recorded.</summary>
     private static IResult OAuthError(HttpContext http, string error)
@@ -268,11 +321,16 @@ public static class Endpoints
         }
     }
 
-    private static string QueryHelpers(string redirectUri, IDictionary<string, string> values)
+    private static string Append(string redirectUri, IDictionary<string, string> values, char mode)
     {
-        var separator = redirectUri.Contains('?', StringComparison.Ordinal) ? '&' : '?';
-        var query = string.Join('&', values.Select(v => $"{Uri.EscapeDataString(v.Key)}={Uri.EscapeDataString(v.Value)}"));
-        return $"{redirectUri}{separator}{query}";
+        var separator = mode == '#'
+            ? '#'
+            : redirectUri.Contains('?', StringComparison.Ordinal) ? '&' : '?';
+
+        var pairs = string.Join('&', values.Select(v =>
+            $"{Uri.EscapeDataString(v.Key)}={Uri.EscapeDataString(v.Value)}"));
+
+        return $"{redirectUri}{separator}{pairs}";
     }
 
     /// <summary>

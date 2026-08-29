@@ -1,5 +1,5 @@
-using System.Security.Cryptography;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using StubId.Abstractions;
 
@@ -25,7 +25,13 @@ public static class JwksWriter
     public static string Write(IEnumerable<SigningKey> keys)
     {
         var buffer = new MemoryStream();
-        using (var json = new Utf8JsonWriter(buffer, new JsonWriterOptions { Indented = false }))
+        // The default encoder escapes '+' as \u002B, which standard base64 is full of. The
+        // recording carries the character itself, and this document is compared byte for byte.
+        using (var json = new Utf8JsonWriter(buffer, new JsonWriterOptions
+        {
+            Indented = false,
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        }))
         {
             json.WriteStartObject();
             json.WriteStartArray("keys");

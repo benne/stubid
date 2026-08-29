@@ -24,8 +24,13 @@ public sealed record IssuedCode(
     DateTimeOffset AuthenticatedAt,
     string SessionId);
 
-/// <summary>An access token and the identity behind it.</summary>
-public sealed record IssuedAccessToken(Citizen Citizen, string Scope, string SessionId, DateTimeOffset AuthenticatedAt);
+/// <summary>An access token, the identity behind it, and the client that obtained it.</summary>
+/// <remarks>
+/// The client matters: the subject is scoped to the receiving organisation, so userinfo has
+/// to answer with the same subject the id_token carried, and that depends on who is asking.
+/// </remarks>
+public sealed record IssuedAccessToken(
+    string ClientId, Citizen Citizen, string Scope, string SessionId, DateTimeOffset AuthenticatedAt);
 
 /// <summary>
 /// Everything the slice remembers. In memory, single tenant, deliberately small.
@@ -97,7 +102,7 @@ public sealed class BrokerState
     {
         var token = Base64Url.Encode(RandomNumberGenerator.GetBytes(32));
         _accessTokens[token] = new IssuedAccessToken(
-            code.Citizen, code.Request.Scope, code.SessionId, code.AuthenticatedAt);
+            code.Request.ClientId, code.Citizen, code.Request.Scope, code.SessionId, code.AuthenticatedAt);
         return token;
     }
 

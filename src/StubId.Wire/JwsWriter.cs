@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using StubId.Abstractions;
 
@@ -62,7 +63,11 @@ public sealed class JwsWriter
         }
 
         var buffer = new MemoryStream();
-        using (var json = new Utf8JsonWriter(buffer, new JsonWriterOptions { Indented = false }))
+        using (var json = new Utf8JsonWriter(buffer, new JsonWriterOptions
+        {
+            Indented = false,
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        }))
         {
             json.WriteStartObject();
             foreach (var claim in claims)
