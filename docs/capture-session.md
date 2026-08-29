@@ -31,19 +31,19 @@ not have.
 
 | | Item | Status |
 | --- | --- | --- |
-| B1 | The relying party | outstanding — the next piece of work |
+| B1 | The relying party | done — `dotnet run --project tools/StubId.CaptureHarness -- session` |
 | B2 | Request-side scrubbing | done |
 | B3 | Unscrub the case URL | done |
-| B4 | The signed-token fixture layout | decided below; applies when the first token is recorded |
+| B4 | The signed-token fixture layout | done — placeholder in the body, decoded halves beside it |
 | B5 | Structural guards for tokens and personal numbers | done |
 | B6 | The hyphenated personal-number form | done |
-| B7 | Stage the sitting before writing fixtures | outstanding |
+| B7 | Stage the sitting before writing fixtures | done — nothing is written until /finish |
 | B8 | Mask cookie values, keep names and flags | done |
 | B9 | Keep Content-Length honest | partly — replacements are equal-length; recomputation outstanding |
 | B10 | A ClientRedirect disposition | done, with FormPost alongside it |
-| B11 | A JSON request-body path | outstanding |
+| B11 | A JSON request-body path | outstanding — only the CPR-match follow-up needs it |
 | B12 | Dependent cases for the two-hop error probes | outstanding |
-| B13 | Keep the manual pack out of CaptureCatalogue.All | outstanding |
+| B13 | Keep the manual pack out of CaptureCatalogue.All | done — separate catalogue, separate directory |
 | B14 | Ignore session artefacts | done |
 
 **B1. The relying party does not exist.** `Program.cs` supports `capture` and `verify` only,

@@ -18,3 +18,6 @@ capture-scratch/
 
 # Local Claude Code session settings.
 .claude/settings.local.json
+
+# The manual sitting writes here. Committed deliberately, after review.
+!fixtures/neb/pp-session/

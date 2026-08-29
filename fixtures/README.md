@@ -40,6 +40,25 @@ destroy both.
   things only a finished authentication reveals: the `amr` wire form, the id_token member
   set and order, the types of the userinfo values, and the transaction token's claim names.
 
+  ```
+  dotnet run --project tools/StubId.CaptureHarness -- session
+  ```
+
+  That hosts a relying party on `http://localhost:5099`. Work down the list it shows; each
+  link starts one step, the browser goes to the broker, and the exchange is recorded. Nothing
+  reaches disk until you visit `/finish`, because values born during the sitting appear in
+  exchanges recorded before the response that first names them, so scrubbing can only be done
+  once, over the whole set. `/finish` refuses if anything is still unaccounted for.
+
+  These land in `fixtures/neb/pp-session/` rather than beside the unattended pack: `capture`
+  and `verify` iterate one catalogue, and a routine run would replay expired codes over the
+  sitting's evidence.
+
+  Signed tokens are stored as a placeholder in the response body, with the decoded header and
+  payload beside them. Scrubbing inside a token would invalidate its signature, and re-signing
+  produces bytes the broker never sent; the response's member order is what the body is for,
+  and the token's own member order is what the halves are for.
+
 ## What this pack established
 
 Four things worth naming, because each contradicts something that was believed beforehand.

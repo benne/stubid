@@ -2,8 +2,9 @@ using StubId.CaptureHarness;
 
 // Records the broker exchanges that StubID's fidelity tests assert against.
 //
-//   capture   record every case and write the fixtures
-//   verify    record again and compare against what is committed
+//   capture   record every unattended case and write the fixtures
+//   verify    record the unattended cases again and compare against what is committed
+//   session   host the relying party for the manual sitting on localhost:5099
 //
 // Both hit the broker's public pre-production environment with unauthenticated requests.
 
@@ -26,8 +27,13 @@ switch (command)
         return await CaptureAsync();
     case "verify":
         return await VerifyAsync();
+    case "session":
+        // The manual sitting writes into its own directory: the unattended pack must stay
+        // reproducible by re-running capture, and these recordings never are.
+        return await Session.RunAsync(new FixtureStore(
+            Path.GetFullPath(Path.Combine(root, "..", "..", "..", "fixtures", "neb", "pp-session"))));
     default:
-        Console.Error.WriteLine($"Unknown command '{command}'. Use 'capture' or 'verify'.");
+        Console.Error.WriteLine($"Unknown command '{command}'. Use 'capture', 'verify' or 'session'.");
         return 2;
 }
 
