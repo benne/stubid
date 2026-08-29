@@ -43,4 +43,4 @@ jobs:
       # tree is what we actually want.
       - run: |
           docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest \
-            dir /repo --redact --no-banner
+            dir /repo --redact --no-banner --config /repo/.gitleaks.toml

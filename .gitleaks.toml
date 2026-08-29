@@ -1,0 +1,11 @@
+# Extends the default rules rather than replacing them.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = """
+Local credentials for recording against the broker. The file is gitignored and never
+committed, but `gitleaks dir` scans the working tree regardless, and a scanner that cries
+wolf on every local run is one people stop reading.
+"""
+paths = ['''capture\.local\.json''']

@@ -8,8 +8,13 @@ dist/
 TestResults/
 artifacts/
 
-# Local capture secrets: HMAC salt used to scrub CPRs out of fixtures.
+# Credentials and redaction rules for recording. Plain string replacement, not hashing.
 capture.local.json
+
+# A recording session produces artefacts that carry session cookies, live tokens and the
+# test identity's personal number. None of them are scrubbed, and none belong here.
+*.har
+capture-scratch/
 
 # Local Claude Code session settings.
 .claude/settings.local.json
