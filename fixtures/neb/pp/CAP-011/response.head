@@ -1,6 +1,6 @@
 HTTP 302 Moved Temporarily
 Server: nginx
-Location: https://pp.netseidbroker.dk/op/Error?errorId=CfDJ8GkI9WY4WHFIr8bacZFlWDQL445IcmuhpITNXHYYyx12BxWVk5d61XTF82GyxAhVBCcNUogRZ6GO9XDOPbFNbmTFxMLphQrhZoWIJJWT4mion0RByhu4Ffucy30o-hjLezbdfYkvejzTkf7L3YRahUtQOGYae_wxZaf4sPkSVdDglUmkiBJjzl38c1HqhDPBuGGIvMTUeR7lGibXJWd_-s_rzGRCePaQw4bLDltspVkoDz6JsYU3ERpeyzowhjaFNVCEEFKw-JxOOmoI4GeuSaen3XCrPjdD_S7q8Y6_vUreLkpq1JC5lgGj3PAYQ3TnwkGQpCRnSWqC2zA9EV2NCYiQdhjtJVtGJHS_8gQxBFwXzHYnI7skHv52_29pLTuQ6J5RKoB9PD9pfgIG8Dg0GWEgO7926jI9qWZqcqpRjeujyJ_IqN13wxFUx7gq0ejy1LjHeEIPQG72VZD0PEMOja0
+Location: https://pp.netseidbroker.dk/op/Error?errorId=CfDJ8GkI9WY4WHFIr8bacZFlWDTQpAEHk8QePGBDlo8tHJUx_NZXgaTeBpXj5i-dQEyghd3z1jbx0HZ1ce9KezR_bYkBtoC8-EuDGvzW-CCSSYuATurJPwyVH6a0TzGcg_T-q9gOaFoJ4wSwUNfvK04SpBO6l6neUtrg4VlVZGKzmZSWwoCNU880j1gV-hLJvTJnjvNUnJ8QjBLgV3B4UBZYpqVgsB9amuxwf9cYj1TVKViJVMSt1aoaQDUJ53tk8P0PokfBmgSYjx2qFwzoGlOZuebx27SIrSh_8oYD3WuVW-q-rpgPQzi19gM3m72LogaFwe9hKXWtZ-W3ODvZegE54iTCS4eJG9oxBZP4XdxnZb-a1S3FqgvIJoK52-rWhSY_p5d8NbPrpVZbW1bvhux2zN9TOcaYzGjRRhLinTYfSYBD3gSeTj32m8pYY49UjVP3swncPB193pz5qu-7mdL0X7Y
 Strict-Transport-Security: max-age=31536000; includeSubdomains; preload
 X-Content-Type-Options: nosniff
 Referrer-Policy: strict-origin-when-cross-origin
@@ -9,9 +9,9 @@ X-Frame-Options: SAMEORIGIN
 Content-Security-Policy: frame-ancestors *; default-src 'self'; connect-src 'self' blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; img-src * data:; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; frame-src 'self' https://www.signaturgruppen.dk
 Cache-Control: no-store, no-cache, max-age=0
 Pragma: no-cache
-Date: Fri, 28 Aug 2026 21:31:33 GMT
+Date: Fri, 28 Aug 2026 23:21:18 GMT
 Connection: keep-alive
-Set-Cookie: X-Correlation-Id=1f31117a-d629-4b88-9da3-ff8abad1fc10; expires=Mon, 31 Aug 2026 21:31:33 GMT; path=/; secure; samesite=none; httponly
-Set-Cookie: nebcausationid=99ca2aea-2e92-4fa3-b3dc-c1143c9da68a; expires=Mon, 31 Aug 2026 21:31:33 GMT; path=/; secure; samesite=none; httponly
+Set-Cookie: X-Correlation-Id=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx; expires=Mon, 31 Aug 2026 23:21:18 GMT; path=/; secure; samesite=none; httponly
+Set-Cookie: nebcausationid=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx; expires=Mon, 31 Aug 2026 23:21:18 GMT; path=/; secure; samesite=none; httponly
 Content-Length: 0
-Expires: Fri, 28 Aug 2026 21:31:33 GMT
+Expires: Fri, 28 Aug 2026 23:21:18 GMT

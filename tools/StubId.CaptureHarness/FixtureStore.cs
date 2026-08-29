@@ -30,8 +30,15 @@ public sealed class FixtureStore(string root)
         var request = new
         {
             method = exchange.Method,
-            url = exchange.Url,
-            headers = exchange.RequestHeaders.Select(h => new { name = h.Key, value = h.Value }),
+            url = Scrubber.Scrub(exchange.Url),
+            headers = exchange.RequestHeaders.Select(h => new
+            {
+                name = h.Key,
+                // An Authorization header carries a bearer token, or base64 of id:secret
+                // which no value-based replacement can see. Neither is contract, so the
+                // name is kept and the value is not.
+                value = IsCredentialHeader(h.Key) ? "<redacted>" : Scrubber.Scrub(h.Value),
+            }),
             body = exchange.RequestBody,
         };
         await File.WriteAllTextAsync(
@@ -42,7 +49,14 @@ public sealed class FixtureStore(string root)
             .AppendLine(exchange.ReasonPhrase ?? "");
         foreach (var (name, value) in exchange.ResponseHeaders)
         {
-            head.Append(name).Append(": ").AppendLine(Scrubber.Scrub(value));
+            // A session cookie is a credential until it expires, not an identifier. The
+            // contract is the cookie's name and flags, so those are kept and the value is
+            // replaced with one of the same length.
+            var written = name.Equals("Set-Cookie", StringComparison.OrdinalIgnoreCase)
+                ? MaskCookieValue(value)
+                : Scrubber.Scrub(value);
+
+            head.Append(name).Append(": ").AppendLine(written);
         }
         await File.WriteAllTextAsync(Path.Combine(dir, "response.head"), head.ToString(), ct);
 
@@ -63,6 +77,33 @@ public sealed class FixtureStore(string root)
         };
         await File.WriteAllTextAsync(
             Path.Combine(dir, "meta.json"), JsonSerializer.Serialize(meta, Json) + "\n", ct);
+    }
+
+    private static bool IsCredentialHeader(string name) =>
+        name.Equals("Authorization", StringComparison.OrdinalIgnoreCase)
+        || name.Equals("Cookie", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Replaces a cookie's value while keeping its name and every attribute after it. The
+    /// replacement is the same length as the original so a recorded Content-Length or an
+    /// assertion about header size stays true.
+    /// </summary>
+    private static string MaskCookieValue(string setCookie)
+    {
+        var equals = setCookie.IndexOf('=', StringComparison.Ordinal);
+        if (equals < 0)
+        {
+            return setCookie;
+        }
+
+        var semicolon = setCookie.IndexOf(';', equals);
+        var end = semicolon < 0 ? setCookie.Length : semicolon;
+        var length = end - equals - 1;
+
+        return string.Concat(
+            setCookie.AsSpan(0, equals + 1),
+            new string('x', length),
+            setCookie.AsSpan(end));
     }
 
     /// <summary>

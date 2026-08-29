@@ -8,9 +8,9 @@ X-Frame-Options: SAMEORIGIN
 Content-Security-Policy: frame-ancestors *; default-src 'self'; connect-src 'self' blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; img-src * data:; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; frame-src 'self' https://www.signaturgruppen.dk
 Cache-Control: no-store, no-cache, max-age=0
 Pragma: no-cache
-Date: Fri, 28 Aug 2026 21:31:33 GMT
+Date: Fri, 28 Aug 2026 23:21:18 GMT
 Connection: close
-Set-Cookie: X-Correlation-Id=3fdaee4d-a47a-454e-a9c7-0a85898c242e; expires=Mon, 31 Aug 2026 21:31:33 GMT; path=/; secure; samesite=none; httponly
+Set-Cookie: X-Correlation-Id=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx; expires=Mon, 31 Aug 2026 23:21:18 GMT; path=/; secure; samesite=none; httponly
 Content-Type: application/json; charset=UTF-8
 Content-Length: 26
-Expires: Fri, 28 Aug 2026 21:31:33 GMT
+Expires: Fri, 28 Aug 2026 23:21:18 GMT

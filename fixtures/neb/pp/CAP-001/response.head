@@ -6,8 +6,8 @@ Referrer-Policy: strict-origin-when-cross-origin
 X-Neb-Site: neb
 X-Frame-Options: SAMEORIGIN
 Content-Security-Policy: frame-ancestors *; default-src 'self'; connect-src 'self' blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; img-src * data:; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; frame-src 'self' https://www.signaturgruppen.dk
-Cache-Control: public, max-age=3463
-Date: Fri, 28 Aug 2026 21:31:32 GMT
+Cache-Control: public, max-age=770
+Date: Fri, 28 Aug 2026 23:21:17 GMT
 Connection: keep-alive
 Content-Type: application/json; charset=UTF-8
 Content-Length: 2877

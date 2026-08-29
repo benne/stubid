@@ -29,7 +29,10 @@ public sealed class Recorder : IDisposable
 
     public async Task<RecordedExchange> RecordAsync(CaptureCase @case, CancellationToken ct)
     {
-        using var request = new HttpRequestMessage(new HttpMethod(@case.Method), @case.Url);
+        // The URL needs the same treatment as the body: a case written with a placeholder
+        // would otherwise send the literal braces and record a puzzling refusal.
+        using var request = new HttpRequestMessage(
+            new HttpMethod(@case.Method), Scrubber.Unscrub(@case.Url));
         var requestHeaders = new List<KeyValuePair<string, string>>();
 
         foreach (var (name, value) in @case.Headers ?? new Dictionary<string, string>())
@@ -66,7 +69,7 @@ public sealed class Recorder : IDisposable
 
         return new RecordedExchange(
             @case.Method,
-            @case.Url,
+            @case.Url,   // stored with placeholders intact
             requestHeaders,
             storedBody,
             (int)response.StatusCode,

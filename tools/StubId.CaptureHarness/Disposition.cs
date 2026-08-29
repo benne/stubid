@@ -34,15 +34,39 @@ public enum Disposition
     /// <summary>401 with a WWW-Authenticate challenge and an empty body.</summary>
     Challenge,
 
+    /// <summary>
+    /// 302 back to the client's own redirect_uri. Either a success carrying a code, or a
+    /// user-level failure carrying error and error_description - the broker tells the client
+    /// about those, unlike an invalid request.
+    /// </summary>
+    ClientRedirect,
+
+    /// <summary>
+    /// 200 whose body is a self-submitting form. What response_mode=form_post produces, which
+    /// is ASP.NET Core's default, so it is the shape most .NET integrations actually receive.
+    /// </summary>
+    FormPost,
+
     /// <summary>Anything else. Always a surprise worth looking at.</summary>
     Unclassified,
 }
 
 public static class DispositionClassifier
 {
-    public static Disposition Classify(RecordedExchange exchange)
+    public static Disposition Classify(RecordedExchange exchange, string? clientRedirectUri = null)
     {
         var location = exchange.Header("Location");
+
+        if (clientRedirectUri is not null
+            && location?.StartsWith(clientRedirectUri, StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return Disposition.ClientRedirect;
+        }
+
+        if (exchange.StatusCode is >= 200 and < 300 && LooksLikeFormPost(exchange.ResponseBody))
+        {
+            return Disposition.FormPost;
+        }
 
         return exchange.StatusCode switch
         {
@@ -57,6 +81,13 @@ public static class DispositionClassifier
             >= 200 and < 300 => Disposition.Success,
             _ => Disposition.Unclassified,
         };
+    }
+
+    private static bool LooksLikeFormPost(byte[] body)
+    {
+        var text = System.Text.Encoding.UTF8.GetString(body);
+        return text.Contains("<form", StringComparison.OrdinalIgnoreCase)
+            && text.Contains("method=\"post\"", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool LooksLikeBareOAuthError(byte[] body)
