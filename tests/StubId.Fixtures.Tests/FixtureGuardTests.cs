@@ -15,15 +15,25 @@ namespace StubId.Fixtures.Tests;
 /// </remarks>
 public class FixtureGuardTests
 {
+    /// <summary>
+    /// Everything committed, not just the recordings. The first plausible personal number in
+    /// this repository arrived in a documentation example, where a guard scoped to fixtures
+    /// would never have looked.
+    /// </summary>
     private static IEnumerable<string> AllFiles() =>
-        Directory.EnumerateFiles(Repository.Fixtures, "*", SearchOption.AllDirectories);
+        Directory.EnumerateFiles(Repository.Root, "*", SearchOption.AllDirectories)
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}.git{Path.DirectorySeparatorChar}")
+                        && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")
+                        && !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
+                        && Path.GetFileName(f) != "capture.local.json");
 
     public static TheoryData<string> TextFiles()
     {
         var data = new TheoryData<string>();
-        foreach (var file in AllFiles().Where(f => Path.GetExtension(f) is ".json" or ".head" or ".md" or ".raw"))
+        foreach (var file in AllFiles().Where(f =>
+                     Path.GetExtension(f) is ".json" or ".head" or ".md" or ".raw" or ".cs" or ".yml"))
         {
-            data.Add(Path.GetRelativePath(Repository.Fixtures, file).Replace('\\', '/'));
+            data.Add(Path.GetRelativePath(Repository.Root, file).Replace('\\', '/'));
         }
 
         return data;
@@ -33,7 +43,12 @@ public class FixtureGuardTests
     [MemberData(nameof(TextFiles))]
     public void No_credential_reaches_the_repository(string relativePath)
     {
-        var text = File.ReadAllText(Path.Combine(Repository.Fixtures, relativePath));
+        if (MayContainSensitiveShapes.ContainsKey(relativePath))
+        {
+            return;
+        }
+
+        var text = File.ReadAllText(Path.Combine(Repository.Root, relativePath));
 
         // Checks the shape rather than a list of known secrets, so it also catches the ones
         // nobody thought to add to the list. A credential-bearing field should hold a
@@ -48,23 +63,63 @@ public class FixtureGuardTests
     [MemberData(nameof(TextFiles))]
     public void No_signed_token_reaches_the_repository(string relativePath)
     {
-        var text = File.ReadAllText(Path.Combine(Repository.Fixtures, relativePath));
+        if (MayContainSensitiveShapes.ContainsKey(relativePath))
+        {
+            return;
+        }
 
-        // Tokens in fixtures are re-signed with the fixture key during scrubbing. An
-        // untouched one would carry a real signature over whatever was in it.
-        Assert.DoesNotContain("eyJhbGciOi", text, StringComparison.Ordinal);
+        var text = File.ReadAllText(Path.Combine(Repository.Root, relativePath));
+
+        // Found by structure, not by how the header happens to begin: a header starting
+        // with typ rather than alg encodes to something the old literal check missed.
+        var finding = SensitiveContent.FindSignedToken(text);
+
+        Assert.False(finding.Found,
+            $"{relativePath} carries a signed token ({finding.Value}) in {finding.Location}.");
+    }
+
+    /// <summary>
+    /// The one file that must contain sensitive-looking text: the tests that prove these
+    /// rules fire. A guard nobody has seen fail is not a guard, so its samples have to look
+    /// like the real thing.
+    /// </summary>
+    /// <remarks>
+    /// Everything else in the repository is scanned, documentation included — which is where
+    /// the first plausible personal number here actually appeared, in an example written to
+    /// explain the rule.
+    /// </remarks>
+    private static readonly Dictionary<string, string> MayContainSensitiveShapes =
+        new(StringComparer.Ordinal)
+        {
+            ["tests/StubId.Fixtures.Tests/ScrubberTests.cs"] =
+                "samples proving each guard fires: a credential shape, signed tokens, and "
+                + "personal numbers from Denmark's published test range",
+        };
+
+    [Fact]
+    public void Every_exemption_still_names_a_real_file()
+    {
+        // A stale exemption is a hole nobody remembers opening.
+        Assert.All(MayContainSensitiveShapes, entry =>
+            Assert.True(File.Exists(Path.Combine(Repository.Root, entry.Key)),
+                $"{entry.Key} is exempt from the personal-identifier scan but does not exist."));
     }
 
     [Theory]
     [MemberData(nameof(TextFiles))]
     public void No_personal_identifier_reaches_the_repository(string relativePath)
     {
-        var text = File.ReadAllText(Path.Combine(Repository.Fixtures, relativePath));
+        if (MayContainSensitiveShapes.ContainsKey(relativePath))
+        {
+            return;
+        }
 
-        var match = Scrubber.FindCprShapedText(text);
+        var text = File.ReadAllText(Path.Combine(Repository.Root, relativePath));
 
-        Assert.False(match.Success,
-            $"{relativePath} contains something shaped like a CPR number at offset {match.Index}.");
+        var finding = SensitiveContent.FindCpr(text);
+
+        Assert.False(finding.Found,
+            $"{relativePath} contains something shaped like a CPR number ({finding.Location}).");
     }
 
     [Fact]

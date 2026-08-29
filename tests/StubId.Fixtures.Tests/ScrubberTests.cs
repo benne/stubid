@@ -31,20 +31,42 @@ public class ScrubberTests
     }
 
     [Theory]
+    // Serials ending 9995 are Denmark's published test numbers, deliberately allocated last.
     [InlineData(@"{""cpr"":""0101709995""}")]
-    [InlineData("cpr=3112894321")]
+    [InlineData("cpr=3112899995")]
+    [InlineData(@"{""cpr"":""311289-9995""}")]                              // the separated form
+    [InlineData("eyJzdWIiOiJ4IiwiZGsuY3ByIjoiMDEwMTcwOTk5NSJ9")]          // hidden inside a token
     public void Something_shaped_like_a_cpr_number_is_caught(string text)
     {
-        Assert.True(Scrubber.FindCprShapedText(text).Success);
+        Assert.True(SensitiveContent.FindCpr(text).Found);
+    }
+
+    [Theory]
+    // A header beginning with alg, and one beginning with typ. The second is what the old
+    // literal check missed, and it is the shape the unobserved transaction token may take.
+    [InlineData("eyJhbGciOiJSUzI1NiIsImtpZCI6IlgifQ.eyJzdWIiOiJhLXN1YmplY3QifQ.c2ln")]
+    [InlineData("eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhLXN1YmplY3QifQ.c2ln")]
+    public void A_signed_token_is_caught_whatever_its_header_order(string text)
+    {
+        Assert.True(SensitiveContent.FindSignedToken(text).Found);
+    }
+
+    [Theory]
+    [InlineData("just some ordinary text with a long-word-that-is-not-a-token")]
+    [InlineData("048058BB59F4D3007045896FD488CE81F4EB4923.7FF447FA0FB65A7E749E8B43AC635862.x")]
+    public void Something_that_merely_looks_token_shaped_is_not(string text)
+    {
+        Assert.False(SensitiveContent.FindSignedToken(text).Found);
     }
 
     [Theory]
     [InlineData("048058BB59F4D3007045896FD488CE81F4EB4923")] // a certificate thumbprint
     [InlineData(@"{""cpr"":""6101709995""}")]                // a replacement number, day 61
     [InlineData("1234")]
+    [InlineData(@"{""cpr"":""3102851234""}")]                // the 31st of February
     public void Digits_inside_a_longer_run_or_a_replacement_number_are_not(string text)
     {
-        Assert.False(Scrubber.FindCprShapedText(text).Success);
+        Assert.False(SensitiveContent.FindCpr(text).Found);
     }
 
     [Fact]
