@@ -40,6 +40,12 @@ public sealed class KeyRing : IDisposable
     /// Loads keys from PKCS#12 blobs. This is the path a container takes at startup, so it
     /// stays free of key generation: creating RSA keys is the slowest thing a boot can do.
     /// </summary>
+    /// <remarks>
+    /// Cost varies by platform, which matters for the boot-time budget. On Linux, where the
+    /// container runs, an import is cheap. On Windows it goes through CNG and costs roughly
+    /// an order of magnitude more, so a developer running the in-process server there pays a
+    /// few hundred milliseconds once at startup.
+    /// </remarks>
     public static KeyRing Load(IEnumerable<(byte[] Pkcs12, string? Password, KeyUse Use)> material) =>
         new(material.Select(m => new SigningKey(
             X509CertificateLoader.LoadPkcs12(
