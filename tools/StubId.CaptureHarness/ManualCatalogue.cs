@@ -101,13 +101,25 @@ public static class ManualCatalogue
         new()
         {
             Id = "CAP-025",
-            Step = "Step 12",
+            Step = "Step 12a",
+            Title = "Single sign-on, first client",
+            Settles = "Establishes the session the next step rides. On its own it is an "
+                + "ordinary login; its value is what CAP-029 does afterwards.",
+            Operator = "Approve as normal.",
+            Client = ClientProfile.SsoA,
+        },
+        new()
+        {
+            Id = "CAP-029",
+            Step = "Step 12b",
             Title = "Single sign-on, second client",
-            Settles = "Whether a second client rides the existing session without a prompt, "
-                + "and whether the subject differs per client while mitid.uuid does not.",
-            Operator = "Nothing: this should complete without asking anything. If it asks, "
-                + "the session from the previous step was not reused and that is the finding.",
-            Client = ClientProfile.OpenCode,
+            Settles = "Whether a second client joined to the same service provider is waved "
+                + "through without a prompt, and whether the subject differs per client while "
+                + "mitid.uuid stays the same. StubID derives its subject per organisation, and "
+                + "that behaviour currently rests on documentation alone.",
+            Operator = "Nothing. It should complete without asking. If it asks, single sign-on "
+                + "did not apply and that is the finding - say so rather than approving.",
+            Client = ClientProfile.SsoB,
             ForcesLogin = false,
         },
         new()
@@ -122,6 +134,20 @@ public static class ManualCatalogue
             ResponseType = "id_token",
             ResponseMode = "form_post",
             FollowUps = [],
+        },
+        new()
+        {
+            Id = "CAP-030",
+            Step = "Step 15b",
+            Title = "Hybrid response, for c_hash",
+            Settles = "c_hash, which ASP.NET Core requires whenever an id_token arrives "
+                + "through the front channel. The earlier front-channel recording used a "
+                + "response type of id_token alone, which produces neither c_hash nor at_hash, "
+                + "so this is the only way to see it.",
+            Operator = "Approve as normal.",
+            Client = ClientProfile.Hybrid,
+            ResponseType = "id_token code",
+            ResponseMode = "form_post",
         },
         new()
         {

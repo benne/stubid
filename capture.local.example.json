@@ -1,14 +1,29 @@
 {
-  "//": "Copy to capture.local.json, which is gitignored. Environment variables of the same name win.",
+  "//": "Copy to capture.local.json, which is gitignored. Environment variables of the same name win. Run `dotnet run --project tools/StubId.CaptureHarness -- check` to see what is missing and which steps it costs.",
 
-  "STUBID_NEB_PP_CODE_CLIENT_SECRET": "the broker's published open code-flow client secret",
+  "//published": "The broker publishes credentials for its open test clients in its integration documentation, so anyone can exercise pre-production. Needed for the front-channel step.",
+  "STUBID_NEB_PP_CODE_CLIENT_SECRET": "the published open code-flow client secret",
 
-  "STUBID_NEB_PP_CLIENT_ID": "a private pre-production client, if you have one",
-  "STUBID_NEB_PP_CLIENT_SECRET": "its secret",
+  "//private": "A client of your own, if you have one. It carries the richer scopes: ssn, nemid.pid, ssn.details_*, userinfo_token and transaction_token.",
+  "STUBID_NEB_PP_CLIENT_ID": "",
+  "STUBID_NEB_PP_CLIENT_SECRET": "",
+
+  "//sso": "Two clients joined to the same service provider's single sign-on, which is a switch on the Advanced tab of the broker's client administration. Both need it Active, or the second one prompts and the recording shows nothing. Otherwise: grant type Code, PKCE Active, Userinfo Token Active, and 'accept all redirects' OFF with only http://localhost:5099/callback registered - which also makes client A serve as the unregistered-redirect case.",
+  "STUBID_NEB_PP_SSO_A_CLIENT_ID": "",
+  "STUBID_NEB_PP_SSO_A_CLIENT_SECRET": "",
+  "STUBID_NEB_PP_SSO_B_CLIENT_ID": "",
+  "STUBID_NEB_PP_SSO_B_CLIENT_SECRET": "",
+
+  "//hybrid": "Same again but with grant type Hybrid, which is the only way to observe c_hash. ASP.NET Core requires it whenever an id_token arrives through the front channel.",
+  "STUBID_NEB_PP_SSO_C_CLIENT_ID": "",
+  "STUBID_NEB_PP_SSO_C_CLIENT_SECRET": "",
 
   "redact": {
-    "//": "Anything else that must not reach a fixture. A transaction token names the receiving organisation, so its name and CVR number belong here before recording one.",
+    "//": "Values that must not reach a fixture, as replacement-to-original. A personal number is replaced by the same number with 60 added to the day (01-09 to 61-69, 10-19 to 70-79, 20-29 to 80-89, 30-31 to 90-91), which cannot be anyone's and keeps the length and shape a fixture depends on. The example below uses the 31st of February, which nobody was born on, so it shows the mapping without printing a number that might be someone's. Register both the bare and the separated form: the scrubber matches exact strings. A transaction token names the receiving organisation, so its name and CVR belong here before recording one, as does the test identity's name.",
     "{{ORGANISATION_NAME}}": "Example A/S",
-    "{{ORGANISATION_CVR}}": "12345678"
+    "{{ORGANISATION_CVR}}": "12345678",
+    "9102999995": "3102999995",
+    "910299-9995": "310299-9995",
+    "Synthetic Testperson": "the identity's name as MitID returns it"
   }
 }

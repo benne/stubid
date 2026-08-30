@@ -346,9 +346,10 @@ public static class Session
     {
         ClientProfile.OpenCode => CaptureCatalogue.OpenCodeClient,
         ClientProfile.OpenImplicit => "93ed8e0d-93ad-405c-b1ac-8bf13d484941",
-        ClientProfile.Restricted => LocalSettings.Get("STUBID_NEB_PP_RESTRICTED_CLIENT_ID")
-            ?? throw new InvalidOperationException(
-                "Set STUBID_NEB_PP_RESTRICTED_CLIENT_ID to record the unregistered-redirect case."),
+        ClientProfile.Restricted => Required("STUBID_NEB_PP_SSO_A_CLIENT_ID"),
+        ClientProfile.SsoA => Required("STUBID_NEB_PP_SSO_A_CLIENT_ID"),
+        ClientProfile.SsoB => Required("STUBID_NEB_PP_SSO_B_CLIENT_ID"),
+        ClientProfile.Hybrid => Required("STUBID_NEB_PP_SSO_C_CLIENT_ID"),
         _ => LocalSettings.Get("STUBID_NEB_PP_CLIENT_ID")
              ?? throw new InvalidOperationException(
                  "Set STUBID_NEB_PP_CLIENT_ID to record with the private client."),
@@ -359,11 +360,16 @@ public static class Session
         ClientProfile.OpenCode or ClientProfile.OpenImplicit =>
             LocalSettings.Get("STUBID_NEB_PP_CODE_CLIENT_SECRET")
             ?? throw new InvalidOperationException("Set STUBID_NEB_PP_CODE_CLIENT_SECRET."),
-        ClientProfile.Restricted => LocalSettings.Get("STUBID_NEB_PP_RESTRICTED_CLIENT_SECRET")
-            ?? throw new InvalidOperationException("Set STUBID_NEB_PP_RESTRICTED_CLIENT_SECRET."),
+        ClientProfile.Restricted => Required("STUBID_NEB_PP_SSO_A_CLIENT_SECRET"),
+        ClientProfile.SsoA => Required("STUBID_NEB_PP_SSO_A_CLIENT_SECRET"),
+        ClientProfile.SsoB => Required("STUBID_NEB_PP_SSO_B_CLIENT_SECRET"),
+        ClientProfile.Hybrid => Required("STUBID_NEB_PP_SSO_C_CLIENT_SECRET"),
         _ => LocalSettings.Get("STUBID_NEB_PP_CLIENT_SECRET")
              ?? throw new InvalidOperationException("Set STUBID_NEB_PP_CLIENT_SECRET."),
     };
+
+    private static string Required(string setting) => LocalSettings.Get(setting)
+        ?? throw new InvalidOperationException($"Set {setting} to record this step.");
 
     private static string Base64UrlText(byte[] bytes) =>
         System.Buffers.Text.Base64Url.EncodeToString(bytes);

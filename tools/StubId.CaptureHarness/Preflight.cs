@@ -29,8 +29,12 @@ public static class Preflight
             "STUBID_NEB_PP_CLIENT_ID",
             "STUBID_NEB_PP_CLIENT_SECRET",
             "STUBID_NEB_PP_CODE_CLIENT_SECRET",
-            "STUBID_NEB_PP_RESTRICTED_CLIENT_ID",
-            "STUBID_NEB_PP_RESTRICTED_CLIENT_SECRET",
+            "STUBID_NEB_PP_SSO_A_CLIENT_ID",
+            "STUBID_NEB_PP_SSO_A_CLIENT_SECRET",
+            "STUBID_NEB_PP_SSO_B_CLIENT_ID",
+            "STUBID_NEB_PP_SSO_B_CLIENT_SECRET",
+            "STUBID_NEB_PP_SSO_C_CLIENT_ID",
+            "STUBID_NEB_PP_SSO_C_CLIENT_SECRET",
         })
         {
             var value = LocalSettings.Get(name);
@@ -40,8 +44,12 @@ public static class Preflight
                 {
                     "STUBID_NEB_PP_CODE_CLIENT_SECRET" =>
                         Steps(c => c.Client is ClientProfile.OpenCode or ClientProfile.OpenImplicit),
-                    var n when n.Contains("RESTRICTED", StringComparison.Ordinal) =>
-                        Steps(c => c.Client == ClientProfile.Restricted),
+                    var n when n.Contains("SSO_A", StringComparison.Ordinal) =>
+                        Steps(c => c.Client is ClientProfile.SsoA or ClientProfile.Restricted),
+                    var n when n.Contains("SSO_B", StringComparison.Ordinal) =>
+                        Steps(c => c.Client == ClientProfile.SsoB),
+                    var n when n.Contains("SSO_C", StringComparison.Ordinal) =>
+                        Steps(c => c.Client == ClientProfile.Hybrid),
                     _ => Steps(c => c.Client == ClientProfile.Private),
                 };
 

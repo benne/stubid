@@ -17,6 +17,21 @@ public enum ClientProfile
     /// accept anything. The only way to record how the broker refuses one it does not know.
     /// </summary>
     Restricted,
+
+    /// <summary>First of a pair joined to the same service provider's single sign-on.</summary>
+    SsoA,
+
+    /// <summary>
+    /// The second of that pair. Reaching it without a prompt is what single sign-on means, and
+    /// what the recording is for.
+    /// </summary>
+    SsoB,
+
+    /// <summary>
+    /// Configured for the hybrid grant, which is the only way to observe c_hash. ASP.NET Core
+    /// requires it whenever an id_token arrives through the front channel.
+    /// </summary>
+    Hybrid,
 }
 
 /// <summary>Work the harness does after the code has been exchanged, without the operator.</summary>
