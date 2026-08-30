@@ -41,8 +41,15 @@ public sealed partial class Staging
             s.Exchange.StatusCode,
             Scrub(System.Text.Encoding.UTF8.GetString(s.Exchange.ResponseBody))));
 
-    public void Add(ManualCase @case, string name, RecordedExchange exchange) =>
-        _staged.Add((@case, name, exchange));
+    public void Add(ManualCase @case, string name, RecordedExchange exchange)
+    {
+        // A step can call the same endpoint twice - redeeming a code and then replaying it -
+        // and both would land in one directory, where the second silently overwrote the
+        // first. Numbering keeps them apart and keeps the order visible.
+        var taken = _staged.Count(s => s.Case.Id == @case.Id && s.Name.StartsWith(name, StringComparison.Ordinal));
+
+        _staged.Add((@case, taken == 0 ? name : $"{name}-{taken + 1}", exchange));
+    }
 
     /// <summary>
     /// Registers a value born during the sitting, so every appearance of it becomes the same

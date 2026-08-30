@@ -161,6 +161,7 @@ public static class Endpoints
                 ["expires_in"] = Tokens.AccessTokenLifetimeSeconds,
                 ["token_type"] = "Bearer",
                 ["scope"] = issued.Request.Scope,
+                ["userinfo_token"] = tokens.UserInfoToken(Issuer(http), issued),
             }));
         });
 

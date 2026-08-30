@@ -79,7 +79,7 @@ public class RecordedShapeTests : IClassFixture<WebApplicationFactory<Program>>
             Base64Url.Decode(response.RootElement.GetProperty("id_token").GetString()!.Split('.')[1]));
 
         Assert.Equal(
-            RecordedShape("CAP-020", "token", "id_token.payload.json"),
+            RecordedShape("CAP-024", "token", "id_token.payload.json"),
             Shape(payload.RootElement));
     }
 
@@ -91,7 +91,7 @@ public class RecordedShapeTests : IClassFixture<WebApplicationFactory<Program>>
             Base64Url.Decode(response.RootElement.GetProperty("id_token").GetString()!.Split('.')[0]));
 
         Assert.Equal(
-            RecordedShape("CAP-020", "token", "id_token.header.json"),
+            RecordedShape("CAP-024", "token", "id_token.header.json"),
             Shape(header.RootElement));
     }
 
@@ -132,14 +132,14 @@ public class RecordedShapeTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
-    public async Task The_token_response_carries_the_members_a_plain_login_returns()
+    public async Task The_token_response_carries_the_recorded_members()
     {
-        // The recorded full-scope response also carries a userinfo token and a transaction
-        // token, which the scopes ask for; a plain login returns these five.
+        // The recorded response arrived with scope "openid mitid" and still carried a
+        // userinfo token, so that member comes from a per-client setting rather than from the
+        // scopes. StubID emits it for the same reason: the recording is of a client that has
+        // it switched on.
         using var response = await SignIn("openid mitid");
 
-        Assert.Equal(
-            ["id_token:String", "access_token:String", "expires_in:Number", "token_type:String", "scope:String"],
-            Shape(response.RootElement));
+        Assert.Equal(RecordedShape("CAP-024", "token", "response.raw"), Shape(response.RootElement));
     }
 }

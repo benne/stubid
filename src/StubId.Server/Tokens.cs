@@ -41,7 +41,7 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
     /// neither it nor <c>c_hash</c>.
     /// </remarks>
     [Fidelity(FidelityTier.Exact, FidelityProvenance.VerifiedLive,
-        Evidence = "fixtures/neb/pp-session/CAP-020/token/id_token.payload.json")]
+        Evidence = "fixtures/neb/pp-session/CAP-024/token/id_token.payload.json")]
     public string IdToken(string issuer, IssuedCode code, string? accessToken)
     {
         var now = clock.GetUtcNow();
@@ -178,6 +178,54 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
         claims.Add(JsonClaim.String("sub", Subject(clientId, citizen)));
 
         return claims;
+    }
+
+    /// <summary>
+    /// The userinfo token: the same identity as the userinfo endpoint, signed, returned in
+    /// the token response.
+    /// </summary>
+    /// <remarks>
+    /// It arrives whenever the client has the setting switched on, not because a scope asked
+    /// for it - the recording carries one from a plain <c>openid mitid</c> login. Its header
+    /// says <c>at+jwt</c> rather than <c>JWT</c>, its assurance claims come in a different
+    /// order from the id_token's, and its <c>auth_time</c> is a string where the id_token
+    /// sends a number. Same broker, same response, two answers.
+    /// </remarks>
+    [Fidelity(FidelityTier.Exact, FidelityProvenance.VerifiedLive,
+        Evidence = "fixtures/neb/pp-session/CAP-024/token/userinfo_token.payload.json")]
+    public string UserInfoToken(string issuer, IssuedCode code)
+    {
+        var now = clock.GetUtcNow();
+        var citizen = code.Citizen;
+        var level = Nsis(citizen.Loa);
+
+        return _writer.Sign(
+        [
+            JsonClaim.String("iss", issuer),
+            JsonClaim.Number("nbf", now.ToUnixTimeSeconds()),
+            JsonClaim.Number("iat", now.ToUnixTimeSeconds()),
+            JsonClaim.Number("exp", now.AddSeconds(IdTokenLifetimeSeconds).ToUnixTimeSeconds()),
+            JsonClaim.Strings("amr", citizen.Amr),
+            JsonClaim.String("mitid.transaction_id", code.IdpTransactionId),
+            JsonClaim.String("mitid.uuid", citizen.Uuid),
+            JsonClaim.String("mitid.age",
+                citizen.Age(now).ToString(System.Globalization.CultureInfo.InvariantCulture)),
+            JsonClaim.String("mitid.date_of_birth", citizen.DateOfBirth),
+            JsonClaim.String("mitid.has_cpr", "true"),
+            JsonClaim.String("mitid.identity_name", citizen.Name),
+            JsonClaim.String("loa", level),
+            JsonClaim.String("ial", level),
+            JsonClaim.String("aal", level),
+            JsonClaim.String("identity_type", "private"),
+            JsonClaim.String("idp_identity_id", citizen.Uuid),
+            JsonClaim.String("idp", "mitid"),
+            JsonClaim.String("acr", level),
+            JsonClaim.String("auth_time", code.AuthenticatedAt.ToUnixTimeSeconds()
+                .ToString(System.Globalization.CultureInfo.InvariantCulture)),
+            JsonClaim.String("sub", Subject(code.Request.ClientId, citizen)),
+            JsonClaim.String("transaction_id", code.TransactionId),
+            JsonClaim.String("aud", code.Request.ClientId),
+        ], keys.TokenSigning, type: "at+jwt");
     }
 
     /// <summary>
