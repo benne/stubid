@@ -1,0 +1,44 @@
+{
+  "id": "CAP-027",
+  "step": "Step 16",
+  "title": "End session",
+  "settles": "What end session does with and without an id_token_hint, and whether post_logout_redirect_uri is honoured either way.",
+  "exchange": "token",
+  "request": {
+    "method": "POST",
+    "url": "https://pp.netseidbroker.dk/op/connect/token"
+  },
+  "status": 200,
+  "tokens": {
+    "id_token": {
+      "Algorithm": "RS256",
+      "Kid": "048058BB59F4D3007045896FD488CE81F4EB4923",
+      "SegmentLengths": [
+        102,
+        1140,
+        342
+      ],
+      "SignatureVerified": null
+    },
+    "access_token": {
+      "Algorithm": "RS256",
+      "Kid": "048058BB59F4D3007045896FD488CE81F4EB4923",
+      "SegmentLengths": [
+        106,
+        772,
+        342
+      ],
+      "SignatureVerified": null
+    },
+    "userinfo_token": {
+      "Algorithm": "RS256",
+      "Kid": "048058BB59F4D3007045896FD488CE81F4EB4923",
+      "SegmentLengths": [
+        106,
+        1122,
+        342
+      ],
+      "SignatureVerified": null
+    }
+  }
+}

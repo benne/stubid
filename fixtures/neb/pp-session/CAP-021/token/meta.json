@@ -1,0 +1,54 @@
+{
+  "id": "CAP-021",
+  "step": "Step 7",
+  "title": "The full-scope login",
+  "settles": "Every userinfo value and its JSON type, the address and name details, the userinfo token, and the transaction token\u0027s base claim set.",
+  "exchange": "token",
+  "request": {
+    "method": "POST",
+    "url": "https://pp.netseidbroker.dk/op/connect/token"
+  },
+  "status": 200,
+  "tokens": {
+    "id_token": {
+      "Algorithm": "RS256",
+      "Kid": "048058BB59F4D3007045896FD488CE81F4EB4923",
+      "SegmentLengths": [
+        102,
+        1140,
+        342
+      ],
+      "SignatureVerified": null
+    },
+    "access_token": {
+      "Algorithm": "RS256",
+      "Kid": "048058BB59F4D3007045896FD488CE81F4EB4923",
+      "SegmentLengths": [
+        106,
+        900,
+        342
+      ],
+      "SignatureVerified": null
+    },
+    "userinfo_token": {
+      "Algorithm": "RS256",
+      "Kid": "048058BB59F4D3007045896FD488CE81F4EB4923",
+      "SegmentLengths": [
+        106,
+        1295,
+        342
+      ],
+      "SignatureVerified": null
+    },
+    "transaction_token": {
+      "Algorithm": "RS256",
+      "Kid": "7FF447FA0FB65A7E749E8B43AC635862381F0CC3",
+      "SegmentLengths": [
+        102,
+        2134,
+        512
+      ],
+      "SignatureVerified": null
+    }
+  }
+}

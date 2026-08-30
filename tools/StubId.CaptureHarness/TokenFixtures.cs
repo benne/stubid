@@ -59,7 +59,9 @@ public static class TokenFixtures
         }
         catch (JsonException)
         {
-            return (body, extracted);
+            // Not JSON. A front-channel response arrives as name=value lines, and the
+            // implicit flow puts an id_token in one of them.
+            return ExtractFromFields(body, extracted, verify);
         }
 
         using (document)
@@ -82,24 +84,58 @@ public static class TokenFixtures
                     continue;
                 }
 
-                var parts = value.Split('.');
-                var placeholder = $"{{{{{member.Name.ToUpperInvariant()}}}}}";
-
-                extracted[member.Name] = new ExtractedToken(
-                    placeholder,
-                    Decode(parts[0]),
-                    Decode(parts[1]),
-                    Member(parts[0], "alg"),
-                    Member(parts[0], "kid"),
-                    [.. parts.Select(p => p.Length)],
-                    verify?.Invoke(value));
+                extracted[member.Name] = Describe(member.Name, value, verify);
 
                 // A byte-level splice: the surrounding document keeps its exact shape.
-                body = body.Replace(value, placeholder, StringComparison.Ordinal);
+                body = body.Replace(value, extracted[member.Name].Placeholder, StringComparison.Ordinal);
             }
         }
 
         return (body, extracted);
+    }
+
+    /// <summary>
+    /// Handles a name=value body, which is what a front-channel response is. The implicit
+    /// flow returns its id_token this way, and a JSON-only extractor left it in the fixture.
+    /// </summary>
+    private static (string Body, IReadOnlyDictionary<string, ExtractedToken> Tokens) ExtractFromFields(
+        string body, Dictionary<string, ExtractedToken> extracted, Func<string, bool>? verify)
+    {
+        foreach (var line in body.Split('\n'))
+        {
+            var separator = line.IndexOf('=', StringComparison.Ordinal);
+            if (separator <= 0)
+            {
+                continue;
+            }
+
+            var name = line[..separator];
+            var value = line[(separator + 1)..].Trim();
+
+            if (!Known.Contains(name) || !LooksSigned(value))
+            {
+                continue;
+            }
+
+            extracted[name] = Describe(name, value, verify);
+            body = body.Replace(value, extracted[name].Placeholder, StringComparison.Ordinal);
+        }
+
+        return (body, extracted);
+    }
+
+    private static ExtractedToken Describe(string name, string value, Func<string, bool>? verify)
+    {
+        var parts = value.Split('.');
+
+        return new ExtractedToken(
+            $"{{{{{name.ToUpperInvariant()}}}}}",
+            Decode(parts[0]),
+            Decode(parts[1]),
+            Member(parts[0], "alg"),
+            Member(parts[0], "kid"),
+            [.. parts.Select(p => p.Length)],
+            verify?.Invoke(value));
     }
 
     private static bool LooksSigned(string value)

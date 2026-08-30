@@ -1,0 +1,13 @@
+{
+  "id": "CAP-020",
+  "step": "Step 6",
+  "title": "The baseline login",
+  "settles": "The id_token member set and order, whether nbf and sid are really there, the amr wire form, and the shape of a successful token response.",
+  "exchange": "token",
+  "request": {
+    "method": "POST",
+    "url": "https://pp.netseidbroker.dk/op/connect/token"
+  },
+  "status": 400,
+  "tokens": {}
+}

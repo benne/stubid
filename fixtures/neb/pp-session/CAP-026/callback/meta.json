@@ -1,0 +1,13 @@
+{
+  "id": "CAP-026",
+  "step": "Step 15",
+  "title": "Front-channel id_token",
+  "settles": "The form_post envelope, and c_hash, which ASP.NET Core requires whenever an id_token arrives through the front channel.",
+  "exchange": "callback",
+  "request": {
+    "method": "POST",
+    "url": "https://pp.netseidbroker.dk/op/connect/authorize?client_id=93ed8e0d-93ad-405c-b1ac-8bf13d484941\u0026response_type=id_token\u0026redirect_uri=http%3A%2F%2Flocalhost%3A5099%2Fcallback\u0026scope=openid%20mitid\u0026state=CAP-026\u0026nonce=RLFTGxutepfRsig_ayFzNw\u0026idp_values=mitid\u0026code_challenge=eBkcqSNnrxJN5uB5BeGxrjheCIhI43OL2-3pK6g8Djo\u0026code_challenge_method=S256\u0026response_mode=form_post\u0026prompt=login"
+  },
+  "status": 200,
+  "tokens": {}
+}

@@ -1,0 +1,13 @@
+{
+  "id": "CAP-021",
+  "step": "Step 7",
+  "title": "The full-scope login",
+  "settles": "Every userinfo value and its JSON type, the address and name details, the userinfo token, and the transaction token\u0027s base claim set.",
+  "exchange": "userinfo",
+  "request": {
+    "method": "GET",
+    "url": "https://pp.netseidbroker.dk/op/connect/userinfo"
+  },
+  "status": 200,
+  "tokens": {}
+}

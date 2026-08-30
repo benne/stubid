@@ -1,0 +1,13 @@
+{
+  "id": "CAP-027",
+  "step": "Step 16",
+  "title": "End session",
+  "settles": "What end session does with and without an id_token_hint, and whether post_logout_redirect_uri is honoured either way.",
+  "exchange": "callback",
+  "request": {
+    "method": "GET",
+    "url": "https://pp.netseidbroker.dk/op/connect/authorize?client_id={{NEB_PP_CLIENT_ID}}\u0026response_type=code\u0026redirect_uri=http%3A%2F%2Flocalhost%3A5099%2Fcallback\u0026scope=openid%20mitid\u0026state=CAP-027\u0026nonce=yee94pcloU-ovt97AO371g\u0026idp_values=mitid\u0026code_challenge=CLkY86ICWLPFwjgYvk0ey6ldv2gtFXKePbrdRZwlztY\u0026code_challenge_method=S256\u0026prompt=login"
+  },
+  "status": 200,
+  "tokens": {}
+}

@@ -1,0 +1,13 @@
+{
+  "id": "CAP-022",
+  "step": "Step 9",
+  "title": "Transaction token with a reference text",
+  "settles": "Which spelling the transaction token really uses for its text claims, and whether it carries loa, aal, exp and aud at all.",
+  "exchange": "userinfo",
+  "request": {
+    "method": "GET",
+    "url": "https://pp.netseidbroker.dk/op/connect/userinfo"
+  },
+  "status": 200,
+  "tokens": {}
+}

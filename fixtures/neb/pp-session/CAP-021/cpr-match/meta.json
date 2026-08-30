@@ -1,0 +1,13 @@
+{
+  "id": "CAP-021",
+  "step": "Step 7",
+  "title": "The full-scope login",
+  "settles": "Every userinfo value and its JSON type, the address and name details, the userinfo token, and the transaction token\u0027s base claim set.",
+  "exchange": "cpr-match",
+  "request": {
+    "method": "POST",
+    "url": "https://pp.netseidbroker.dk/op/api/v1/mitid/matchCpr"
+  },
+  "status": 400,
+  "tokens": {}
+}

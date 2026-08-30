@@ -1,0 +1,13 @@
+{
+  "id": "CAP-024",
+  "step": "Step 11",
+  "title": "Assurance level Low",
+  "settles": "Whether loa, ial and aal move together, and which amr a lower level produces.",
+  "exchange": "userinfo",
+  "request": {
+    "method": "GET",
+    "url": "https://pp.netseidbroker.dk/op/connect/userinfo"
+  },
+  "status": 200,
+  "tokens": {}
+}

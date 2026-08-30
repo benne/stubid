@@ -1,0 +1,54 @@
+{
+  "id": "CAP-022",
+  "step": "Step 9",
+  "title": "Transaction token with a reference text",
+  "settles": "Which spelling the transaction token really uses for its text claims, and whether it carries loa, aal, exp and aud at all.",
+  "exchange": "token",
+  "request": {
+    "method": "POST",
+    "url": "https://pp.netseidbroker.dk/op/connect/token"
+  },
+  "status": 200,
+  "tokens": {
+    "id_token": {
+      "Algorithm": "RS256",
+      "Kid": "048058BB59F4D3007045896FD488CE81F4EB4923",
+      "SegmentLengths": [
+        102,
+        1140,
+        342
+      ],
+      "SignatureVerified": null
+    },
+    "access_token": {
+      "Algorithm": "RS256",
+      "Kid": "048058BB59F4D3007045896FD488CE81F4EB4923",
+      "SegmentLengths": [
+        106,
+        799,
+        342
+      ],
+      "SignatureVerified": null
+    },
+    "userinfo_token": {
+      "Algorithm": "RS256",
+      "Kid": "048058BB59F4D3007045896FD488CE81F4EB4923",
+      "SegmentLengths": [
+        106,
+        1122,
+        342
+      ],
+      "SignatureVerified": null
+    },
+    "transaction_token": {
+      "Algorithm": "RS256",
+      "Kid": "7FF447FA0FB65A7E749E8B43AC635862381F0CC3",
+      "SegmentLengths": [
+        102,
+        1542,
+        512
+      ],
+      "SignatureVerified": null
+    }
+  }
+}

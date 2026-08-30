@@ -1,0 +1,13 @@
+{
+  "id": "CAP-020",
+  "step": "Step 6",
+  "title": "The baseline login",
+  "settles": "The id_token member set and order, whether nbf and sid are really there, the amr wire form, and the shape of a successful token response.",
+  "exchange": "callback",
+  "request": {
+    "method": "GET",
+    "url": "https://pp.netseidbroker.dk/op/connect/authorize?client_id={{NEB_PP_CLIENT_ID}}\u0026response_type=code\u0026redirect_uri=http%3A%2F%2Flocalhost%3A5099%2Fcallback\u0026scope=openid%20mitid\u0026state=CAP-020\u0026nonce=onKeSNKahJnFF0dRTqU1jg\u0026idp_values=mitid\u0026code_challenge=Jf-KLIRun2Zgh1F5EM8LoWvHm8_vypRxTL9H1dG-8qs\u0026code_challenge_method=S256\u0026prompt=login"
+  },
+  "status": 200,
+  "tokens": {}
+}

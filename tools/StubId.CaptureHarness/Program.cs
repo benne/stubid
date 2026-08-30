@@ -7,6 +7,7 @@ using StubId.CaptureHarness;
 //   session   host the relying party for the manual sitting on localhost:5099
 //   check     verify the local configuration before a sitting
 //   rehearse  send every step's authorize request, without completing any
+//   sanitise  reprocess a written session with the current rules
 //
 // Both hit the broker's public pre-production environment with unauthenticated requests.
 
@@ -31,6 +32,10 @@ switch (command)
         return await VerifyAsync();
     case "rehearse":
         return await Rehearsal.RunAsync(cancellation.Token);
+    case "sanitise":
+        return await Sanitise.RunAsync(new FixtureStore(
+            Path.GetFullPath(Path.Combine(root, "..", "..", "..", "fixtures", "neb", "pp-session"))),
+            cancellation.Token);
     case "check":
         return Preflight.Run();
     case "session":
