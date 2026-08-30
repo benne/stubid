@@ -119,3 +119,24 @@ public class StagingTests
             StringComparison.Ordinal);
     }
 }
+
+public class RedactionParsingTests
+{
+    [Fact]
+    public void A_comment_is_not_a_redaction_rule()
+    {
+        // The example file carries its guidance under "//" keys. Treating one as a rule made
+        // the scrubber replace the comment's own text wherever it appeared, and put a bogus
+        // entry in every preflight report.
+        using var document = System.Text.Json.JsonDocument.Parse("""
+            {
+              "//": "Anything else that must not reach a fixture.",
+              "{{ORGANISATION_CVR}}": "12345678"
+            }
+            """);
+
+        var rules = StubId.CaptureHarness.LocalSettings.ParseRedactions(document.RootElement);
+
+        Assert.Equal(["{{ORGANISATION_CVR}}"], rules.Keys);
+    }
+}

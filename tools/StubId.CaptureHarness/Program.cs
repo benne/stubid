@@ -5,6 +5,7 @@ using StubId.CaptureHarness;
 //   capture   record every unattended case and write the fixtures
 //   verify    record the unattended cases again and compare against what is committed
 //   session   host the relying party for the manual sitting on localhost:5099
+//   check     verify the local configuration before a sitting
 //
 // Both hit the broker's public pre-production environment with unauthenticated requests.
 
@@ -27,13 +28,15 @@ switch (command)
         return await CaptureAsync();
     case "verify":
         return await VerifyAsync();
+    case "check":
+        return Preflight.Run();
     case "session":
         // The manual sitting writes into its own directory: the unattended pack must stay
         // reproducible by re-running capture, and these recordings never are.
         return await Session.RunAsync(new FixtureStore(
             Path.GetFullPath(Path.Combine(root, "..", "..", "..", "fixtures", "neb", "pp-session"))));
     default:
-        Console.Error.WriteLine($"Unknown command '{command}'. Use 'capture', 'verify' or 'session'.");
+        Console.Error.WriteLine($"Unknown command '{command}'. Use 'capture', 'verify', 'session' or 'check'.");
         return 2;
 }
 

@@ -71,10 +71,20 @@ public static class LocalSettings
             return new Dictionary<string, string>();
         }
 
-        return redact.EnumerateObject()
-            .Where(m => m.Value.ValueKind == JsonValueKind.String)
-            .ToDictionary(m => m.Name, m => m.Value.GetString()!, StringComparer.Ordinal);
+        return ParseRedactions(redact);
     }
+
+    /// <summary>
+    /// Reads the redaction rules out of a "redact" object. Separate so it can be tested
+    /// without a configuration file on disk.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> ParseRedactions(JsonElement redact) =>
+        redact.EnumerateObject()
+            // "//" is how the example file carries its comments. Treating one as a rule would
+            // replace the comment's own text wherever it appeared in a recording.
+            .Where(m => m.Value.ValueKind == JsonValueKind.String
+                        && !m.Name.StartsWith("//", StringComparison.Ordinal))
+            .ToDictionary(m => m.Name, m => m.Value.GetString()!, StringComparer.Ordinal);
 
     public static string? Path { get; private set; }
 
