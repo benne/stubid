@@ -6,6 +6,7 @@ using StubId.CaptureHarness;
 //   verify    record the unattended cases again and compare against what is committed
 //   session   host the relying party for the manual sitting on localhost:5099
 //   check     verify the local configuration before a sitting
+//   rehearse  send every step's authorize request, without completing any
 //
 // Both hit the broker's public pre-production environment with unauthenticated requests.
 
@@ -28,6 +29,8 @@ switch (command)
         return await CaptureAsync();
     case "verify":
         return await VerifyAsync();
+    case "rehearse":
+        return await Rehearsal.RunAsync(cancellation.Token);
     case "check":
         return Preflight.Run();
     case "session":

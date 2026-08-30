@@ -45,37 +45,9 @@ public static class Session
                 return Results.NotFound($"No case {id}.");
             }
 
-            var verifier = Base64UrlText(RandomNumberGenerator.GetBytes(32));
-            var nonce = Base64UrlText(RandomNumberGenerator.GetBytes(16));
-            var state = @case.Id;
+            var (url, verifier, nonce) = BuildAuthorize(@case);
 
-            var parameters = new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                ["client_id"] = ClientId(@case.Client),
-                ["response_type"] = @case.ResponseType,
-                ["redirect_uri"] = @case.RedirectUriOverride ?? RedirectUri,
-                ["scope"] = @case.Scope,
-                ["state"] = state,
-                ["nonce"] = nonce,
-                ["idp_values"] = "mitid",
-                ["code_challenge"] = Base64UrlText(SHA256.HashData(Encoding.ASCII.GetBytes(verifier))),
-                ["code_challenge_method"] = "S256",
-            };
-
-            if (@case.ResponseMode is not null)
-            {
-                parameters["response_mode"] = @case.ResponseMode;
-            }
-
-            foreach (var (key, value) in @case.Extra)
-            {
-                parameters[key] = value;
-            }
-
-            var url = $"{Authority}/connect/authorize?" + string.Join('&',
-                parameters.Select(p => $"{Uri.EscapeDataString(p.Key)}={Uri.EscapeDataString(p.Value)}"));
-
-            Pendings[state] = new Pending(@case, verifier, nonce, url);
+            Pendings[@case.Id] = new Pending(@case, verifier, nonce, url);
             return Results.Redirect(url);
         });
 
@@ -147,6 +119,44 @@ public static class Session
         Console.WriteLine("Finish with http://localhost:5099/finish, which writes the fixtures.");
         await app.RunAsync();
         return 0;
+    }
+
+    /// <summary>
+    /// Builds the authorize request for a step. Shared with the rehearsal, so what is checked
+    /// beforehand is exactly what the sitting sends.
+    /// </summary>
+    public static (string Url, string Verifier, string Nonce) BuildAuthorize(ManualCase @case)
+    {
+        var verifier = Base64UrlText(RandomNumberGenerator.GetBytes(32));
+        var nonce = Base64UrlText(RandomNumberGenerator.GetBytes(16));
+
+        var parameters = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["client_id"] = ClientId(@case.Client),
+            ["response_type"] = @case.ResponseType,
+            ["redirect_uri"] = @case.RedirectUriOverride ?? RedirectUri,
+            ["scope"] = @case.Scope,
+            ["state"] = @case.Id,
+            ["nonce"] = nonce,
+            ["idp_values"] = "mitid",
+            ["code_challenge"] = Base64UrlText(SHA256.HashData(Encoding.ASCII.GetBytes(verifier))),
+            ["code_challenge_method"] = "S256",
+        };
+
+        if (@case.ResponseMode is not null)
+        {
+            parameters["response_mode"] = @case.ResponseMode;
+        }
+
+        foreach (var (key, value) in @case.Extra)
+        {
+            parameters[key] = value;
+        }
+
+        var url = $"{Authority}/connect/authorize?" + string.Join('&',
+            parameters.Select(p => $"{Uri.EscapeDataString(p.Key)}={Uri.EscapeDataString(p.Value)}"));
+
+        return (url, verifier, nonce);
     }
 
     private static async Task<string> ExchangeAsync(
@@ -333,8 +343,12 @@ public static class Session
         }));
 
         return Page("Recording session", $"""
-            <p>Work down the list in order. Each link starts one step; the browser goes to the
-            broker, you complete it, and the exchange is recorded here.</p>
+            <p>Work down the list <strong>in the order shown</strong>, which is the step order,
+            not the case number. A login establishes a broker session, so the steps that record
+            a refusal or an abort come first: run them after a successful login and they record
+            something else.</p>
+            <p>Each link starts one step; the browser goes to the broker, you complete it, and
+            the exchange is recorded here.</p>
             <p>Nothing is written to disk until you finish: values born during the sitting
             appear in exchanges recorded before the response that names them, so scrubbing can
             only be done once over the whole set.</p>
