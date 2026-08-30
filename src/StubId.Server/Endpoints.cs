@@ -152,9 +152,11 @@ public static class Endpoints
 
             var accessToken = state.IssueAccessToken(issued);
 
+            // Member order as recorded, and at_hash covers the access token, so the id_token
+            // is composed after it exists.
             return Json(JsonSerializer.Serialize(new Dictionary<string, object>
             {
-                ["id_token"] = tokens.IdToken(Issuer(http), issued),
+                ["id_token"] = tokens.IdToken(Issuer(http), issued, accessToken),
                 ["access_token"] = accessToken,
                 ["expires_in"] = Tokens.AccessTokenLifetimeSeconds,
                 ["token_type"] = "Bearer",

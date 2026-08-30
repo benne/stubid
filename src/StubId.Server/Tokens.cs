@@ -8,9 +8,19 @@ namespace StubId.Server;
 /// it uses.
 /// </summary>
 /// <remarks>
-/// Claim names, order and types come from the recorded documentation rather than from what
-/// looks reasonable. Where the broker's own sources disagree, the choice is marked and the
-/// recording that would settle it is named.
+/// <para>
+/// Everything here comes from recordings of a real login, not from documentation. That
+/// distinction earned its keep: the first version of this class was written from the vendor's
+/// claim tables and was wrong in eight ways at once. It omitted <c>nbf</c>, <c>sid</c>,
+/// <c>acr</c>, <c>at_hash</c>, <c>idp_transaction_id</c>, <c>idtoken_type</c> and
+/// <c>subject_type</c> — four of which appear in no vendor table at all — emitted
+/// <c>idp_environment</c>, which the broker does not send, typed <c>session_expiry</c> as a
+/// number where the broker sends a string, and put the members in an order resembling no part
+/// of the real one.
+/// </para>
+/// <para>
+/// Every one of those tokens validated. A client library would have accepted all of them.
+/// </para>
 /// </remarks>
 public sealed class Tokens(Keys keys, TimeProvider clock)
 {
@@ -20,86 +30,160 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
 
     public const int IdTokenLifetimeSeconds = 300;
     public const int AccessTokenLifetimeSeconds = 10800;
+    public const int SessionLifetimeSeconds = 16200;
 
     /// <summary>
-    /// The claim set is the broker's documented one. A real token also carries nbf and sid,
-    /// which its claim tables omit entirely; both are held back until a recorded login says
-    /// where they sit, since adding a claim a client ignores is harmless and guessing at
-    /// member order is not.
+    /// The id_token, in the recorded member order.
     /// </summary>
-    [Fidelity(FidelityTier.Exact, FidelityProvenance.DocsConflict, AwaitingCapture = "CAP-020")]
-    public string IdToken(string issuer, IssuedCode code)
+    /// <remarks>
+    /// <c>at_hash</c> appears only when an access token is issued alongside: the recorded
+    /// front-channel id_token, from a response type of <c>id_token</c> on its own, carries
+    /// neither it nor <c>c_hash</c>.
+    /// </remarks>
+    [Fidelity(FidelityTier.Exact, FidelityProvenance.VerifiedLive,
+        Evidence = "fixtures/neb/pp-session/CAP-020/token/id_token.payload.json")]
+    public string IdToken(string issuer, IssuedCode code, string? accessToken)
     {
         var now = clock.GetUtcNow();
         var citizen = code.Citizen;
+        var subject = Subject(code.Request.ClientId, citizen);
+        var level = Nsis(citizen.Loa);
 
-        return _writer.Sign(
+        List<JsonClaim> claims =
         [
             JsonClaim.String("iss", issuer),
-            JsonClaim.String("neb_sid", code.SessionId),
-            JsonClaim.String("sub", Subject(code.Request.ClientId, citizen)),
-            JsonClaim.String("aud", code.Request.ClientId),
-            JsonClaim.Number("exp", now.AddSeconds(IdTokenLifetimeSeconds).ToUnixTimeSeconds()),
+            JsonClaim.Number("nbf", now.ToUnixTimeSeconds()),
             JsonClaim.Number("iat", now.ToUnixTimeSeconds()),
-            JsonClaim.Number("auth_time", code.AuthenticatedAt.ToUnixTimeSeconds()),
-            .. code.Request.Nonce is null ? Array.Empty<JsonClaim>() : [JsonClaim.String("nonce", code.Request.Nonce)],
-            JsonClaim.String("idp", "mitid"),
-            JsonClaim.String("idp_environment", "test"),
-            JsonClaim.String("identity_type", "private"),
-            JsonClaim.String("transaction_id", Guid.NewGuid().ToString()),
-            JsonClaim.Number("session_expiry", now.AddSeconds(AccessTokenLifetimeSeconds).ToUnixTimeSeconds()),
-            JsonClaim.String("loa", Nsis(citizen.Loa)),
-            JsonClaim.String("ial", Nsis(citizen.Loa)),
-            JsonClaim.String("aal", Nsis(citizen.Loa)),
+            JsonClaim.Number("exp", now.AddSeconds(IdTokenLifetimeSeconds).ToUnixTimeSeconds()),
+            JsonClaim.String("aud", code.Request.ClientId),
             JsonClaim.Strings("amr", citizen.Amr),
-        ], keys.TokenSigning);
+        ];
+
+        if (code.Request.Nonce is not null)
+        {
+            claims.Add(JsonClaim.String("nonce", code.Request.Nonce));
+        }
+
+        if (accessToken is not null)
+        {
+            claims.Add(JsonClaim.String("at_hash", HashClaims.Compute(accessToken)));
+        }
+
+        claims.AddRange(
+        [
+            // The same value under two names. Both are sent; neither is redundant to a client
+            // that looks for only one of them.
+            JsonClaim.String("sid", code.SessionId),
+            JsonClaim.String("sub", subject),
+            JsonClaim.Number("auth_time", code.AuthenticatedAt.ToUnixTimeSeconds()),
+            JsonClaim.String("idp", "mitid"),
+            JsonClaim.String("acr", level),
+            JsonClaim.String("neb_sid", code.SessionId),
+            JsonClaim.String("loa", level),
+            JsonClaim.String("aal", level),
+            JsonClaim.String("ial", level),
+            JsonClaim.String("identity_type", "private"),
+            JsonClaim.String("transaction_id", code.TransactionId),
+            JsonClaim.String("idp_transaction_id", code.IdpTransactionId),
+
+            // A unix timestamp, sent as a string. The id_token's other timestamps are numbers.
+            JsonClaim.String("session_expiry",
+                now.AddSeconds(SessionLifetimeSeconds).ToUnixTimeSeconds()
+                    .ToString(System.Globalization.CultureInfo.InvariantCulture)),
+            JsonClaim.String("idtoken_type", "strict"),
+            JsonClaim.String("subject_type", "org_mapped"),
+        ]);
+
+        return _writer.Sign(claims, keys.TokenSigning);
     }
 
     /// <summary>
-    /// Every value is a JSON string, including the age and the has_cpr flag. A client that
-    /// parses either as a number or a boolean fails against the real broker.
+    /// The userinfo response, in the recorded member order. Every value is a JSON string,
+    /// including the age and the two booleans.
     /// </summary>
-    [Fidelity(FidelityTier.Exact, FidelityProvenance.DocsConfirmed, AwaitingCapture = "CAP-021")]
+    /// <remarks>
+    /// The documented <c>session_status</c> and <c>session_identifier</c> do not appear at
+    /// all: the wire carries <c>session_is_active</c> and <c>session_expiry</c>. The subject
+    /// comes last rather than first, and two claims nobody documented — <c>mitid.psd2</c> and
+    /// <c>mitid.geo_ip_distance_km</c> — are always present.
+    /// </remarks>
+    [Fidelity(FidelityTier.Exact, FidelityProvenance.VerifiedLive,
+        Evidence = "fixtures/neb/pp-session/CAP-021/userinfo/response.raw")]
     public IReadOnlyList<JsonClaim> UserInfo(string clientId, IssuedAccessToken token)
     {
+        var now = clock.GetUtcNow();
         var citizen = token.Citizen;
         var scopes = token.Scope.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        var claims = new List<JsonClaim>
-        {
-            JsonClaim.String("sub", Subject(clientId, citizen)),
-        };
+        var level = Nsis(citizen.Loa);
 
-        if (scopes.Contains("mitid"))
-        {
-            claims.AddRange(
-            [
-                JsonClaim.String("mitid.uuid", citizen.Uuid),
-                JsonClaim.String("mitid.date_of_birth", citizen.DateOfBirth),
-                JsonClaim.String("mitid.age", citizen.Age(clock.GetUtcNow()).ToString(System.Globalization.CultureInfo.InvariantCulture)),
-                JsonClaim.String("mitid.has_cpr", "true"),
-                JsonClaim.String("mitid.identity_name", citizen.Name),
-                JsonClaim.String("mitid.transaction_id", Guid.NewGuid().ToString()),
-            ]);
-        }
+        List<JsonClaim> claims =
+        [
+            JsonClaim.String("session_is_active", "true"),
+            JsonClaim.String("session_expiry",
+                now.AddSeconds(SessionLifetimeSeconds).ToUnixTimeSeconds()
+                    .ToString(System.Globalization.CultureInfo.InvariantCulture)),
+            JsonClaim.String("idp", "mitid"),
+            JsonClaim.String("subject_type", "org_mapped"),
+            JsonClaim.String("idp_identity_id", citizen.Uuid),
+            JsonClaim.String("loa", level),
+            JsonClaim.String("aal", level),
+            JsonClaim.String("ial", level),
+            JsonClaim.String("mitid.transaction_id", token.IdpTransactionId),
+            JsonClaim.String("mitid.uuid", citizen.Uuid),
+            JsonClaim.String("mitid.age",
+                citizen.Age(now).ToString(System.Globalization.CultureInfo.InvariantCulture)),
+            JsonClaim.String("mitid.date_of_birth", citizen.DateOfBirth),
+            JsonClaim.String("mitid.has_cpr", "true"),
+            JsonClaim.String("mitid.identity_name", citizen.Name),
+        ];
 
         if (scopes.Contains("ssn"))
         {
             claims.Add(JsonClaim.String("dk.cpr", citizen.Cpr));
         }
 
+        if (scopes.Contains("nemid.pid"))
+        {
+            claims.AddRange(
+            [
+                JsonClaim.String("nemid.pid", citizen.Pid),
+                JsonClaim.String("nemid.pid_status", "success"),
+            ]);
+        }
+
+        if (scopes.Any(s => s.StartsWith("ssn.details", StringComparison.Ordinal)))
+        {
+            // The recorded identity had no register entry behind it, so the broker answered
+            // with a status and nothing else. Which of the address members appear for an
+            // identity that does is unobserved.
+            claims.Add(JsonClaim.String("ssn.details.status", "unable_to_lookup"));
+        }
+
         claims.AddRange(
         [
-            JsonClaim.String("session_status", "active"),
-            JsonClaim.String("session_identifier", token.SessionId.ToUpperInvariant()),
-            JsonClaim.String("idp_identity_id", citizen.Uuid),
+            JsonClaim.String("mitid.psd2", "false"),
+            JsonClaim.String("mitid.geo_ip_distance_km", "8396"),
         ]);
+
+        if (scopes.Contains("ssn"))
+        {
+            // Base64, and shown to the user when the broker asks for their CPR.
+            claims.AddRange(
+            [
+                JsonClaim.String("mitid.cpr_consent_text", citizen.CprConsentText),
+                JsonClaim.String("mitid.cpr_consent_header", citizen.CprConsentHeader),
+            ]);
+        }
+
+        claims.Add(JsonClaim.String("sub", Subject(clientId, citizen)));
 
         return claims;
     }
 
     /// <summary>
     /// The subject differs per receiving organisation while the MitID identifier stays the
-    /// same, and it is derived rather than stored so it survives a restart.
+    /// same, and it is derived rather than stored so it survives a restart. The broker names
+    /// this arrangement itself, in the id_token's <c>subject_type</c> claim: org_mapped.
     /// </summary>
     public static string Subject(string clientId, Citizen citizen) =>
         Uuid5.Create(SubjectNamespace, $"{clientId}|{citizen.Uuid}").ToString();

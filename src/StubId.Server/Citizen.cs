@@ -12,14 +12,25 @@ namespace StubId.Server;
 /// </param>
 /// <param name="Amr">How they authenticated, in the broker's vocabulary.</param>
 /// <param name="Loa">One of Low, Substantial or High.</param>
+/// <param name="Pid">
+/// The legacy NemID identifier, returned under the nemid.pid scope. Documented as deprecated,
+/// still sent.
+/// </param>
 public sealed record Citizen(
     string Uuid,
     string Name,
     string DateOfBirth,
     string Cpr,
     string Amr = "code_app",
-    string Loa = "Substantial")
+    string Loa = "Substantial",
+    string Pid = "9208-2002-2-000000000001")
 {
+    /// <summary>Shown to the user when the broker asks for a CPR. Base64, as sent.</summary>
+    public string CprConsentHeader => "SW5kdGFzdCBkaXQgQ1BSLW51bW1lcg==";
+
+    /// <summary>The body of that same prompt.</summary>
+    public string CprConsentText => "U3R1YklEIGVtdWxlcmVyIE1pdElEIGkgdGVzdA==";
+
     public int Age(DateTimeOffset now)
     {
         // Calendar arithmetic, not days divided by an average year, which lands a year low on

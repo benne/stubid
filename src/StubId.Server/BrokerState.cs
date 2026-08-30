@@ -18,11 +18,18 @@ public sealed record AuthorizationRequest(
     string? CodeChallengeMethod);
 
 /// <summary>An issued authorization code and everything the token endpoint needs to redeem it.</summary>
+/// <param name="TransactionId">The broker's own identifier for the exchange.</param>
+/// <param name="IdpTransactionId">
+/// The identity provider's, which differs from it. Both are sent, and the userinfo response
+/// reports the second under mitid.transaction_id.
+/// </param>
 public sealed record IssuedCode(
     AuthorizationRequest Request,
     Citizen Citizen,
     DateTimeOffset AuthenticatedAt,
-    string SessionId);
+    string SessionId,
+    string TransactionId,
+    string IdpTransactionId);
 
 /// <summary>An access token, the identity behind it, and the client that obtained it.</summary>
 /// <remarks>
@@ -30,7 +37,12 @@ public sealed record IssuedCode(
 /// to answer with the same subject the id_token carried, and that depends on who is asking.
 /// </remarks>
 public sealed record IssuedAccessToken(
-    string ClientId, Citizen Citizen, string Scope, string SessionId, DateTimeOffset AuthenticatedAt);
+    string ClientId,
+    Citizen Citizen,
+    string Scope,
+    string SessionId,
+    string IdpTransactionId,
+    DateTimeOffset AuthenticatedAt);
 
 /// <summary>
 /// Everything the slice remembers. In memory, single tenant, deliberately small.
@@ -90,7 +102,11 @@ public sealed class BrokerState
     public string IssueCode(AuthorizationRequest request, Citizen citizen, DateTimeOffset now)
     {
         var code = Base64Url.Encode(RandomNumberGenerator.GetBytes(32));
-        _codes[code] = new IssuedCode(request, citizen, now, Guid.NewGuid().ToString());
+        _codes[code] = new IssuedCode(
+            request, citizen, now,
+            SessionId: Guid.NewGuid().ToString(),
+            TransactionId: Guid.NewGuid().ToString(),
+            IdpTransactionId: Guid.NewGuid().ToString());
         return code;
     }
 
@@ -102,7 +118,8 @@ public sealed class BrokerState
     {
         var token = Base64Url.Encode(RandomNumberGenerator.GetBytes(32));
         _accessTokens[token] = new IssuedAccessToken(
-            code.Request.ClientId, code.Citizen, code.Request.Scope, code.SessionId, code.AuthenticatedAt);
+            code.Request.ClientId, code.Citizen, code.Request.Scope,
+            code.SessionId, code.IdpTransactionId, code.AuthenticatedAt);
         return token;
     }
 
