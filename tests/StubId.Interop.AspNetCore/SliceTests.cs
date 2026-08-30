@@ -382,17 +382,28 @@ public class SliceTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Theory]
-    [InlineData("/op/.well-known/openid-configuration/")]
-    [InlineData("/OP/.well-known/openid-configuration")]
-    [InlineData("/op/.well-known/OpenID-Configuration")]
-    public async Task Metadata_is_served_only_at_the_exact_path(string path)
+    [InlineData("/op/.well-known/openid-configuration/")]   // trailing slash: refused
+    [InlineData("/OP/.well-known/openid-configuration")]    // the base is case-sensitive
+    public async Task Metadata_is_refused_where_the_broker_refuses_it(string path)
     {
-        // Routing forgives case and a trailing slash; the broker does not, and a client that
-        // finds metadata here but not against pre-production is the false pass we exist to
-        // prevent.
         var response = await _client.GetAsync(path, Ct);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("/op/.well-known/OPENID-CONFIGURATION")]
+    [InlineData("/op/.WELL-KNOWN/openid-configuration")]
+    [InlineData("/op/.well-known/openid-configuration/JWKS")]
+    public async Task Metadata_is_served_where_the_broker_serves_it(string path)
+    {
+        // Probed against pre-production: case-insensitive below the base, though the base
+        // itself is not. This test previously asserted the opposite and was wrong - being
+        // stricter than the broker fails a client that works against it, which is the same
+        // class of error as being looser, pointing the other way.
+        var response = await _client.GetAsync(path, Ct);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]

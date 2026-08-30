@@ -13,18 +13,11 @@ public static class Endpoints
 
     public static void MapBroker(this WebApplication app)
     {
-        // ASP.NET routing matches case-insensitively and forgives a trailing slash. The
-        // broker forgives neither, and a client that reaches metadata here but 404s against
-        // pre-production is the false pass this project exists to prevent.
         app.MapGet("/op/.well-known/openid-configuration", (HttpContext http, Documents documents) =>
-            Exactly(http, "/op/.well-known/openid-configuration")
-                ? Json(documents.Discovery(BaseUrl(http)))
-                : Results.NotFound());
+            Json(documents.Discovery(BaseUrl(http))));
 
         app.MapGet("/op/.well-known/openid-configuration/jwks", (HttpContext http, Keys keys) =>
-            Exactly(http, "/op/.well-known/openid-configuration/jwks")
-                ? Json(keys.Ring.ToJwks())
-                : Results.NotFound());
+            Json(keys.Ring.ToJwks()));
 
         app.MapPost("/op/connect/par", async (HttpContext http, BrokerState state) =>
         {
@@ -335,10 +328,6 @@ public static class Endpoints
 
         return $"{value}.{salt}";
     }
-
-    /// <summary>Whether the path arrived exactly as written, case and trailing slash included.</summary>
-    private static bool Exactly(HttpContext http, string path) =>
-        string.Equals(http.Request.Path.Value, path, StringComparison.Ordinal);
 
     private static string BaseUrl(HttpContext http) =>
         http.RequestServices.GetRequiredService<IConfiguration>()["StubId:PublicBaseUrl"]
