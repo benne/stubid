@@ -26,10 +26,12 @@ namespace StubId.Wire;
 public sealed class JwsWriter
 {
     /// <summary>
-    /// Header member order is not yet confirmed against a real token; no completed login has
-    /// been recorded. Sequence is the common IdentityServer shape.
+    /// Header member order confirmed against a recorded login: alg, kid, typ. The type is a
+    /// parameter because the same broker sends JWT for an id_token and at+jwt for a userinfo
+    /// token, in one response.
     /// </summary>
-    [Fidelity(FidelityTier.Exact, FidelityProvenance.Assumed, AwaitingCapture = "CAP-020")]
+    [Fidelity(FidelityTier.Exact, FidelityProvenance.VerifiedLive,
+        Evidence = "fixtures/neb/pp-session/CAP-024/token/id_token.header.json")]
     public string Sign(IReadOnlyList<JsonClaim> claims, SigningKey key, string type = "JWT")
     {
         var header = Encode(

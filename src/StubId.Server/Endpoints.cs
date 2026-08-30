@@ -241,6 +241,14 @@ public static class Endpoints
             return Results.Empty;
         });
 
+        // No emulated broker uses a leading-underscore segment, so StubID's own surface cannot
+        // collide with one it is reproducing.
+        app.MapGet("/_stubid/v1/fidelity", () => Results.Json(new
+        {
+            entries = FidelityLedger.Read(
+                typeof(Tokens).Assembly, typeof(StubId.Wire.JwsWriter).Assembly),
+        }));
+
         app.MapGet("/op/Error", (HttpContext http, IDataProtectionProvider protection) =>
         {
             var errorId = http.Request.Query["errorId"].ToString();
