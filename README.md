@@ -43,6 +43,13 @@ Where StubID knowingly differs, it says so: `GET /_stubid/v1/fidelity` lists eve
 divergence, and endpoints that are not emulated answer 501 with a link to the reason rather
 than a misleading 404.
 
+What that is worth, concretely: the first version of the token was written from the broker's
+own documentation and was wrong in eight ways at once. Four of the claims it omitted appear in
+no vendor table, one claim it emitted is never sent, and one timestamp is a string where every
+other timestamp in the same token is a number. Every one of those tokens validated — a client
+library would have accepted all of them. The recordings are in `fixtures/`, and what they
+established is written up in [docs/brokers/neb/claims.md](docs/brokers/neb/claims.md).
+
 ## Not affiliated
 
 StubID is an independent project. It is not affiliated with, endorsed by, or connected to

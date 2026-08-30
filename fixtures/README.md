@@ -82,6 +82,27 @@ have rejected it up front.
 **The error catalogue is PascalCase on the wire and camelCase in the broker's own OpenAPI
 document.** Generating a stub from the specification would be wrong on the first response.
 
+## What the sitting established
+
+`fixtures/neb/pp-session/` holds twenty-eight exchanges from a real MitID login, recorded by
+hand. Between them they settled things no documentation states:
+
+- The id_token carries `nbf`, `sid`, `acr`, `idp_transaction_id`, `idtoken_type` and
+  `subject_type`, four of which appear in no vendor claim table, and does **not** carry the
+  documented `idp_environment`.
+- The subject is scoped to the **organisation**, not the client: two clients of one service
+  provider receive the same one. Deriving it per client gives an application that signs users
+  in through two of its own clients two different people.
+- `auth_time` is a number in the id_token and a string in the userinfo token, in the same
+  response.
+- `c_hash` and `at_hash` share one slot after `nonce`, and which appears depends on the
+  channel rather than the flow.
+- The `iss` authorization-response parameter is sent only when no id_token is returned.
+- The documented `session_status` and `session_identifier` do not exist; the wire carries
+  `session_is_active` and `session_expiry`.
+
+Written up in [../docs/brokers/neb/claims.md](../docs/brokers/neb/claims.md).
+
 ## Rules
 
 Fixtures are scrubbed before they land. The published test-client secrets are replaced with

@@ -76,28 +76,61 @@ public static class Endpoints
                 return ErrorPage(http, protection, "invalid_request", "Invalid redirect_uri.");
             }
 
-            // Only the code flow is served. A hybrid request was previously answered with a
-            // code-only response, which is worse than refusing: the client waits for an
-            // id_token that never arrives. Inventing the hybrid bytes is not an option either,
-            // since no recording pins them.
-            if (request.ResponseType != "code")
+            // A client may only ask for what it is registered for, which is how the broker
+            // refuses a code client that asks for an id_token.
+            if (!state.Allows(request.ClientId, request.ResponseType))
             {
-                return ErrorPage(http, protection, "unsupported_response_type",
-                    $"Response type '{request.ResponseType}' is not implemented by this emulator.");
+                return ErrorPage(http, protection, "unauthorized_client",
+                    $"Response type '{request.ResponseType}' is not enabled for this client.");
             }
 
             // The slice approves immediately. Parking the request for a decision is the next
             // milestone; the shape of what comes back does not change.
-            var code = state.IssueCode(request, state.DefaultCitizen, clock.GetUtcNow());
+            var issued = state.IssueCode(request, state.DefaultCitizen, clock.GetUtcNow());
+            var wants = request.ResponseType.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var organisation = state.OrganisationOf(request.ClientId);
 
-            var response = new Dictionary<string, string> { ["code"] = code };
+            // Member order as recorded: the code first, then a front-channel id_token if one
+            // was asked for, then state and session_state.
+            var response = new Dictionary<string, string>();
+
+            if (wants.Contains("code"))
+            {
+                response["code"] = issued;
+            }
+
+            if (wants.Contains("id_token"))
+            {
+                // The front-channel token covers the code with c_hash rather than an access
+                // token with at_hash: there is no access token in the front channel.
+                response["id_token"] = tokens.IdToken(
+                    Issuer(http),
+                    state.PeekCode(issued)!,
+                    accessToken: null,
+                    organisation,
+                    authorizationCode: wants.Contains("code") ? issued : null);
+            }
+
             if (request.State is not null)
             {
                 response["state"] = request.State;
             }
 
-            // Advertised in the discovery document, so a client may enforce its presence.
-            response["iss"] = Issuer(http);
+            response["session_state"] = SessionState(request.ClientId, issued);
+
+            // Advertised in discovery, so a client may enforce it - but the broker omits it
+            // whenever an id_token is returned, which already carries the issuer.
+            if (!wants.Contains("id_token"))
+            {
+                response["iss"] = Issuer(http);
+            }
+
+            // A response carrying an id_token defaults to form_post, since a token in a query
+            // string ends up in logs and history.
+            if (request.ResponseMode == "query" && wants.Contains("id_token"))
+            {
+                request = request with { ResponseMode = "form_post" };
+            }
 
             return request.ResponseMode switch
             {
@@ -279,6 +312,20 @@ public static class Endpoints
 
         return (Optional(form.ToDictionary(f => f.Key, f => f.Value.ToString()), "client_id"),
                 Optional(form.ToDictionary(f => f.Key, f => f.Value.ToString()), "client_secret"));
+    }
+
+    /// <summary>
+    /// The session-management parameter every recorded callback carries: an opaque value
+    /// followed by a salt, separated by a dot.
+    /// </summary>
+    private static string SessionState(string clientId, string code)
+    {
+        var salt = Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(code))[..16]);
+        var value = Base64Url.Encode(
+            System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes($"{clientId}{code}{salt}")));
+
+        return $"{value}.{salt}";
     }
 
     /// <summary>Whether the path arrived exactly as written, case and trailing slash included.</summary>

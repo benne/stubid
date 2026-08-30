@@ -36,13 +36,19 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
     /// The id_token, in the recorded member order.
     /// </summary>
     /// <remarks>
-    /// <c>at_hash</c> appears only when an access token is issued alongside: the recorded
-    /// front-channel id_token, from a response type of <c>id_token</c> on its own, carries
-    /// neither it nor <c>c_hash</c>.
+    /// One hash claim at most, in the slot after <c>nonce</c>. The back-channel token carries
+    /// <c>at_hash</c> over the access token; the front-channel token of a hybrid response
+    /// carries <c>c_hash</c> over the code instead; a front-channel token from a response type
+    /// of <c>id_token</c> alone carries neither, because there is neither to cover.
     /// </remarks>
     [Fidelity(FidelityTier.Exact, FidelityProvenance.VerifiedLive,
         Evidence = "fixtures/neb/pp-session/CAP-024/token/id_token.payload.json")]
-    public string IdToken(string issuer, IssuedCode code, string? accessToken, string organisation)
+    public string IdToken(
+        string issuer,
+        IssuedCode code,
+        string? accessToken,
+        string organisation,
+        string? authorizationCode = null)
     {
         var now = clock.GetUtcNow();
         var citizen = code.Citizen;
@@ -67,6 +73,10 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
         if (accessToken is not null)
         {
             claims.Add(JsonClaim.String("at_hash", HashClaims.Compute(accessToken)));
+        }
+        else if (authorizationCode is not null)
+        {
+            claims.Add(JsonClaim.String("c_hash", HashClaims.Compute(authorizationCode)));
         }
 
         claims.AddRange(

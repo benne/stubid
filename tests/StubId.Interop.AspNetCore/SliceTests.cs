@@ -170,7 +170,7 @@ public class SliceTests : IClassFixture<WebApplicationFactory<Program>>
         // The subject is scoped to the receiving organisation, so it depends on who is
         // asking. Userinfo previously answered with the first registered client's subject
         // for every token, which a real client reports as IDX21338 and refuses to sign in.
-        const string secondClient = "c0beb4dc-69d1-4316-8167-2d0a62816103";
+        const string secondClient = CodeClient;
 
         var authorize = await _client.GetAsync(
             $"/op/connect/authorize?client_id={secondClient}&response_type=code" +
@@ -213,20 +213,26 @@ public class SliceTests : IClassFixture<WebApplicationFactory<Program>>
         // own clients two different people.
         const string second = "c0beb4dc-69d1-4316-8167-2d0a62816103";
 
-        var first = await SubjectFor(CodeClient);
-        var other = await SubjectFor(second);
+        var first = await SubjectFor(CodeClient, "code");
+        var other = await SubjectFor(second, "code id_token");
 
         Assert.Equal(first, other);
     }
 
-    private async Task<string> SubjectFor(string clientId)
+    private async Task<string> SubjectFor(string clientId, string responseType)
     {
         var authorize = await _client.GetAsync(
-            $"/op/connect/authorize?client_id={clientId}&response_type=code" +
+            $"/op/connect/authorize?client_id={clientId}" +
+            $"&response_type={Uri.EscapeDataString(responseType)}" +
             $"&redirect_uri={Uri.EscapeDataString(RedirectUri)}&scope=openid%20mitid&state=s", Ct);
 
-        var code = System.Web.HttpUtility
-            .ParseQueryString(authorize.Headers.Location!.ToString().Split('?')[1])["code"]!;
+        // A response carrying an id_token is posted as a form; a code-only one is a redirect.
+        var code = authorize.StatusCode == HttpStatusCode.OK
+            ? System.Text.RegularExpressions.Regex
+                .Match(await authorize.Content.ReadAsStringAsync(Ct),
+                    "name=\"code\" value=\"([^\"]*)\"").Groups[1].Value
+            : System.Web.HttpUtility
+                .ParseQueryString(authorize.Headers.Location!.ToString().Split('?')[1])["code"]!;
 
         using var token = await _client.PostAsync("/op/connect/token", new FormUrlEncodedContent(
         [

@@ -6,7 +6,7 @@ Status of the first emulated surface, Signaturgruppen Broker ("Nets eID Broker")
 | --- | --- | --- |
 | M0 | Repository, licence, CI, day-zero probes | done |
 | M1 | Recordings that need no login (discovery, JWKS, error shapes) | done |
-| M1.5 | The manual recording pass (one login, signing, error paths) | not started |
+| M1.5 | The manual recording pass (one login, signing, error paths) | done, except transaction signing |
 | M2 | Token writer, keys, JWKS | done |
 | M3 | First working login: a stock ASP.NET Core app signs in — **v0.1** | done, in process; container and Node/Spring outstanding |
 | M4 | Broker profile seam, routing, fidelity ledger | not started |
@@ -21,3 +21,7 @@ Status of the first emulated surface, Signaturgruppen Broker ("Nets eID Broker")
 
 Deferred past 1.0 on purpose: hosted multi-tenant service and its accounts, CIBA, PAdES
 document wrapping, the Idura profile, and NemLog-in / OIOSAML.
+
+Still unrecorded, and blocking: the transaction token's text claims, which need the
+`signtext_api` scope that only the broker's staff can grant. The address members under
+`ssn.details_*` are also unseen, because the test identity has no register entry behind it.

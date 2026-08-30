@@ -1,0 +1,14 @@
+{
+  "id": "CAP-028",
+  "step": "Step 5",
+  "title": "An unregistered redirect URI",
+  "settles": "How the broker refuses a redirect URI it does not know.",
+  "recorded": "by hand",
+  "why": "There is nothing for the harness to capture. The broker refuses the request on its own error page and never redirects back to the client, so no callback arrives and no exchange takes place. The operator read the error page.",
+  "observed": {
+    "disposition": "302 to the broker's error page, and never back to the client",
+    "errorCode": "invalid_request",
+    "message": "Invalid redirect_uri"
+  },
+  "note": "The code is a functional fact and StubID emits it. The page's wording is the broker's own and is not reproduced."
+}

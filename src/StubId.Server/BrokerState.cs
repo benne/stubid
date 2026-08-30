@@ -69,6 +69,18 @@ public sealed class BrokerState
                 new("93ed8e0d-93ad-405c-b1ac-8bf13d484941", ["id_token"], "published-test-clients"),
         };
 
+    /// <summary>
+    /// Whether a client may ask for this response type. The comparison ignores order, as the
+    /// broker's does: its own hybrid client declares "id_token code" while a client library
+    /// sends "code id_token".
+    /// </summary>
+    public bool Allows(string clientId, string responseType) =>
+        Clients.TryGetValue(clientId, out var client)
+        && client.ResponseTypes.Any(allowed => allowed
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .ToHashSet(StringComparer.Ordinal)
+            .SetEquals(responseType.Split(' ', StringSplitOptions.RemoveEmptyEntries)));
+
     /// <summary>The organisation a client belongs to, which is what a subject is scoped to.</summary>
     public string OrganisationOf(string clientId) =>
         Clients.TryGetValue(clientId, out var client) ? client.Organisation : clientId;
@@ -129,6 +141,12 @@ public sealed record Client(string ClientId, string[] ResponseTypes, string Orga
             IdpTransactionId: Guid.NewGuid().ToString());
         return code;
     }
+
+    /// <summary>
+    /// Reads an issued code without consuming it, for composing the front-channel token that
+    /// accompanies it.
+    /// </summary>
+    public IssuedCode? PeekCode(string code) => _codes.GetValueOrDefault(code);
 
     /// <summary>Codes are single use: redeeming one removes it.</summary>
     public IssuedCode? RedeemCode(string code) =>
