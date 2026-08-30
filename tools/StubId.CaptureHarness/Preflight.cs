@@ -29,14 +29,21 @@ public static class Preflight
             "STUBID_NEB_PP_CLIENT_ID",
             "STUBID_NEB_PP_CLIENT_SECRET",
             "STUBID_NEB_PP_CODE_CLIENT_SECRET",
+            "STUBID_NEB_PP_RESTRICTED_CLIENT_ID",
+            "STUBID_NEB_PP_RESTRICTED_CLIENT_SECRET",
         })
         {
             var value = LocalSettings.Get(name);
             if (value is null)
             {
-                var needed = name == "STUBID_NEB_PP_CODE_CLIENT_SECRET"
-                    ? Steps(c => c.Client != ClientProfile.Private)
-                    : Steps(c => c.Client == ClientProfile.Private);
+                var needed = name switch
+                {
+                    "STUBID_NEB_PP_CODE_CLIENT_SECRET" =>
+                        Steps(c => c.Client is ClientProfile.OpenCode or ClientProfile.OpenImplicit),
+                    var n when n.Contains("RESTRICTED", StringComparison.Ordinal) =>
+                        Steps(c => c.Client == ClientProfile.Restricted),
+                    _ => Steps(c => c.Client == ClientProfile.Private),
+                };
 
                 Console.WriteLine($"  {name,-34} missing");
                 if (needed.Count > 0)

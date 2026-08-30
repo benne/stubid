@@ -53,7 +53,7 @@ public static class Session
             {
                 ["client_id"] = ClientId(@case.Client),
                 ["response_type"] = @case.ResponseType,
-                ["redirect_uri"] = RedirectUri,
+                ["redirect_uri"] = @case.RedirectUriOverride ?? RedirectUri,
                 ["scope"] = @case.Scope,
                 ["state"] = state,
                 ["nonce"] = nonce,
@@ -294,6 +294,9 @@ public static class Session
     {
         ClientProfile.OpenCode => CaptureCatalogue.OpenCodeClient,
         ClientProfile.OpenImplicit => "93ed8e0d-93ad-405c-b1ac-8bf13d484941",
+        ClientProfile.Restricted => LocalSettings.Get("STUBID_NEB_PP_RESTRICTED_CLIENT_ID")
+            ?? throw new InvalidOperationException(
+                "Set STUBID_NEB_PP_RESTRICTED_CLIENT_ID to record the unregistered-redirect case."),
         _ => LocalSettings.Get("STUBID_NEB_PP_CLIENT_ID")
              ?? throw new InvalidOperationException(
                  "Set STUBID_NEB_PP_CLIENT_ID to record with the private client."),
@@ -304,6 +307,8 @@ public static class Session
         ClientProfile.OpenCode or ClientProfile.OpenImplicit =>
             LocalSettings.Get("STUBID_NEB_PP_CODE_CLIENT_SECRET")
             ?? throw new InvalidOperationException("Set STUBID_NEB_PP_CODE_CLIENT_SECRET."),
+        ClientProfile.Restricted => LocalSettings.Get("STUBID_NEB_PP_RESTRICTED_CLIENT_SECRET")
+            ?? throw new InvalidOperationException("Set STUBID_NEB_PP_RESTRICTED_CLIENT_SECRET."),
         _ => LocalSettings.Get("STUBID_NEB_PP_CLIENT_SECRET")
              ?? throw new InvalidOperationException("Set STUBID_NEB_PP_CLIENT_SECRET."),
     };

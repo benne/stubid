@@ -112,5 +112,20 @@ public static class ManualCatalogue
             Operator = "Follow the logout through to wherever it lands.",
             FollowUps = [FollowUp.EndSession],
         },
+        new()
+        {
+            Id = "CAP-028",
+            Step = "Step 5",
+            Title = "An unregistered redirect URI",
+            Settles = "How the broker refuses a redirect URI it does not know. Every client "
+                + "available until now accepted arbitrary ones, so this path has never been "
+                + "observed, and StubID has to reproduce it.",
+            Operator = "Nothing. The browser should land on the broker's error page and the "
+                + "client should never be redirected back. Copy the error code the page shows.",
+            Client = ClientProfile.Restricted,
+            RedirectUriOverride = "http://localhost:5099/not-registered",
+            ExpectCode = false,
+            FollowUps = [],
+        },
     ];
 }

@@ -53,12 +53,39 @@ had simulation enabled would fail on a malformed value. Reaching the login page 
 means the parameter is not being parsed for this client at all. That is consistent with
 simulation being a per-client entitlement sold separately.
 
+### Confirmed a second way
+
+The first probe used the broker's published open clients, which left one reading open: the
+parameter might work on a client that had been entitled to it. It has since been checked
+against a private pre-production client belonging to a broker customer, with the same result,
+and the customer's own broker administration offers no setting to turn it on.
+
+So simulation is not something an integrator can obtain by configuration. It is sold, and it
+is enabled on the broker's side.
+
 ### Consequence
 
 The manual recording pass stays in the plan and stays expensive: one human, a provisioned
 test identity, and a couple of hours, to settle the facts that only a completed login
 reveals — the `amr` wire form, the id_token member set and order, the userinfo value types,
 and the transaction token's claim names.
+
+## 3. What a broker customer can and cannot configure
+
+Checked against a real pre-production broker administration, which bounds what any recording
+session can reach without involving the broker's own staff.
+
+| | |
+| --- | --- |
+| Registered redirect URIs | configurable |
+| Back-channel logout URI | configurable |
+| `simulation` | **no setting exists** |
+| `signtext_api` scope | **cannot be granted from the administration interface** |
+
+The last row is the one that costs something. The transaction token's text claims are a
+three-way contradiction across the broker's own documentation, and only a recorded signing
+flow settles them. That flow needs `signtext_api`, which needs the broker's staff. Everything
+else the sitting wants is reachable.
 
 It also confirms the product thesis from the other direction. The capability exists, it is
 worth paying for, and it is not available to someone who just wants to run their test suite.

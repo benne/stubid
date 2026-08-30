@@ -11,6 +11,12 @@ public enum ClientProfile
 
     /// <summary>The broker's published implicit client, for a front-channel id_token.</summary>
     OpenImplicit,
+
+    /// <summary>
+    /// A client whose redirect URIs are actually registered, unlike the published ones which
+    /// accept anything. The only way to record how the broker refuses one it does not know.
+    /// </summary>
+    Restricted,
 }
 
 /// <summary>Work the harness does after the code has been exchanged, without the operator.</summary>
@@ -62,4 +68,11 @@ public sealed class ManualCase
     public bool ExpectCode { get; init; } = true;
 
     public IReadOnlyList<FollowUp> FollowUps { get; init; } = [FollowUp.UserInfo];
+
+    /// <summary>
+    /// Sent instead of the harness's own callback, to record a refusal. The broker never
+    /// redirects an invalid request back, so nothing arrives at the callback and the
+    /// recording is the browser's landing page.
+    /// </summary>
+    public string? RedirectUriOverride { get; init; }
 }
