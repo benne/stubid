@@ -29,6 +29,18 @@ public sealed partial class Staging
 
     public IReadOnlyList<string> Recorded => [.. _staged.Select(s => s.Case.Id).Distinct()];
 
+    /// <summary>
+    /// What has been captured so far, scrubbed, so it can be looked at mid-sitting. Nothing
+    /// is written until the end, and a sitting that turns out to have recorded the wrong
+    /// thing is much cheaper to notice now than afterwards.
+    /// </summary>
+    public IEnumerable<(string Case, string Exchange, int Status, string Body)> Preview() =>
+        _staged.Select(s => (
+            s.Case.Id,
+            s.Name,
+            s.Exchange.StatusCode,
+            Scrub(System.Text.Encoding.UTF8.GetString(s.Exchange.ResponseBody))));
+
     public void Add(ManualCase @case, string name, RecordedExchange exchange) =>
         _staged.Add((@case, name, exchange));
 

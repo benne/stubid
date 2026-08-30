@@ -59,11 +59,16 @@ public static class Session
             var parameters = await ReadParameters(http);
             parameters.TryGetValue("state", out var state);
 
-            if (state is null || !Pendings.TryGetValue(state, out var pending))
+            // Removed rather than read: reloading the callback would otherwise stage the
+            // same exchange again, and the count is how the operator knows what was captured.
+            if (state is null || !Pendings.TryRemove(state, out var pending))
             {
                 return Results.Text(
-                    Page("Unexpected callback", "No pending request matches this state. "
-                        + "Start the step from the launchpad rather than replaying a URL."),
+                    Page("Unexpected callback",
+                        "<p>No pending request matches this state. Start the step from the list "
+                        + "rather than reloading this page: a step is consumed once it "
+                        + "completes, so a reload cannot record it twice.</p>"
+                        + "<p><a href=\"/\">Back to the list</a></p>"),
                     "text/html; charset=utf-8");
             }
 
@@ -74,8 +79,10 @@ public static class Session
                 var description = parameters.GetValueOrDefault("error_description", "");
                 return Results.Text(
                     Page($"{pending.Case.Id} refused, and that is recorded",
-                        $"error={WebUtility.HtmlEncode(error)}<br>"
-                        + $"error_description={WebUtility.HtmlEncode(description)}"),
+                        $"<p><code>error={WebUtility.HtmlEncode(error)}</code><br>"
+                        + $"<code>error_description={WebUtility.HtmlEncode(description)}</code></p>"
+                        + "<p>A refusal is a successful recording: this is the step's whole "
+                        + "purpose.</p><p><a href=\"/\">Back to the list</a></p>"),
                     "text/html; charset=utf-8");
             }
 
@@ -83,13 +90,43 @@ public static class Session
             {
                 return Results.Text(
                     Page($"{pending.Case.Id}: no code and no error",
-                        "The response carried neither. Worth looking at before continuing."),
+                        "<p>The response carried neither. Worth looking at before continuing.</p>"
+                        + "<p><a href=\"/\">Back to the list</a></p>"),
                     "text/html; charset=utf-8");
             }
 
             // Immediately: codes are single use and short lived.
             var report = await ExchangeAsync(pending, code, staging, http.RequestAborted);
             return Results.Text(Page($"{pending.Case.Id} recorded", report), "text/html; charset=utf-8");
+        });
+
+        app.MapGet("/staged", () =>
+        {
+            var rows = string.Join("\n", staging.Preview().Select(e => $"""
+                <h3>{WebUtility.HtmlEncode(e.Case)} — {WebUtility.HtmlEncode(e.Exchange)} ({e.Status})</h3>
+                <pre style="white-space:pre-wrap;word-break:break-all;background:#f4f4f4;padding:1rem">{WebUtility.HtmlEncode(
+                    e.Body.Length > 4000 ? e.Body[..4000] + "\n… truncated" : e.Body)}</pre>
+                """));
+
+            return Results.Text(
+                Page("Staged so far", rows.Length == 0
+                    ? "<p>Nothing recorded yet.</p><p><a href=\"/\">Back to the list</a></p>"
+                    : $"<p>Scrubbed, as it would be written.</p><p><a href=\"/\">Back to the list</a></p>{rows}"),
+                "text/html; charset=utf-8");
+        });
+
+        // Ends the broker session without recording anything, so a step that needs a fresh
+        // authentication can get one. The recorded logout is CAP-027; this is housekeeping.
+        app.MapGet("/logout", async () =>
+        {
+            using var client = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false });
+            using var response = await client.GetAsync($"{Authority}/connect/endsession");
+
+            return Results.Text(
+                Page("Broker session ended", "<p>The next step will authenticate from scratch. "
+                    + "This was not recorded: the logout StubID needs to reproduce is CAP-027.</p>"
+                    + "<p><a href=\"/\">Back to the list</a></p>"),
+                "text/html; charset=utf-8");
         });
 
         app.MapGet("/finish", async (HttpContext http) =>
@@ -146,6 +183,11 @@ public static class Session
         if (@case.ResponseMode is not null)
         {
             parameters["response_mode"] = @case.ResponseMode;
+        }
+
+        if (@case.ForcesLogin)
+        {
+            parameters["prompt"] = "login";
         }
 
         foreach (var (key, value) in @case.Extra)
@@ -331,12 +373,14 @@ public static class Session
         var rows = string.Join("\n", ManualCatalogue.All.Select(c =>
         {
             var done = staging.Recorded.Contains(c.Id) ? "recorded" : "";
+            var session = c.ForcesLogin ? "re-authenticates" : "rides the session";
             return $"""
                 <tr>
                   <td><a href="/start/{c.Id}">{c.Id}</a></td>
                   <td>{WebUtility.HtmlEncode(c.Step)}</td>
                   <td>{WebUtility.HtmlEncode(c.Title)}</td>
                   <td>{WebUtility.HtmlEncode(c.Operator)}</td>
+                  <td>{session}</td>
                   <td>{done}</td>
                 </tr>
                 """;
@@ -353,10 +397,16 @@ public static class Session
             appear in exchanges recorded before the response that names them, so scrubbing can
             only be done once over the whole set.</p>
             <table border="1" cellpadding="6" cellspacing="0">
-            <tr><th>Case</th><th>Step</th><th>What it records</th><th>What you do</th><th></th></tr>
+            <tr><th>Case</th><th>Step</th><th>What it records</th><th>What you do</th>
+            <th>MitID</th><th></th></tr>
             {rows}
             </table>
-            <p><a href="/finish">Finish and write the fixtures</a> ({staging.Count} exchanges staged)</p>
+            <p>Every step but the single sign-on one forces a fresh authentication, so you
+            reach the authenticator each time rather than being waved through by a session left
+            behind by the previous step.</p>
+            <p><a href="/staged">See what has been captured</a> ({staging.Count} exchanges staged)
+            &middot; <a href="/logout">End the broker session</a>
+            &middot; <a href="/finish">Finish and write the fixtures</a></p>
             """);
     }
 

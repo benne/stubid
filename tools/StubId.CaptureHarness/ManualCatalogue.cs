@@ -96,7 +96,6 @@ public static class ManualCatalogue
             Extra = new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["idp_params"] = """{"mitid":{"loa_value":"low"}}""",
-                ["prompt"] = "login",
             },
         },
         new()
@@ -106,8 +105,10 @@ public static class ManualCatalogue
             Title = "Single sign-on, second client",
             Settles = "Whether a second client rides the existing session without a prompt, "
                 + "and whether the subject differs per client while mitid.uuid does not.",
-            Operator = "Nothing: this should complete without asking anything.",
+            Operator = "Nothing: this should complete without asking anything. If it asks, "
+                + "the session from the previous step was not reused and that is the finding.",
             Client = ClientProfile.OpenCode,
+            ForcesLogin = false,
         },
         new()
         {

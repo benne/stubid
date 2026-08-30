@@ -52,6 +52,18 @@ public sealed class ManualCase
     /// <summary>What the human does once the browser reaches MitID.</summary>
     public required string Operator { get; init; }
 
+    /// <summary>
+    /// Whether the step forces a fresh authentication.
+    /// </summary>
+    /// <remarks>
+    /// A login leaves a broker session behind, and the next step rides it: the browser goes
+    /// straight through without ever reaching the authenticator. For a step that needs the
+    /// operator to approve something - to see a reference text in the app, or to type a CPR -
+    /// that silently records the wrong thing while looking like a success. Those steps send
+    /// prompt=login. The single sign-on step is the one that must not.
+    /// </remarks>
+    public bool ForcesLogin { get; init; } = true;
+
     public ClientProfile Client { get; init; } = ClientProfile.Private;
 
     public string Scope { get; init; } = "openid mitid";
