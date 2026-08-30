@@ -106,20 +106,25 @@ public class ScrubberTests
     [Fact]
     public void Recording_refuses_to_run_without_the_credential_rather_than_sending_a_placeholder()
     {
-        // Sending the placeholder would record a confusing 400 in place of the exchange the
-        // case exists to capture.
-        var original = Environment.GetEnvironmentVariable("STUBID_NEB_PP_CODE_CLIENT_SECRET");
-        Environment.SetEnvironmentVariable("STUBID_NEB_PP_CODE_CLIENT_SECRET", null);
+        // Sending the placeholder would record a confusing refusal in place of the exchange
+        // the case exists to capture.
+        //
+        // The resolver is passed in rather than read from the machine. This test previously
+        // cleared an environment variable and passed only while the local configuration file
+        // happened not to carry the setting: green on a fresh checkout, red once someone
+        // configured their machine to actually record.
+        var thrown = Assert.Throws<InvalidOperationException>(
+            () => Scrubber.Unscrub("client_secret={{NEB_PP_OPEN_CLIENT_CODE_SECRET}}", _ => null));
 
-        try
-        {
-            var thrown = Assert.Throws<InvalidOperationException>(
-                () => Scrubber.Unscrub("client_secret={{NEB_PP_OPEN_CLIENT_CODE_SECRET}}"));
-            Assert.Contains("STUBID_NEB_PP_CODE_CLIENT_SECRET", thrown.Message, StringComparison.Ordinal);
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable("STUBID_NEB_PP_CODE_CLIENT_SECRET", original);
-        }
+        Assert.Contains("STUBID_NEB_PP_CODE_CLIENT_SECRET", thrown.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_configured_credential_is_substituted_before_the_request_is_sent()
+    {
+        var sent = Scrubber.Unscrub(
+            "client_secret={{NEB_PP_OPEN_CLIENT_CODE_SECRET}}", _ => "the-real-secret");
+
+        Assert.Equal("client_secret=the-real-secret", sent);
     }
 }

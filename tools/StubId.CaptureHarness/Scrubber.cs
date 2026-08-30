@@ -32,7 +32,13 @@ public static partial class Scrubber
     /// sending a placeholder to the broker, which would record a confusing 400 instead of
     /// the exchange the case is meant to capture.
     /// </summary>
-    public static string Unscrub(string text)
+    public static string Unscrub(string text) => Unscrub(text, LocalSettings.Get);
+
+    /// <summary>
+    /// Takes the settings resolver so the behaviour can be tested without depending on
+    /// whatever happens to be configured on the machine running the tests.
+    /// </summary>
+    public static string Unscrub(string text, Func<string, string?> resolve)
     {
         foreach (var (placeholder, setting) in Credentials)
         {
@@ -41,7 +47,7 @@ public static partial class Scrubber
                 continue;
             }
 
-            var value = LocalSettings.Get(setting);
+            var value = resolve(setting);
             if (string.IsNullOrEmpty(value))
             {
                 throw new InvalidOperationException(
@@ -66,11 +72,14 @@ public static partial class Scrubber
     /// capture.local.json is replaced too: a transaction token names the receiving
     /// organisation, and a fixture is not the place for a company's CVR number.
     /// </remarks>
-    public static string Scrub(string text)
+    public static string Scrub(string text) => Scrub(text, LocalSettings.Get);
+
+    /// <inheritdoc cref="Scrub(string)"/>
+    public static string Scrub(string text, Func<string, string?> resolve)
     {
         foreach (var (placeholder, setting) in Credentials)
         {
-            var value = LocalSettings.Get(setting);
+            var value = resolve(setting);
             if (!string.IsNullOrEmpty(value))
             {
                 text = text.Replace(value, placeholder, StringComparison.Ordinal);
