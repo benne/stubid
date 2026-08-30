@@ -9,3 +9,11 @@ committed, but `gitleaks dir` scans the working tree regardless, and a scanner t
 wolf on every local run is one people stop reading.
 """
 paths = ['''capture\.local\.json''']
+
+[[allowlists]]
+description = """
+Fixture manifests. Every entry is a sha256 of a recorded file, which the entropy rules read
+as a possible key. The manifest exists so that a silent edit to a recording fails the build;
+removing it to quiet the scanner would trade a real check for a cosmetic one.
+"""
+paths = ['''fixtures/.*/MANIFEST\.json''']
