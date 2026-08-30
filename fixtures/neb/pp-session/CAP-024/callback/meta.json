@@ -6,7 +6,7 @@
   "exchange": "callback",
   "request": {
     "method": "GET",
-    "url": "https://pp.netseidbroker.dk/op/connect/authorize?client_id={{NEB_PP_CLIENT_ID}}\u0026response_type=code\u0026redirect_uri=http%3A%2F%2Flocalhost%3A5099%2Fcallback\u0026scope=openid%20mitid\u0026state=CAP-024\u0026nonce=EIeMm_XGuNdeUuC4XSlL2Q\u0026idp_values=mitid\u0026code_challenge=bSCov0UrnSvwHrspDZL9jsPlBOjXkPHAtN_gqI3QMcU\u0026code_challenge_method=S256\u0026prompt=login\u0026idp_params=%7B%22mitid%22%3A%7B%22loa_value%22%3A%22low%22%7D%7D"
+    "url": "https://pp.netseidbroker.dk/op/connect/authorize?client_id={{NEB_PP_CLIENT_ID}}\u0026response_type=code\u0026redirect_uri=http%3A%2F%2Flocalhost%3A5099%2Fcallback\u0026scope=openid%20mitid\u0026state=CAP-024\u0026nonce=fkDkuYSbOGbZ8mOs_XPP7w\u0026idp_values=mitid\u0026code_challenge=DUMivyTdwDiQGULuGcr7Ibx10pseam-GccMcABuxtgY\u0026code_challenge_method=S256\u0026prompt=login\u0026idp_params=%7B%22mitid%22%3A%7B%22loa_value%22%3A%22low%22%7D%7D"
   },
   "status": 200,
   "tokens": {}

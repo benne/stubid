@@ -1,0 +1,44 @@
+{
+  "id": "CAP-020",
+  "step": "Step 6",
+  "title": "The baseline login",
+  "settles": "The id_token member set and order, whether nbf and sid are really there, the amr wire form, and the shape of a successful token response.",
+  "exchange": "token",
+  "request": {
+    "method": "POST",
+    "url": "https://pp.netseidbroker.dk/op/connect/token"
+  },
+  "status": 200,
+  "tokens": {
+    "id_token": {
+      "Algorithm": "RS256",
+      "Kid": "048058BB59F4D3007045896FD488CE81F4EB4923",
+      "SegmentLengths": [
+        102,
+        1140,
+        342
+      ],
+      "SignatureVerified": null
+    },
+    "access_token": {
+      "Algorithm": "RS256",
+      "Kid": "048058BB59F4D3007045896FD488CE81F4EB4923",
+      "SegmentLengths": [
+        106,
+        772,
+        342
+      ],
+      "SignatureVerified": null
+    },
+    "userinfo_token": {
+      "Algorithm": "RS256",
+      "Kid": "048058BB59F4D3007045896FD488CE81F4EB4923",
+      "SegmentLengths": [
+        106,
+        1122,
+        342
+      ],
+      "SignatureVerified": null
+    }
+  }
+}

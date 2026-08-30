@@ -1,0 +1,24 @@
+{
+  "id": "CAP-030",
+  "step": "Step 15b",
+  "title": "Hybrid response, for c_hash",
+  "settles": "c_hash, which ASP.NET Core requires whenever an id_token arrives through the front channel. The earlier front-channel recording used a response type of id_token alone, which produces neither c_hash nor at_hash, so this is the only way to see it.",
+  "exchange": "callback",
+  "request": {
+    "method": "POST",
+    "url": "https://pp.netseidbroker.dk/op/connect/authorize?client_id=c38397c4-5e27-442b-b9f7-837c94895af8\u0026response_type=id_token%20code\u0026redirect_uri=http%3A%2F%2Flocalhost%3A5099%2Fcallback\u0026scope=openid%20mitid\u0026state=CAP-030\u0026nonce=lycPHNPJp3PkkfwuM1vAZQ\u0026idp_values=mitid\u0026code_challenge=eW4Fg3_N0WVRezBwuCvmU6LHl-eNE-NuP7GUXGrIyUA\u0026code_challenge_method=S256\u0026response_mode=form_post\u0026prompt=login"
+  },
+  "status": 200,
+  "tokens": {
+    "id_token": {
+      "Algorithm": "RS256",
+      "Kid": "048058BB59F4D3007045896FD488CE81F4EB4923",
+      "SegmentLengths": [
+        102,
+        1139,
+        342
+      ],
+      "SignatureVerified": null
+    }
+  }
+}

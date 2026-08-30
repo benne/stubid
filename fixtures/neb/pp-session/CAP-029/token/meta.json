@@ -1,0 +1,44 @@
+{
+  "id": "CAP-029",
+  "step": "Step 12b",
+  "title": "Single sign-on, second client",
+  "settles": "Whether a second client joined to the same service provider is waved through without a prompt, and whether the subject differs per client while mitid.uuid stays the same. StubID derives its subject per organisation, and that behaviour currently rests on documentation alone.",
+  "exchange": "token",
+  "request": {
+    "method": "POST",
+    "url": "https://pp.netseidbroker.dk/op/connect/token"
+  },
+  "status": 200,
+  "tokens": {
+    "id_token": {
+      "Algorithm": "RS256",
+      "Kid": "048058BB59F4D3007045896FD488CE81F4EB4923",
+      "SegmentLengths": [
+        102,
+        1140,
+        342
+      ],
+      "SignatureVerified": null
+    },
+    "access_token": {
+      "Algorithm": "RS256",
+      "Kid": "048058BB59F4D3007045896FD488CE81F4EB4923",
+      "SegmentLengths": [
+        106,
+        772,
+        342
+      ],
+      "SignatureVerified": null
+    },
+    "userinfo_token": {
+      "Algorithm": "RS256",
+      "Kid": "048058BB59F4D3007045896FD488CE81F4EB4923",
+      "SegmentLengths": [
+        106,
+        1122,
+        342
+      ],
+      "SignatureVerified": null
+    }
+  }
+}

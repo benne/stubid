@@ -189,18 +189,34 @@ public sealed partial class Staging
 
         foreach (var (@case, name, exchange) in _staged)
         {
-            var text = Scrub(System.Text.Encoding.UTF8.GetString(exchange.ResponseBody));
+            // Check what will be written, not what was staged. Checking the staged body
+            // reported every token that was about to be extracted correctly — eleven false
+            // alarms in one sitting — while missing the two that genuinely leaked, which is
+            // how a safety net teaches people to walk around it.
+            var (body, tokens) = TokenFixtures.Extract(
+                System.Text.Encoding.UTF8.GetString(exchange.ResponseBody));
 
-            var cpr = SensitiveContent.FindCpr(text);
-            if (cpr.Found)
+            var parts = new List<(string Where, string Text)> { ("body", Scrub(body)) };
+            parts.AddRange(tokens.SelectMany(t => new[]
             {
-                found.Add($"{@case.Id}/{name}: a personal number, {cpr.Location}");
-            }
+                ($"{t.Key} header", Scrub(t.Value.Header)),
+                ($"{t.Key} payload", Scrub(t.Value.Payload)),
+            }));
+            parts.AddRange(exchange.ResponseHeaders.Select(h => ($"header {h.Key}", Scrub(h.Value))));
 
-            var token = SensitiveContent.FindSignedToken(text);
-            if (token.Found)
+            foreach (var (where, text) in parts)
             {
-                found.Add($"{@case.Id}/{name}: a signed token that was not extracted");
+                var cpr = SensitiveContent.FindCpr(text);
+                if (cpr.Found)
+                {
+                    found.Add($"{@case.Id}/{name}: a personal number in the {where}, {cpr.Location}");
+                }
+
+                var token = SensitiveContent.FindSignedToken(text);
+                if (token.Found)
+                {
+                    found.Add($"{@case.Id}/{name}: an unextracted signed token in the {where}");
+                }
             }
         }
 

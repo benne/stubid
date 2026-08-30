@@ -1,0 +1,1 @@
+{"id_token":"{{ID_TOKEN}}","access_token":"{{ACCESS_TOKEN}}","expires_in":10800,"token_type":"Bearer","scope":"openid mitid","userinfo_token":"{{USERINFO_TOKEN}}"}

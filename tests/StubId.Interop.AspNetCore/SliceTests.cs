@@ -205,6 +205,46 @@ public class SliceTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
+    public async Task Two_clients_of_one_organisation_receive_the_same_subject()
+    {
+        // Recorded: two clients joined to one service provider were given the same subject for
+        // the same person, and the id_token says so itself in subject_type: org_mapped.
+        // Deriving it per client hands an application that signs users in through two of its
+        // own clients two different people.
+        const string second = "c0beb4dc-69d1-4316-8167-2d0a62816103";
+
+        var first = await SubjectFor(CodeClient);
+        var other = await SubjectFor(second);
+
+        Assert.Equal(first, other);
+    }
+
+    private async Task<string> SubjectFor(string clientId)
+    {
+        var authorize = await _client.GetAsync(
+            $"/op/connect/authorize?client_id={clientId}&response_type=code" +
+            $"&redirect_uri={Uri.EscapeDataString(RedirectUri)}&scope=openid%20mitid&state=s", Ct);
+
+        var code = System.Web.HttpUtility
+            .ParseQueryString(authorize.Headers.Location!.ToString().Split('?')[1])["code"]!;
+
+        using var token = await _client.PostAsync("/op/connect/token", new FormUrlEncodedContent(
+        [
+            new("grant_type", "authorization_code"),
+            new("code", code),
+            new("redirect_uri", RedirectUri),
+            new("client_id", clientId),
+            new("client_secret", "any"),
+        ]), Ct);
+
+        using var body = JsonDocument.Parse(await token.Content.ReadAsStringAsync(Ct));
+        using var payload = JsonDocument.Parse(
+            Base64Url.Decode(body.RootElement.GetProperty("id_token").GetString()!.Split('.')[1]));
+
+        return payload.RootElement.GetProperty("sub").GetString()!;
+    }
+
+    [Fact]
     public async Task An_authorization_code_cannot_be_used_twice()
     {
         var (code, _) = await Authorize();

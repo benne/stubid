@@ -6,7 +6,7 @@
   "exchange": "callback",
   "request": {
     "method": "GET",
-    "url": "https://pp.netseidbroker.dk/op/connect/authorize?client_id={{NEB_PP_CLIENT_ID}}\u0026response_type=code\u0026redirect_uri=http%3A%2F%2Flocalhost%3A5099%2Fcallback\u0026scope=openid%20mitid\u0026state=CAP-023\u0026nonce=9VYE3dNpQO4rVYoeSuq6ZA\u0026idp_values=mitid\u0026code_challenge=wOa-eopVt0ofvYE8OkXKpytmC_39yjjIKZc_WmZNwKE\u0026code_challenge_method=S256\u0026prompt=login"
+    "url": "https://pp.netseidbroker.dk/op/connect/authorize?client_id={{NEB_PP_CLIENT_ID}}\u0026response_type=code\u0026redirect_uri=http%3A%2F%2Flocalhost%3A5099%2Fcallback\u0026scope=openid%20mitid\u0026state=CAP-023\u0026nonce=SgxRNeqJ-KMI_lLt37XdHw\u0026idp_values=mitid\u0026code_challenge=JQ9HKpovQO8UKNo5iK_YZSh2Kf4PWH80VV1cLJOMtnc\u0026code_challenge_method=S256\u0026prompt=login"
   },
   "status": 200,
   "tokens": {}

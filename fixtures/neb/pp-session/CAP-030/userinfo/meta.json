@@ -1,0 +1,13 @@
+{
+  "id": "CAP-030",
+  "step": "Step 15b",
+  "title": "Hybrid response, for c_hash",
+  "settles": "c_hash, which ASP.NET Core requires whenever an id_token arrives through the front channel. The earlier front-channel recording used a response type of id_token alone, which produces neither c_hash nor at_hash, so this is the only way to see it.",
+  "exchange": "userinfo",
+  "request": {
+    "method": "GET",
+    "url": "https://pp.netseidbroker.dk/op/connect/userinfo"
+  },
+  "status": 200,
+  "tokens": {}
+}

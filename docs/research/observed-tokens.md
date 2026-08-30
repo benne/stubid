@@ -86,3 +86,41 @@ member order matched no part of the real one.
 None of that would have been caught by a client library. Every one of those tokens validates.
 It is exactly the class of difference a stub gets wrong forever unless somebody records the
 real thing.
+
+
+## Single sign-on, and what the subject is really scoped to
+
+Recorded 2026-08-31 with two clients joined to the same service provider's single sign-on.
+
+The second client completed **without prompting**, and its id_token carried the same
+`auth_time` as the first — so the session was reused rather than re-established.
+
+The finding that matters is the subject:
+
+| | First client | Second client |
+| --- | --- | --- |
+| `aud` | client A | client B |
+| `sub` | *the same value* | *the same value* |
+| `sid` | *the same value* | *the same value* |
+
+**Two different clients receive the same subject.** It is scoped to the organisation, not to
+the client, which is what the id_token has been saying all along in `subject_type:
+"org_mapped"`. StubID derived its subject from the client id, so two clients belonging to one
+company would have been given different subjects where the broker gives one — an application
+that signs a user in through two of its own clients would see two different people.
+
+Nothing would have caught this without two clients configured under one service provider. A
+single client cannot show it, and no documentation states it plainly.
+
+## c_hash
+
+Recorded with a client on the hybrid grant, `response_type=id_token code`.
+
+The front-channel id_token carries **`c_hash`** and no `at_hash`. The back-channel id_token
+from the same flow carries **`at_hash`** and no `c_hash`. They occupy the same position:
+after `nonce`, before `sid`.
+
+ASP.NET Core requires `c_hash` whenever an id_token arrives through the front channel, so a
+hybrid integration rejects a token without it. The earlier front-channel recording used
+`response_type=id_token` alone, which produces neither, so nothing before this could have
+shown where it sits.

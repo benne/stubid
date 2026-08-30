@@ -42,11 +42,11 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
     /// </remarks>
     [Fidelity(FidelityTier.Exact, FidelityProvenance.VerifiedLive,
         Evidence = "fixtures/neb/pp-session/CAP-024/token/id_token.payload.json")]
-    public string IdToken(string issuer, IssuedCode code, string? accessToken)
+    public string IdToken(string issuer, IssuedCode code, string? accessToken, string organisation)
     {
         var now = clock.GetUtcNow();
         var citizen = code.Citizen;
-        var subject = Subject(code.Request.ClientId, citizen);
+        var subject = Subject(organisation, citizen);
         var level = Nsis(citizen.Loa);
 
         List<JsonClaim> claims =
@@ -109,7 +109,7 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
     /// </remarks>
     [Fidelity(FidelityTier.Exact, FidelityProvenance.VerifiedLive,
         Evidence = "fixtures/neb/pp-session/CAP-021/userinfo/response.raw")]
-    public IReadOnlyList<JsonClaim> UserInfo(string clientId, IssuedAccessToken token)
+    public IReadOnlyList<JsonClaim> UserInfo(string organisation, IssuedAccessToken token)
     {
         var now = clock.GetUtcNow();
         var citizen = token.Citizen;
@@ -175,7 +175,7 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
             ]);
         }
 
-        claims.Add(JsonClaim.String("sub", Subject(clientId, citizen)));
+        claims.Add(JsonClaim.String("sub", Subject(organisation, citizen)));
 
         return claims;
     }
@@ -193,7 +193,7 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
     /// </remarks>
     [Fidelity(FidelityTier.Exact, FidelityProvenance.VerifiedLive,
         Evidence = "fixtures/neb/pp-session/CAP-024/token/userinfo_token.payload.json")]
-    public string UserInfoToken(string issuer, IssuedCode code)
+    public string UserInfoToken(string issuer, IssuedCode code, string organisation)
     {
         var now = clock.GetUtcNow();
         var citizen = code.Citizen;
@@ -222,7 +222,7 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
             JsonClaim.String("acr", level),
             JsonClaim.String("auth_time", code.AuthenticatedAt.ToUnixTimeSeconds()
                 .ToString(System.Globalization.CultureInfo.InvariantCulture)),
-            JsonClaim.String("sub", Subject(code.Request.ClientId, citizen)),
+            JsonClaim.String("sub", Subject(organisation, citizen)),
             JsonClaim.String("transaction_id", code.TransactionId),
             JsonClaim.String("aud", code.Request.ClientId),
         ], keys.TokenSigning, type: "at+jwt");
@@ -230,11 +230,19 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
 
     /// <summary>
     /// The subject differs per receiving organisation while the MitID identifier stays the
-    /// same, and it is derived rather than stored so it survives a restart. The broker names
-    /// this arrangement itself, in the id_token's <c>subject_type</c> claim: org_mapped.
+    /// same, and it is derived rather than stored so it survives a restart.
     /// </summary>
-    public static string Subject(string clientId, Citizen citizen) =>
-        Uuid5.Create(SubjectNamespace, $"{clientId}|{citizen.Uuid}").ToString();
+    /// <remarks>
+    /// Scoped to the organisation, not the client. Two clients joined to one service provider
+    /// were recorded receiving the same subject for the same person, which is what the
+    /// id_token means by <c>subject_type: org_mapped</c>. Deriving it per client — which this
+    /// did until the recording showed otherwise — hands an application that signs users in
+    /// through two of its own clients two different people.
+    /// </remarks>
+    [Fidelity(FidelityTier.Exact, FidelityProvenance.VerifiedLive,
+        Evidence = "fixtures/neb/pp-session/CAP-029/token/id_token.payload.json")]
+    public static string Subject(string organisation, Citizen citizen) =>
+        Uuid5.Create(SubjectNamespace, $"{organisation}|{citizen.Uuid}").ToString();
 
     private static string Nsis(string level) => $"https://data.gov.dk/concept/core/nsis/{level}";
 }

@@ -1,0 +1,13 @@
+{
+  "id": "CAP-029",
+  "step": "Step 12b",
+  "title": "Single sign-on, second client",
+  "settles": "Whether a second client joined to the same service provider is waved through without a prompt, and whether the subject differs per client while mitid.uuid stays the same. StubID derives its subject per organisation, and that behaviour currently rests on documentation alone.",
+  "exchange": "callback",
+  "request": {
+    "method": "GET",
+    "url": "https://pp.netseidbroker.dk/op/connect/authorize?client_id=37491a72-4f5c-4891-890f-17d5052e8bf2\u0026response_type=code\u0026redirect_uri=http%3A%2F%2Flocalhost%3A5099%2Fcallback\u0026scope=openid%20mitid\u0026state=CAP-029\u0026nonce=HQWkngr3qNkZ9aIdK8ybHw\u0026idp_values=mitid\u0026code_challenge=W6wAHy5-yvd7NAKBJN6Uz0IgTvMNnj2b3g6nyg3N_IU\u0026code_challenge_method=S256"
+  },
+  "status": 200,
+  "tokens": {}
+}

@@ -49,20 +49,40 @@ public sealed record IssuedAccessToken(
 /// </summary>
 public sealed class BrokerState
 {
-    private readonly ConcurrentDictionary<string, AuthorizationRequest> _pushed = new(StringComparer.Ordinal);
-    private readonly ConcurrentDictionary<string, IssuedCode> _codes = new(StringComparer.Ordinal);
-    private readonly ConcurrentDictionary<string, IssuedAccessToken> _accessTokens = new(StringComparer.Ordinal);
-
     /// <summary>
     /// The clients the broker publishes for anyone to use against pre-production, so an
     /// existing configuration reaches StubID by changing the authority alone.
     /// </summary>
-    public IReadOnlyDictionary<string, string[]> Clients { get; } = new Dictionary<string, string[]>(StringComparer.Ordinal)
-    {
-        ["0a775a87-878c-4b83-abe3-ee29c720c3e7"] = ["code"],
-        ["c0beb4dc-69d1-4316-8167-2d0a62816103"] = ["id_token code"],
-        ["93ed8e0d-93ad-405c-b1ac-8bf13d484941"] = ["id_token"],
-    };
+    /// <remarks>
+    /// All three sit in one organisation. Whether the broker groups its own published clients
+    /// that way is unobserved; one organisation is the arrangement a company integrating
+    /// several applications actually has, and it is the one that exercises the shared subject.
+    /// </remarks>
+    public IReadOnlyDictionary<string, Client> Clients { get; } =
+        new Dictionary<string, Client>(StringComparer.Ordinal)
+        {
+            ["0a775a87-878c-4b83-abe3-ee29c720c3e7"] =
+                new("0a775a87-878c-4b83-abe3-ee29c720c3e7", ["code"], "published-test-clients"),
+            ["c0beb4dc-69d1-4316-8167-2d0a62816103"] =
+                new("c0beb4dc-69d1-4316-8167-2d0a62816103", ["id_token code"], "published-test-clients"),
+            ["93ed8e0d-93ad-405c-b1ac-8bf13d484941"] =
+                new("93ed8e0d-93ad-405c-b1ac-8bf13d484941", ["id_token"], "published-test-clients"),
+        };
+
+    /// <summary>The organisation a client belongs to, which is what a subject is scoped to.</summary>
+    public string OrganisationOf(string clientId) =>
+        Clients.TryGetValue(clientId, out var client) ? client.Organisation : clientId;
+
+    private readonly ConcurrentDictionary<string, AuthorizationRequest> _pushed = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, IssuedCode> _codes = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, IssuedAccessToken> _accessTokens = new(StringComparer.Ordinal);
+
+/// <summary>A registered client, and the organisation it belongs to.</summary>
+/// <param name="Organisation">
+/// What the subject is scoped to. Two clients of one organisation receive the same subject
+/// for the same person, which is what the id_token calls org_mapped.
+/// </param>
+public sealed record Client(string ClientId, string[] ResponseTypes, string Organisation);
 
     /// <summary>
     /// The person every login authenticates as, until citizens can be created. The personal

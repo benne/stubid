@@ -6,8 +6,19 @@
   "exchange": "callback",
   "request": {
     "method": "POST",
-    "url": "https://pp.netseidbroker.dk/op/connect/authorize?client_id=93ed8e0d-93ad-405c-b1ac-8bf13d484941\u0026response_type=id_token\u0026redirect_uri=http%3A%2F%2Flocalhost%3A5099%2Fcallback\u0026scope=openid%20mitid\u0026state=CAP-026\u0026nonce=RLFTGxutepfRsig_ayFzNw\u0026idp_values=mitid\u0026code_challenge=eBkcqSNnrxJN5uB5BeGxrjheCIhI43OL2-3pK6g8Djo\u0026code_challenge_method=S256\u0026response_mode=form_post\u0026prompt=login"
+    "url": "https://pp.netseidbroker.dk/op/connect/authorize?client_id=93ed8e0d-93ad-405c-b1ac-8bf13d484941\u0026response_type=id_token\u0026redirect_uri=http%3A%2F%2Flocalhost%3A5099%2Fcallback\u0026scope=openid%20mitid\u0026state=CAP-026\u0026nonce=q1XlUeibTMBRHbU1ZJoZfw\u0026idp_values=mitid\u0026code_challenge=t-HKqkAIW1WtX4nBRVrH2s1_sjSZkb_wHcfExo50s_8\u0026code_challenge_method=S256\u0026response_mode=form_post\u0026prompt=login"
   },
   "status": 200,
-  "tokens": {}
+  "tokens": {
+    "id_token": {
+      "Algorithm": "RS256",
+      "Kid": "048058BB59F4D3007045896FD488CE81F4EB4923",
+      "SegmentLengths": [
+        102,
+        1094,
+        342
+      ],
+      "SignatureVerified": null
+    }
+  }
 }

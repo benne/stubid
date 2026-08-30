@@ -156,12 +156,14 @@ public static class Endpoints
             // is composed after it exists.
             return Json(JsonSerializer.Serialize(new Dictionary<string, object>
             {
-                ["id_token"] = tokens.IdToken(Issuer(http), issued, accessToken),
+                ["id_token"] = tokens.IdToken(
+                    Issuer(http), issued, accessToken, state.OrganisationOf(clientId!)),
                 ["access_token"] = accessToken,
                 ["expires_in"] = Tokens.AccessTokenLifetimeSeconds,
                 ["token_type"] = "Bearer",
                 ["scope"] = issued.Request.Scope,
-                ["userinfo_token"] = tokens.UserInfoToken(Issuer(http), issued),
+                ["userinfo_token"] = tokens.UserInfoToken(
+                    Issuer(http), issued, state.OrganisationOf(clientId!)),
             }));
         });
 
@@ -183,7 +185,7 @@ public static class Endpoints
             using (var json = new Utf8JsonWriter(buffer))
             {
                 json.WriteStartObject();
-                foreach (var claim in tokens.UserInfo(issued.ClientId, issued))
+                foreach (var claim in tokens.UserInfo(state.OrganisationOf(issued.ClientId), issued))
                 {
                     json.WritePropertyName(claim.Name);
                     using var value = JsonDocument.Parse(claim.RawJson);

@@ -6,7 +6,7 @@
   "exchange": "callback",
   "request": {
     "method": "GET",
-    "url": "https://pp.netseidbroker.dk/op/connect/authorize?client_id={{NEB_PP_CLIENT_ID}}\u0026response_type=code\u0026redirect_uri=http%3A%2F%2Flocalhost%3A5099%2Fcallback\u0026scope=openid%20mitid%20transaction_token\u0026state=CAP-022\u0026nonce=vo-nIOinfZpNTwxuMogFuA\u0026idp_values=mitid\u0026code_challenge=Dv0aMKYrl5AKe7Qa6aDLDsnsj_oW379DLBouPXBtoys\u0026code_challenge_method=S256\u0026prompt=login\u0026idp_params=%7B%22mitid%22%3A%7B%22reference_text%22%3A%22U3R1YklEIHJlZmVyZW5jZSB0ZXh0%22%7D%7D"
+    "url": "https://pp.netseidbroker.dk/op/connect/authorize?client_id={{NEB_PP_CLIENT_ID}}\u0026response_type=code\u0026redirect_uri=http%3A%2F%2Flocalhost%3A5099%2Fcallback\u0026scope=openid%20mitid%20transaction_token\u0026state=CAP-022\u0026nonce=wYMGWRAK45D5GCXOcHnLqw\u0026idp_values=mitid\u0026code_challenge=QzfqtPQpaUfnX3XmLTWgYc9zRZ-ndb-ioGEccd3cbYQ\u0026code_challenge_method=S256\u0026prompt=login\u0026idp_params=%7B%22mitid%22%3A%7B%22reference_text%22%3A%22U3R1YklEIHJlZmVyZW5jZSB0ZXh0%22%7D%7D"
   },
   "status": 200,
   "tokens": {}

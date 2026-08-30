@@ -6,7 +6,7 @@
   "exchange": "callback",
   "request": {
     "method": "GET",
-    "url": "https://pp.netseidbroker.dk/op/connect/authorize?client_id={{NEB_PP_CLIENT_ID}}\u0026response_type=code\u0026redirect_uri=http%3A%2F%2Flocalhost%3A5099%2Fcallback\u0026scope=openid%20mitid%20ssn%20nemid.pid%20ssn.details_name%20ssn.details_address%20userinfo_token%20transaction_token\u0026state=CAP-021\u0026nonce=wbp57T041O60v5Dd2PWyYw\u0026idp_values=mitid\u0026code_challenge=71rltAjF2Q2nIOxHLO6v5Q3NrGZjSWXwzB0PtdQwReA\u0026code_challenge_method=S256\u0026prompt=login"
+    "url": "https://pp.netseidbroker.dk/op/connect/authorize?client_id={{NEB_PP_CLIENT_ID}}\u0026response_type=code\u0026redirect_uri=http%3A%2F%2Flocalhost%3A5099%2Fcallback\u0026scope=openid%20mitid%20ssn%20nemid.pid%20ssn.details_name%20ssn.details_address%20userinfo_token%20transaction_token\u0026state=CAP-021\u0026nonce=B9_T2EdfP16G4YSoYrTczA\u0026idp_values=mitid\u0026code_challenge=uCUkOFn3fZi6Wj1q2M0NBGd1AHChNyqquNWHaU0hLOw\u0026code_challenge_method=S256\u0026prompt=login"
   },
   "status": 200,
   "tokens": {}

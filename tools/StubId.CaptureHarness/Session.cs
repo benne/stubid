@@ -305,7 +305,11 @@ public static class Session
             null,
             (int)HttpStatusCode.OK,
             "callback",
-            [.. http.Request.Headers.Select(h => new KeyValuePair<string, string>(h.Key, h.Value.ToString()))],
+
+            // Deliberately none. These would be the browser's request headers, which are not
+            // the broker's and belong to nothing StubID reproduces — and the cookie jar among
+            // them carried a signed token straight into a fixture, twice.
+            [],
             body);
     }
 
