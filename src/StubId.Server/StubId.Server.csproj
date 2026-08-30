@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../StubId.Wire/StubId.Wire.csproj" />
+    <ProjectReference Include="../StubId.Profiles.Abstractions/StubId.Profiles.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,6 +1,8 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/StubId.Abstractions/StubId.Abstractions.csproj" />
+    <Project Path="src/StubId.Profiles.Abstractions/StubId.Profiles.Abstractions.csproj" />
+    <Project Path="src/StubId.Profiles.Idura/StubId.Profiles.Idura.csproj" />
     <Project Path="src/StubId.Server/StubId.Server.csproj" />
     <Project Path="src/StubId.Wire/StubId.Wire.csproj" />
   </Folder>
@@ -8,6 +10,7 @@
     <Project Path="tests/StubId.Abstractions.Tests/StubId.Abstractions.Tests.csproj" />
     <Project Path="tests/StubId.Fixtures.Tests/StubId.Fixtures.Tests.csproj" />
     <Project Path="tests/StubId.Interop.AspNetCore/StubId.Interop.AspNetCore.csproj" />
+    <Project Path="tests/StubId.Profiles.Tests/StubId.Profiles.Tests.csproj" />
     <Project Path="tests/StubId.Wire.Tests/StubId.Wire.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">

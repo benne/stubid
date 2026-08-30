@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Idura's route table. A spike: the routes are real, the login is not implemented.</Description>
+    <RootNamespace>StubId.Profiles.Idura</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../StubId.Profiles.Abstractions/StubId.Profiles.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

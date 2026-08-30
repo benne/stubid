@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.DataProtection;
+using StubId.Profiles;
 using StubId.Wire;
 
 namespace StubId.Server;
@@ -11,15 +12,31 @@ public static class Endpoints
     /// <summary>The recorded challenge, byte for byte. Note the absent space after the comma.</summary>
     private const string BearerChallenge = "Bearer realm=\"IdentityServer\",error=\"invalid_token\"";
 
-    public static void MapBroker(this WebApplication app)
+    /// <summary>
+    /// The Nets eID Broker route table. Patterns are relative to the tenant root, so the host
+    /// composes any mount prefix and the same declarations serve a tenant at a subdomain or
+    /// under a path.
+    /// </summary>
+    public static IReadOnlyList<RouteDeclaration> Declare()
     {
-        app.MapGet("/op/.well-known/openid-configuration", (HttpContext http, Documents documents) =>
+        var routes = new List<RouteDeclaration>();
+
+        void Map(string pattern, string[] methods, RouteRole role, Delegate handler) =>
+            routes.Add(new RouteDeclaration(pattern, methods, role, handler)
+            {
+                // Probed against pre-production: the first segment is compared ordinally
+                // because a proxy selects the application by it, everything below it is not,
+                // and a trailing slash is refused.
+                Exactness = SegmentExactness.FirstOrdinalThenInsensitive(TrailingSlash.Refuse),
+            });
+
+        Map("op/.well-known/openid-configuration", ["GET"], RouteRole.Discovery, (HttpContext http, Documents documents) =>
             Json(documents.Discovery(BaseUrl(http))));
 
-        app.MapGet("/op/.well-known/openid-configuration/jwks", (HttpContext http, Keys keys) =>
+        Map("op/.well-known/openid-configuration/jwks", ["GET"], RouteRole.Jwks, (HttpContext http, Keys keys) =>
             Json(keys.Ring.ToJwks()));
 
-        app.MapPost("/op/connect/par", async (HttpContext http, BrokerState state) =>
+        Map("op/connect/par", ["POST"], RouteRole.Par, async (HttpContext http, BrokerState state) =>
         {
             var form = await http.Request.ReadFormAsync();
             var (parClientId, parSecret) = ClientCredentials(http, form);
@@ -38,7 +55,7 @@ public static class Endpoints
             return Json(JsonSerializer.Serialize(new { request_uri = requestUri, expires_in = 600 }));
         });
 
-        app.MapMethods("/op/connect/authorize", ["GET", "POST"], async (
+        Map("op/connect/authorize", ["GET", "POST"], RouteRole.Authorize, async (
             HttpContext http, BrokerState state, Tokens tokens, TimeProvider clock, IDataProtectionProvider protection) =>
         {
             var parameters = await ReadParameters(http);
@@ -135,7 +152,7 @@ public static class Endpoints
             };
         });
 
-        app.MapPost("/op/connect/token", async (HttpContext http, BrokerState state, Tokens tokens, TimeProvider clock) =>
+        Map("op/connect/token", ["POST"], RouteRole.Token, async (HttpContext http, BrokerState state, Tokens tokens, TimeProvider clock) =>
         {
             var form = await http.Request.ReadFormAsync();
             var (clientId, secret) = ClientCredentials(http, form);
@@ -193,7 +210,7 @@ public static class Endpoints
             }));
         });
 
-        app.MapMethods("/op/connect/userinfo", ["GET", "POST"], (HttpContext http, BrokerState state, Tokens tokens) =>
+        Map("op/connect/userinfo", ["GET", "POST"], RouteRole.UserInfo, (HttpContext http, BrokerState state, Tokens tokens) =>
         {
             var header = http.Request.Headers.Authorization.ToString();
             var token = header.StartsWith("Bearer ", StringComparison.Ordinal) ? header[7..] : null;
@@ -224,7 +241,7 @@ public static class Endpoints
             return Json(Encoding.UTF8.GetString(buffer.ToArray()));
         });
 
-        app.MapPost("/op/api/v1/mitid/matchCpr", (HttpContext http) =>
+        Map("op/api/v1/mitid/matchCpr", ["POST"], RouteRole.Extra("matchCpr"), (HttpContext http) =>
         {
             // CAP-018: a bare challenge, unlike userinfo's. Two endpoints on one host with two
             // different WWW-Authenticate strings is exactly what a generated emulator smooths
@@ -234,15 +251,7 @@ public static class Endpoints
             return Results.Empty;
         });
 
-        // No emulated broker uses a leading-underscore segment, so StubID's own surface cannot
-        // collide with one it is reproducing.
-        app.MapGet("/_stubid/v1/fidelity", () => Results.Json(new
-        {
-            entries = FidelityLedger.Read(
-                typeof(Tokens).Assembly, typeof(StubId.Wire.JwsWriter).Assembly),
-        }));
-
-        app.MapGet("/op/Error", (HttpContext http, IDataProtectionProvider protection) =>
+        Map("op/Error", ["GET"], RouteRole.ErrorPage, (HttpContext http, IDataProtectionProvider protection) =>
         {
             var errorId = http.Request.Query["errorId"].ToString();
             var (code, description) = Unprotect(protection, errorId);
@@ -259,6 +268,8 @@ public static class Endpoints
                 </body></html>
                 """, "text/html; charset=utf-8");
         });
+
+        return routes;
     }
 
     private static async Task<Dictionary<string, string>> ReadParameters(HttpContext http)

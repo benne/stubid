@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>What a broker profile declares. Sees ASP.NET, unlike StubId.Abstractions.</Description>
+    <RootNamespace>StubId.Profiles</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../StubId.Abstractions/StubId.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>
