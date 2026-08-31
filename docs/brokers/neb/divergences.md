@@ -20,6 +20,17 @@ at all" is behaviour worth keeping.
 pre-production and fails here. If that matters to you, say so — pinning expected secrets per
 client is a small change.
 
+## An id_token_hint is read, not verified
+
+At the end-session endpoint the broker checks the hint it is given. StubID reads it: any
+three-part token whose payload carries a `sid` is accepted, including one StubID never issued.
+
+**Why.** The same trade as the client secret above. A test that builds a hint by hand is more
+likely than an attack on a stub, and refusing it would fail a test that works.
+
+**What this costs.** A test asserting that a forged hint is rejected passes against
+pre-production and fails here.
+
 ## Advertised but not implemented
 
 The discovery document is served from a recording, so it advertises everything the broker
@@ -28,14 +39,29 @@ does. Some of that is not implemented:
 | Advertised | State |
 | --- | --- |
 | `backchannel_authentication_endpoint` (CIBA) | not implemented; the endpoint 404s |
-| `end_session_endpoint` | not implemented; the endpoint 404s |
-| Request objects (`request`, `request_uri` parameters) | not implemented |
+| `frontchannel_logout_supported`, `backchannel_logout_supported` | ending a session works; notifying the other clients in it does not |
+| Request objects (`request` parameter) | not implemented |
 | Request-object encryption | not implemented |
 | DPoP | not implemented |
 
 Trimming the discovery document to match would be *less* faithful, not more: some client
 libraries key off metadata that is absent, and the recording is what the broker sends. The
 honest position is to advertise what the broker advertises and say plainly what is missing.
+
+## Where a recording could not settle it
+
+Three behaviours are implemented from the broker's documentation rather than from a
+recording, because reaching them needs something the unattended captures cannot do.
+
+| Behaviour | Why it is unrecorded |
+| --- | --- |
+| End session honouring `post_logout_redirect_uri` with a valid `id_token_hint` | Needs a real id_token, which needs a completed login. The half without a hint *is* recorded, in CAP-044 and CAP-045: the redirect is ignored and the browser goes to the broker's own logout page. |
+| The CPR-match refusal after three attempts | Needs a fourth call inside one authenticated session. The sitting that could have recorded it spent its attempts on the earlier branches. The sentence StubID returns is the broker's documented one. |
+| `prompt=none` answering `login_required` | Needs a client with single sign-on and a session already open. The specification's answer is used. |
+| `cprNumberMatch` being a JSON boolean | No capture reached a successful match, so the type is the pre-production swagger's. Worth doubting: every value on this broker's userinfo endpoint is a string, including two that are plainly booleans. |
+
+Each is marked in the fidelity ledger with the provenance it actually has, so
+`GET /_stubid/v1/fidelity` does not claim more than was checked.
 
 ## Transaction signing
 

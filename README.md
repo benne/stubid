@@ -6,9 +6,8 @@ your MitID login and signing integration in automated tests.
 **Status: early development.** A login works: a stock ASP.NET Core application signs in
 against it, and so do Node's `openid-client` and Spring Security. Tests can create citizens,
 decide how each login resolves, and move the clock to force a timeout. What is missing is
-the rest of the request surface, transaction signing, and the packaging that makes any of
-it convenient — there is no NuGet package and no admin interface yet. See
-[docs/roadmap.md](docs/roadmap.md).
+transaction signing and the packaging that makes any of it convenient — there is no NuGet
+package and no admin interface yet. See [docs/roadmap.md](docs/roadmap.md).
 
 ## The problem
 

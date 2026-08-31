@@ -11,7 +11,7 @@ Status of the first emulated surface, Signaturgruppen Broker ("Nets eID Broker")
 | M3 | First working login: a stock ASP.NET Core app signs in — **v0.1** | done |
 | M4 | Broker profile seam, routing, fidelity ledger | routes and ledger done; claims, errors and keys still engine |
 | M5 | Sessions, approval resolution, citizens | done |
-| M6 | Full request surface, error fidelity, logout | not started |
+| M6 | Full request surface, error fidelity, logout | done |
 | M7 | Control API, test modules, TLS trust, quickstarts | control API done; packages, TLS and quickstarts not started |
 | M8 | Admin interface | not started |
 | M9 | Transaction signing | not started |
@@ -25,3 +25,9 @@ document wrapping, the Idura profile, and NemLog-in / OIOSAML.
 Still unrecorded, and blocking: the transaction token's text claims, which need the
 `signtext_api` scope that only the broker's staff can grant. The address members under
 `ssn.details_*` are also unseen, because the test identity has no register entry behind it.
+
+Three behaviours are implemented from documentation rather than from a recording, because
+reaching them needs a completed login: end session honouring a post-logout redirect when it
+is given a valid `id_token_hint`, the CPR-match refusal after three attempts, and
+`prompt=none` answering `login_required`. Each is marked as such in the fidelity ledger and
+listed in [the divergences](brokers/neb/divergences.md).

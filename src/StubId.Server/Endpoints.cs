@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.DataProtection;
+using StubId.Abstractions;
 using StubId.Profiles;
 using StubId.Server.Sessions;
 using StubId.Wire;
@@ -96,6 +97,13 @@ public static class Endpoints
                     $"Response type '{request.ResponseType}' is not enabled for this client.");
             }
 
+            // The broker's own parameters. Which of these are refused here and which are
+            // carried through is recorded rather than reasoned about.
+            if (RequestGrammar.Fault(request, parameters) is var (code, description))
+            {
+                return ErrorPage(http, protection, code, description);
+            }
+
             // The request is parked and the ladder is asked what should happen to it. Most
             // logins are decided by something already in place and never wait at all; the ones
             // that do are what the control API and the login page are for.
@@ -109,6 +117,20 @@ public static class Endpoints
 
             if (!session.IsDecided)
             {
+                // prompt=none says: answer without asking the user anything. Nothing had an
+                // opinion, so answering would mean asking, and the specification's word for
+                // that is login_required. Unrecorded - reaching it against the broker needs a
+                // client with single sign-on and a session already open.
+                if (Prompts(parameters).Contains("none"))
+                {
+                    sessions.Decide(
+                        session.Id,
+                        Decision.Refused(SilentLoginImpossible, SilentLoginImpossible),
+                        "prompt=none, and nothing could answer without asking");
+
+                    return Refuse(http, request, session);
+                }
+
                 // Nobody has an opinion yet, so the browser waits where a person can act on it.
                 return Results.Redirect($"{BaseUrl(http)}/op/Login?session={session.Id}");
             }
@@ -183,6 +205,14 @@ public static class Endpoints
         Map("op/connect/token", ["POST"], RouteRole.Token, async (HttpContext http, BrokerState state, Tokens tokens, TimeProvider clock) =>
         {
             var form = await http.Request.ReadFormAsync();
+
+            // CAP-042: nothing at all is a bad request, not a failed authentication. Both are
+            // true of an empty POST, and only the recording says which the broker reports.
+            if (form.Count == 0 && http.Request.Headers.Authorization.Count == 0)
+            {
+                return OAuthError(http, "invalid_request");
+            }
+
             var (clientId, secret) = ClientCredentials(http, form);
 
             if (!state.IsKnownClient(clientId) || string.IsNullOrEmpty(secret))
@@ -269,14 +299,63 @@ public static class Endpoints
             return Json(Encoding.UTF8.GetString(buffer.ToArray()));
         });
 
-        Map("op/api/v1/mitid/matchCpr", ["POST"], RouteRole.Extra("matchCpr"), (HttpContext http) =>
+        // How a private service provider checks a personal number it already holds, since it
+        // may not ask for one. Three attempts to a session, which is behaviour rather than
+        // configuration: a suite that passes here and fails on the fourth call against the
+        // broker has been told nothing useful.
+        Map("op/api/v1/mitid/matchCpr", ["POST"], RouteRole.Extra("matchCpr"), async (
+            HttpContext http, BrokerState state, CprMatch attempts) =>
         {
-            // CAP-018: a bare challenge, unlike userinfo's. Two endpoints on one host with two
-            // different WWW-Authenticate strings is exactly what a generated emulator smooths
-            // over. Matching a CPR needs a session, which arrives with the approval engine.
-            http.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
-            http.Response.Headers.WWWAuthenticate = "Bearer";
-            return Results.Empty;
+            var issued = Bearer(http, state);
+
+            if (issued is null)
+            {
+                // CAP-018: a bare challenge, unlike userinfo's. Two endpoints on one host with
+                // two different WWW-Authenticate strings is exactly what a generated emulator
+                // smooths over.
+                http.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+                http.Response.Headers.WWWAuthenticate = "Bearer";
+                return Results.Empty;
+            }
+
+            var submitted = await Submitted(http, "cpr");
+
+            if (string.IsNullOrEmpty(submitted))
+            {
+                // CAP-021: its own envelope, not an OAuth error. A different endpoint family
+                // on the same host, and it answers in a different shape.
+                http.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                return Json("""{"errorMessage":"Missing Cpr parameter"}""");
+            }
+
+            if (!attempts.TryAttempt(issued.SessionId))
+            {
+                http.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                return Json(JsonSerializer.Serialize(new { errorMessage = CprMatch.Exceeded }));
+            }
+
+            return Json(Matched(
+                submitted.Replace("-", "", StringComparison.Ordinal) == issued.Citizen.Cpr));
+        });
+
+        // The broker's own way to end a session from the back channel, which its documentation
+        // recommends over sending the browser to end_session.
+        Map("op/api/v1/session/logout", ["POST"], RouteRole.Extra("sessionLogout"), (
+            HttpContext http, BrokerState state, CprMatch attempts) =>
+        {
+            var issued = Bearer(http, state);
+
+            if (issued is null)
+            {
+                http.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+                http.Response.Headers.WWWAuthenticate = "Bearer";
+                return Results.Empty;
+            }
+
+            state.EndSession(issued.SessionId);
+            attempts.Forget(issued.SessionId);
+
+            return Results.NoContent();
         });
 
         // Where a parked login waits. Plainly StubID's own page: reproducing the broker's
@@ -336,6 +415,23 @@ public static class Endpoints
                 """), "text/html; charset=utf-8");
         });
 
+        // CAP-044 and CAP-045: without a usable id_token_hint the broker goes to its own
+        // logout page and ignores post_logout_redirect_uri entirely. A client that omits the
+        // hint never comes back, and this is where that starts.
+        Map("op/connect/endsession", ["GET", "POST"], RouteRole.Extra("endsession"), async (
+            HttpContext http, BrokerState state) =>
+        {
+            var parameters = await ReadParameters(http);
+
+            return EndSession(parameters, state) is { } destination
+                ? Results.Redirect(destination)
+                : Results.Redirect($"{BaseUrl(http)}/op/Account/Logout");
+        });
+
+        Map("op/Account/Logout", ["GET"], RouteRole.Extra("logout"), () => Results.Text(
+            Page("Signed out", "<p>The session is over. This is StubID, an emulator.</p>"),
+            "text/html; charset=utf-8"));
+
         Map("op/Error", ["GET"], RouteRole.ErrorPage, (HttpContext http, IDataProtectionProvider protection) =>
         {
             var errorId = http.Request.Query["errorId"].ToString();
@@ -374,9 +470,113 @@ public static class Endpoints
             response["state"] = request.State;
         }
 
+        // CAP-023: a failed login carries session_state like a successful one, and carries no
+        // iss, even though discovery advertises support for it. The success path omits iss
+        // only when an id_token is returned; a failure omits it either way.
+        response["session_state"] = SessionStateParameter(request.ClientId, session.Id);
+
         return request.ResponseMode == "form_post"
             ? FormPost(request.RedirectUri, response)
             : Results.Redirect(Append(request.RedirectUri, response, '?'));
+    }
+
+    /// <summary>
+    /// The answer to a CPR match. A JSON boolean, which is what the pre-production swagger
+    /// declares.
+    /// </summary>
+    /// <remarks>
+    /// Unrecorded, and worth doubting rather than assuming: everything on the userinfo side of
+    /// this broker is a JSON string, including two values that are plainly booleans, and the
+    /// vendor's own claim tables have already been wrong about typing once. The sitting that
+    /// would have settled it spent its three attempts on the other branches, so this is the
+    /// documented shape until a recording says otherwise.
+    /// </remarks>
+    [Fidelity(FidelityTier.Exact, FidelityProvenance.DocsConfirmed,
+        Evidence = "The pre-production swagger. Unrecorded: no capture reached a successful match.")]
+    private static string Matched(bool matches) =>
+        JsonSerializer.Serialize(new { cprNumberMatch = matches });
+
+    /// <summary>
+    /// Where end session sends the browser, or null for the broker's own logout page.
+    /// </summary>
+    /// <remarks>
+    /// Two halves with two different provenances. Without a usable hint the redirect is
+    /// ignored outright, which is recorded twice; honouring it with one is documented rather
+    /// than recorded, because reaching that branch needs a real id_token and so a real login.
+    /// </remarks>
+    [Fidelity(FidelityTier.Exact, FidelityProvenance.VerifiedLive,
+        Evidence = "fixtures/neb/pp/CAP-044, fixtures/neb/pp/CAP-045")]
+    private static string? EndSession(IDictionary<string, string> parameters, BrokerState state)
+    {
+        var hint = Optional(parameters, "id_token_hint");
+        var wanted = Optional(parameters, "post_logout_redirect_uri");
+
+        if (hint is null || wanted is null || !state.EndsSession(hint))
+        {
+            return null;
+        }
+
+        return Optional(parameters, "state") is { } echoed
+            ? Append(wanted, new Dictionary<string, string> { ["state"] = echoed }, '?')
+            : wanted;
+    }
+
+    /// <summary>
+    /// The answer to a silent login nothing could resolve. Unrecorded: reaching it against the
+    /// broker needs a client with single sign-on and a session already open, so this is the
+    /// specification's answer rather than the broker's observed one.
+    /// </summary>
+    [Fidelity(FidelityTier.Exact, FidelityProvenance.DocsConfirmed,
+        Evidence = "OpenID Connect Core 3.1.2.6. Unrecorded: needs an established SSO session.")]
+    private const string SilentLoginImpossible = "login_required";
+
+    /// <summary>
+    /// A space-delimited list, as the specification spells it and as discovery advertises:
+    /// login, none and select_account.
+    /// </summary>
+    private static IReadOnlyList<string> Prompts(IReadOnlyDictionary<string, string> parameters) =>
+        parameters.TryGetValue("prompt", out var value)
+            ? value.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            : [];
+
+    /// <summary>The access token behind a call, or null if there is not a usable one.</summary>
+    private static IssuedAccessToken? Bearer(HttpContext http, BrokerState state)
+    {
+        var header = http.Request.Headers.Authorization.ToString();
+
+        return header.StartsWith("Bearer ", StringComparison.Ordinal)
+            ? state.ReadAccessToken(header[7..])
+            : null;
+    }
+
+    /// <summary>
+    /// One member of a submitted body, whether it arrived as JSON or as a form. The broker's
+    /// own API takes JSON; a form is what a hand-written test tends to send, and accepting
+    /// both costs nothing.
+    /// </summary>
+    private static async Task<string?> Submitted(HttpContext http, string name)
+    {
+        if (http.Request.HasFormContentType)
+        {
+            return Optional(
+                (await http.Request.ReadFormAsync()).ToDictionary(f => f.Key, f => f.Value.ToString()),
+                name);
+        }
+
+        try
+        {
+            using var document = await JsonDocument.ParseAsync(http.Request.Body);
+
+            return document.RootElement.ValueKind == JsonValueKind.Object
+                   && document.RootElement.TryGetProperty(name, out var value)
+                   && value.ValueKind == JsonValueKind.String
+                ? value.GetString()
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static async Task<Dictionary<string, string>> ReadParameters(HttpContext http)
@@ -464,7 +664,23 @@ public static class Endpoints
         </head><body><h1>{{WebUtility.HtmlEncode(title)}}</h1>{{body}}</body></html>
         """;
 
-    private static IResult Json(string body) => Results.Text(body, "application/json; charset=UTF-8");
+    /// <summary>
+    /// Every recorded JSON answer carries the same directive, success and failure alike. A
+    /// client that cached a token response would reuse a code, so this is behaviour rather
+    /// than decoration.
+    /// </summary>
+    private static IResult Json(string body) => new CachelessJson(body);
+
+    private sealed class CachelessJson(string body) : IResult
+    {
+        public Task ExecuteAsync(HttpContext http)
+        {
+            http.Response.Headers.CacheControl = "no-store, no-cache, max-age=0";
+            http.Response.Headers.Pragma = "no-cache";
+
+            return Results.Text(body, "application/json; charset=UTF-8").ExecuteAsync(http);
+        }
+    }
 
     /// <summary>A bare error object: no description, no uri, exactly as recorded.</summary>
     private static IResult OAuthError(HttpContext http, string error)

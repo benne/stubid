@@ -66,6 +66,9 @@ public sealed class SimulationParameter(Citizens citizens) : ISessionDecider
 
     public string Name => "simulation parameter";
 
+    /// <summary>The two the broker's grammar defines. Anything else is not a mode.</summary>
+    private static readonly string[] Modes = ["ui", "no-ui"];
+
     public Decision? Decide(SessionContext context, out string reason)
     {
         if (!context.Parameters.TryGetValue("simulation", out var raw))
@@ -75,10 +78,35 @@ public sealed class SimulationParameter(Citizens citizens) : ISessionDecider
         }
 
         var tokens = raw.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        // CAP-013: a mode the broker does not define is not an error. The request was accepted
+        // and sent on to the authenticator, so the parameter is ignored rather than refused,
+        // and the login proceeds as though it had not been sent.
+        if (tokens.Length == 0 || !Modes.Contains(tokens[0], StringComparer.Ordinal))
+        {
+            reason = $"'{raw}' names no mode the broker defines, so the parameter is ignored";
+            return null;
+        }
+
         var directives = tokens.Skip(1)
             .Select(t => t.Split(':', 2))
             .Where(p => p.Length == 2)
             .ToDictionary(p => p[0], p => p[1], StringComparer.Ordinal);
+
+        // A mode on its own asks for a login without a person in it, not for a particular
+        // person. Stepping aside here would park it at a page, which is the one thing the
+        // parameter exists to avoid.
+        if (directives.Count == 0)
+        {
+            if (citizens.Default is not { } fallback)
+            {
+                reason = "a simulated login was asked for, and there is nobody to simulate";
+                return Decision.Refused("mitid_simulation_unknown_user");
+            }
+
+            reason = $"a simulated login naming nobody, so {fallback.Id}";
+            return Decision.Selecting(fallback.Id);
+        }
 
         var citizen = Resolve(directives);
 

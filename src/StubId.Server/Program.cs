@@ -15,6 +15,7 @@ builder.Services.AddSingleton<TimeProvider>(_ =>
 builder.Services.AddSingleton<Documents>();
 builder.Services.AddSingleton<Keys>();
 builder.Services.AddSingleton<BrokerState>();
+builder.Services.AddSingleton<CprMatch>();
 
 // The approval engine. Automatic by default, because a test that hangs waiting for a person
 // is worse than one that does not exercise the waiting; set StubId:ApproveAutomatically to

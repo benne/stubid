@@ -71,6 +71,39 @@ public sealed class BrokerState
         };
 
     /// <summary>
+    /// Whether an id_token_hint is shaped like a token that carries a session, which is what
+    /// decides if a post-logout redirect is honoured.
+    /// </summary>
+    /// <remarks>
+    /// It reads the token; it does not verify it. Any three-part token whose payload has a
+    /// sid gets through, including one this instance never issued. That is deliberate and it
+    /// is the same trade as not checking client secrets: a stub that demanded a token it had
+    /// signed itself would refuse a hint a test had built by hand, which is the more likely
+    /// case here. The broker refuses those; StubID does not, and says so in its divergences.
+    /// </remarks>
+    public bool EndsSession(string idTokenHint)
+    {
+        var parts = idTokenHint.Split('.');
+        if (parts.Length != 3)
+        {
+            return false;
+        }
+
+        try
+        {
+            using var payload = System.Text.Json.JsonDocument.Parse(
+                System.Buffers.Text.Base64Url.DecodeFromChars(parts[1]));
+
+            return payload.RootElement.TryGetProperty("sid", out var sid)
+                && sid.GetString() is { Length: > 0 };
+        }
+        catch (Exception e) when (e is FormatException or System.Text.Json.JsonException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Whether a client may ask for this response type. The comparison ignores order, as the
     /// broker's does: its own hybrid client declares "id_token code" while a client library
     /// sends "code id_token".
@@ -154,4 +187,20 @@ public sealed record Client(string ClientId, string[] ResponseTypes, string Orga
 
     public IssuedAccessToken? ReadAccessToken(string token) =>
         _accessTokens.TryGetValue(token, out var issued) ? issued : null;
+
+    /// <summary>
+    /// Ends a session, so every token issued from it stops working. The broker's own
+    /// documentation recommends this over sending the browser to the end-session endpoint,
+    /// and a test that wants to prove its cleanup runs needs the tokens to actually die.
+    /// </summary>
+    public void EndSession(string sessionId)
+    {
+        foreach (var (token, issued) in _accessTokens)
+        {
+            if (issued.SessionId == sessionId)
+            {
+                _accessTokens.TryRemove(token, out _);
+            }
+        }
+    }
 }

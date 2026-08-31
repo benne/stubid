@@ -57,15 +57,19 @@ public class FidelityLedgerTests : IClassFixture<WebApplicationFactory<Program>>
     {
         // The failure this prevents is a claim of having checked something against a
         // recording that was renamed, moved or never written.
+        // One behaviour is often settled by several recordings together, so evidence may name
+        // more than one and every one of them has to exist.
         var missing = Ledger()
             .Where(e => e.Provenance == "VerifiedLive" && e.Evidence is not null)
-            .Where(e => !File.Exists(Path.Combine(Root(), e.Evidence!))
-                        && !Directory.Exists(Path.Combine(Root(), e.Evidence!)))
+            .SelectMany(e => e.Evidence!
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(cited => !File.Exists(Path.Combine(Root(), cited))
+                                && !Directory.Exists(Path.Combine(Root(), cited)))
+                .Select(cited => $"{e.Subject} -> {cited}"))
             .ToList();
 
         Assert.True(missing.Count == 0,
-            "These cite a recording that is not there: "
-            + string.Join(", ", missing.Select(e => $"{e.Subject} -> {e.Evidence}")));
+            "These cite a recording that is not there: " + string.Join(", ", missing));
     }
 
     [Fact]
