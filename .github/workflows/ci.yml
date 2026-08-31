@@ -45,6 +45,40 @@ jobs:
           docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest \
             dir /repo --redact --no-banner --config /repo/.gitleaks.toml
 
+  # CONTRIBUTING asks for a sign-off on every commit: the contributor certifying they have the
+  # right to submit the work. A trailer naming somebody else certifies nothing, so it has to
+  # match the commit's own author.
+  #
+  # Pull requests only. A commit that reaches master unsigned is already there, and the merge
+  # commits GitHub writes for us are nobody's to sign.
+  sign-off:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          missing=0
+          for sha in $(git log --no-merges --format=%H "$BASE..$HEAD"); do
+            author=$(git log -1 --format=%ae "$sha")
+            signed=$(git log -1 --format='%(trailers:key=Signed-off-by,valueonly,unfold=true)' "$sha")
+            if ! printf '%s' "$signed" | grep -qiF "<$author>"; then
+              echo "::error::$(git log -1 --format='%h %s' "$sha") is not signed off by $author"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo
+            echo "Every commit needs a Signed-off-by trailer matching its author."
+            echo "Write new ones with 'git commit -s'; fix a branch with 'git rebase --signoff $BASE'."
+            exit 1
+          fi
+
   # The three client stacks a Danish team actually uses. The .NET handler runs in-process with
   # the unit tests; these two run against the published image, and they check things .NET
   # forgives - openid-client compares the discovered issuer with the configured authority

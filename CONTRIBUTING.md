@@ -59,4 +59,6 @@ fixtures.
 
 Every commit is signed off (`git commit -s`). The sign-off is the Developer Certificate of
 Origin: your certification that you have the right to submit the work. It is a human
-statement about provenance, not a tool credit, so the no-trailer rule does not touch it.
+statement about provenance, not a tool credit, so the no-trailer rule does not touch it. CI
+checks that each commit in a pull request carries one naming its author; `git rebase
+--signoff` fixes a branch that does not.
