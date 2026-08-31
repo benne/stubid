@@ -3,8 +3,13 @@ capture.local.json
 *.har
 capture-scratch/
 
+# Docker matches these against the context root and implies no **, so the bare names would
+# leave every project's build output in the context - which a Testcontainers build from a
+# developer's working tree would then copy into the SDK image, stale absolute paths and all.
 bin/
 obj/
+**/bin/
+**/obj/
 node_modules/
 .git/
 tests/

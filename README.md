@@ -5,9 +5,10 @@ your MitID login and signing integration in automated tests.
 
 **Status: early development.** A login works: a stock ASP.NET Core application signs in
 against it, and so do Node's `openid-client` and Spring Security. Tests can create citizens,
-decide how each login resolves, and move the clock to force a timeout. What is missing is
-transaction signing and the packaging that makes any of it convenient — there is no NuGet
-package and no admin interface yet. See [docs/roadmap.md](docs/roadmap.md).
+decide how each login resolves, and move the clock to force a timeout, and a .NET suite can
+start the container and drive all of that from code. What is missing is transaction signing,
+the admin interface, and published packages — nothing is on NuGet or GHCR yet. See
+[docs/roadmap.md](docs/roadmap.md).
 
 ## The problem
 
@@ -34,8 +35,23 @@ each login resolves.
 - Move the clock forward to trigger a timeout, without waiting for it.
 - Run offline, in CI, in milliseconds.
 
+```csharp
+await using var stub = new StubIdBuilder().Build();
+await stub.StartAsync();
+
+var citizen = await stub.Citizens.CreateAsync(
+    new CitizenSpec { Name = "Anders Berg Christiansen", DateOfBirth = new DateOnly(1985, 3, 29) });
+
+await stub.Behaviour.EnqueueAsync(Decision.Approved(citizen.Id).ForClient(clientId));
+// Point the application at stub.Authority and sign in.
+```
+
+The container is ready in about three seconds, and the login itself takes about fifty
+milliseconds. Both numbers come from a test that runs in CI.
+
 How a login is decided, and how to ask why it went the way it did, is in
-[docs/guides/approvals.md](docs/guides/approvals.md).
+[docs/guides/approvals.md](docs/guides/approvals.md). Running StubID from a test suite is in
+[docs/guides/testcontainers.md](docs/guides/testcontainers.md).
 
 ## Fidelity
 

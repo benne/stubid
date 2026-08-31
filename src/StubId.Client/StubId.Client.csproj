@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>A typed client for StubID's control API. HttpClient only, no Docker.</Description>
+    <PackageTags>stubid;mitid;oidc;testing</PackageTags>
+  </PropertyGroup>
+
+  <!--
+    No package reference at all: System.Text.Json and System.Net.Http.Json are both in the
+    shared framework. That is why this package exists separately from StubId.Testing - a suite
+    that already runs StubID somewhere gets the typed surface without pulling Docker into its
+    test project.
+  -->
+
+</Project>

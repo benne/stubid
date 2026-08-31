@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>A Testcontainers module that runs StubID in Docker for a test suite.</Description>
+    <PackageTags>stubid;mitid;oidc;testing;testcontainers;docker</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The container lifecycle, and nothing else. This is the only reason this package needs a
+         Docker daemon; StubId.Client below works against any instance that is already running. -->
+    <PackageReference Include="Testcontainers" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The module hands back a typed client rather than a base address, so a test never has to
+         assemble a control URL by hand. -->
+    <ProjectReference Include="../StubId.Client/StubId.Client.csproj" />
+  </ItemGroup>
+
+</Project>

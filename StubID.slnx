@@ -1,9 +1,11 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/StubId.Abstractions/StubId.Abstractions.csproj" />
+    <Project Path="src/StubId.Client/StubId.Client.csproj" />
     <Project Path="src/StubId.Profiles.Abstractions/StubId.Profiles.Abstractions.csproj" />
     <Project Path="src/StubId.Profiles.Idura/StubId.Profiles.Idura.csproj" />
     <Project Path="src/StubId.Server/StubId.Server.csproj" />
+    <Project Path="src/StubId.Testing/StubId.Testing.csproj" />
     <Project Path="src/StubId.Wire/StubId.Wire.csproj" />
   </Folder>
   <Folder Name="/tests/">
@@ -12,6 +14,7 @@
     <Project Path="tests/StubId.Interop.AspNetCore/StubId.Interop.AspNetCore.csproj" />
     <Project Path="tests/StubId.Profiles.Tests/StubId.Profiles.Tests.csproj" />
     <Project Path="tests/StubId.Sessions.Tests/StubId.Sessions.Tests.csproj" />
+    <Project Path="tests/StubId.Testing.Tests/StubId.Testing.Tests.csproj" />
     <Project Path="tests/StubId.Wire.Tests/StubId.Wire.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">

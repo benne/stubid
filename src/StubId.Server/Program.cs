@@ -14,6 +14,7 @@ builder.Services.AddSingleton<TimeProvider>(_ =>
         : TimeProvider.System);
 builder.Services.AddSingleton<Documents>();
 builder.Services.AddSingleton<Keys>();
+builder.Services.AddSingleton<PublicBaseUrl>();
 builder.Services.AddSingleton<BrokerState>();
 builder.Services.AddSingleton<CprMatch>();
 
@@ -42,6 +43,27 @@ builder.Services.AddSingleton<IBrokerProfile, NetsEidBrokerProfile>();
 
 var app = builder.Build();
 
+// An instance that has not been told its own address says so, in the same shape the clock
+// refuses in. The alternative is a plausible wrong issuer, which every client accepts when it is
+// configured and rejects later with nothing on its side to explain why.
+app.Use(async (http, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (PublicBaseUrlNotSetException) when (!http.Response.HasStarted)
+    {
+        http.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+
+        await http.Response.WriteAsJsonAsync(new
+        {
+            error = "the public base URL is not set",
+            detail = PublicBaseUrl.NotSetDetail,
+        });
+    }
+});
+
 // Before routing, because the framework would already have matched a path the broker refuses.
 app.Use(async (http, next) =>
 {
@@ -61,10 +83,15 @@ app.MapControlApi();
 // The broker's own routes come from the profile, not from a fixed table. Loading them runs the
 // collision scan, which refuses to start rather than throwing on every request later.
 var profile = app.Services.GetRequiredService<IBrokerProfile>();
-var issuer = $"{builder.Configuration["StubId:PublicBaseUrl"] ?? "http://localhost"}/op";
+var publicBaseUrl = app.Services.GetRequiredService<PublicBaseUrl>();
 var routes = app.Services.GetRequiredService<ProfileEndpointDataSource>();
 
-routes.Load([(profile, new ProfileContext(issuer, issuer[..^3]), MountPrefix: "")]);
+// A snapshot of the address as the routes were loaded, and not a second source of truth: the
+// value moves at runtime and a route table does not get rebuilt when it does. No profile reads
+// it today, and one that needs it must read PublicBaseUrl per request instead.
+var seeded = publicBaseUrl.Value ?? "";
+
+routes.Load([(profile, new ProfileContext($"{seeded}/op", seeded), MountPrefix: "")]);
 ((IEndpointRouteBuilder)app).DataSources.Add(routes);
 
 app.Run();
