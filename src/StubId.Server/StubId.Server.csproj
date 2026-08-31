@@ -1,8 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <Description>The emulated broker surface.</Description>
+    <Description>The emulated broker surface, and the composition that hosts it.</Description>
+    <PackageTags>stubid;mitid;oidc;testing;aspnetcore</PackageTags>
     <RootNamespace>StubId.Server</RootNamespace>
+    <!--
+      The Web SDK defaults this to false, because a web application is normally shipped as an
+      image rather than as a dependency. This one is both: an in-process host is the same
+      composition on a different host, and the only way for that to stay a checkable claim is for
+      the module to depend on this assembly rather than carry a copy of it.
+    -->
+    <IsPackable>true</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
