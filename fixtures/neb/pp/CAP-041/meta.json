@@ -1,0 +1,14 @@
+{
+  "id": "CAP-041",
+  "description": "Authorize naming the business identity provider",
+  "settles": "That mitid_erhverv is accepted at the authorize endpoint by a client that is not configured for it. Refusing a value the broker accepts is the worse failure of the two, so this settles which way to lean.",
+  "disposition": "LoginRedirect",
+  "status": 302,
+  "byteLength": 0,
+  "volatileHeaders": [
+    "Location"
+  ],
+  "volatileBodyPatterns": [
+    "errorId=[A-Za-z0-9_\\-]\u002B"
+  ]
+}

@@ -4,8 +4,10 @@ namespace StubId.CaptureHarness;
 /// The recordings that need no MitID login, and so can run unattended.
 /// </summary>
 /// <remarks>
-/// CAP-001 to CAP-019 are this pack. CAP-020 onwards need a human to complete a login in
-/// MitID's test tool, and live in a separate catalogue.
+/// CAP-001 to CAP-019 are the first round of this pack, and CAP-040 onwards a second, added
+/// while building the request surface: every one of them settles a question the code would
+/// otherwise have had to assume. CAP-020 to CAP-030 need a human to complete a login in
+/// MitID's test tool and live in a separate catalogue, which is why the numbering skips them.
 /// </remarks>
 public static class CaptureCatalogue
 {
@@ -252,6 +254,81 @@ public static class CaptureCatalogue
                 ["redirect_uri"] = RedirectUri,
                 ["scope"] = "openid mitid",
             },
+        },
+        new()
+        {
+            Id = "CAP-040",
+            Expected = Disposition.ErrorPage,
+            Description = "Authorize with an idp_params that is not JSON at all",
+            Settles = "Whether a malformed idp_params is a request error, like an unknown "
+                + "idp_values (CAP-009), or is carried through like a malformed value inside "
+                + "it (CAP-010). The broker publishes invalid_idp_params for exactly this, "
+                + "but publishing a code does not say where it is raised.",
+            Url = Authorize("&idp_values=mitid&idp_params=" + Uri.EscapeDataString("not json")),
+            VolatileBodyPatterns = [ErrorIdIsVolatile],
+            VolatileHeaders = ["Location"],
+        },
+        new()
+        {
+            Id = "CAP-041",
+            Expected = Disposition.LoginRedirect,
+            Description = "Authorize naming the business identity provider",
+            Settles = "That mitid_erhverv is accepted at the authorize endpoint by a client "
+                + "that is not configured for it. Refusing a value the broker accepts is the "
+                + "worse failure of the two, so this settles which way to lean.",
+            Url = Authorize("&idp_values=mitid_erhverv"),
+            VolatileBodyPatterns = [ErrorIdIsVolatile],
+            VolatileHeaders = ["Location"],
+        },
+        new()
+        {
+            Id = "CAP-042",
+            Expected = Disposition.BareJson,
+            Description = "Token endpoint with no parameters at all",
+            Settles = "Which error an empty request earns. Client authentication and the "
+                + "grant are both missing, and only the broker can say which it complains "
+                + "about first.",
+            Method = "POST",
+            Url = $"{PreProduction}/connect/token",
+            Form = new Dictionary<string, string>(),
+        },
+        new()
+        {
+            Id = "CAP-043",
+            Expected = Disposition.ErrorPage,
+            Description = "Authorize with no scope",
+            Settles = "That scope is required at the authorize endpoint. Discovery publishes "
+                + "no scopes_supported, so there is nothing to check a scope against, and the "
+                + "guess here was that a missing one would be carried through the way an "
+                + "unknown idp_params value is. It is not: the request is refused outright.",
+            Url = $"{PreProduction}/connect/authorize?client_id={OpenCodeClient}"
+                + $"&response_type=code&redirect_uri={Uri.EscapeDataString(RedirectUri)}"
+                + "&state=capture&nonce=capture",
+            VolatileBodyPatterns = [ErrorIdIsVolatile],
+            VolatileHeaders = ["Location"],
+        },
+        new()
+        {
+            Id = "CAP-044",
+            Expected = Disposition.Unclassified,
+            Description = "End session with no parameters",
+            Settles = "What end session does when it is given nothing. Recorded once during "
+                + "the manual sitting; repeated here so the unattended pack carries it and "
+                + "the drift job watches it.",
+            Url = $"{PreProduction}/connect/endsession",
+            VolatileHeaders = ["Location"],
+        },
+        new()
+        {
+            Id = "CAP-045",
+            Expected = Disposition.Unclassified,
+            Description = "End session asking for a post-logout redirect without an id_token_hint",
+            Settles = "That post_logout_redirect_uri is ignored without a hint: the answer is "
+                + "the same bare redirect to the broker's own logout page as CAP-044. A client "
+                + "that omits the hint silently stops coming back, and this is why.",
+            Url = $"{PreProduction}/connect/endsession"
+                + $"?post_logout_redirect_uri={Uri.EscapeDataString(RedirectUri)}&state=capture",
+            VolatileHeaders = ["Location"],
         },
     ];
 }

@@ -3,6 +3,7 @@ using StubId.CaptureHarness;
 // Records the broker exchanges that StubID's fidelity tests assert against.
 //
 //   capture   record every unattended case and write the fixtures
+//             --only=CAP-040,CAP-041 records just those, leaving the rest committed
 //   verify    record the unattended cases again and compare against what is committed
 //   session   host the relying party for the manual sitting on localhost:5099
 //   check     verify the local configuration before a sitting
@@ -12,7 +13,15 @@ using StubId.CaptureHarness;
 // Both hit the broker's public pre-production environment with unauthenticated requests.
 
 var command = args.Length > 0 ? args[0] : "capture";
-var root = args.Length > 1
+
+// Recording a case rewrites its bytes, and an error id or a timestamp differs every time. So
+// adding a case to the catalogue would otherwise churn every fixture beside it, burying the
+// one new recording in nineteen diffs that say nothing.
+var only = args
+    .FirstOrDefault(a => a.StartsWith("--only=", StringComparison.Ordinal))?[7..]
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+var root = args.Length > 1 && !args[1].StartsWith("--", StringComparison.Ordinal)
     ? args[1]
     : Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "fixtures", "neb", "pp");
 root = Path.GetFullPath(root);
@@ -22,7 +31,15 @@ Console.CancelKeyPress += (_, e) => { e.Cancel = true; cancellation.Cancel(); };
 
 var store = new FixtureStore(root);
 using var recorder = new Recorder();
-var cases = CaptureCatalogue.All;
+var cases = only is null
+    ? CaptureCatalogue.All
+    : [.. CaptureCatalogue.All.Where(c => only.Contains(c.Id, StringComparer.OrdinalIgnoreCase))];
+
+if (cases.Count == 0)
+{
+    Console.Error.WriteLine("No case matched --only.");
+    return 2;
+}
 
 switch (command)
 {
@@ -90,8 +107,14 @@ async Task<int> CaptureAsync()
         }
     }
 
+    // A partial run must not restamp the pack: the date says when these recordings were
+    // made, and most of them were not made today.
     await store.WriteManifestAsync(
-        DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"), cancellation.Token);
+        only is null
+            ? DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'")
+            : await store.CapturedAtAsync(cancellation.Token)
+              ?? DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"),
+        cancellation.Token);
 
     Console.WriteLine("Wrote MANIFEST.json");
 

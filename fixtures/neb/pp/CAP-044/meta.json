@@ -1,0 +1,12 @@
+{
+  "id": "CAP-044",
+  "description": "End session with no parameters",
+  "settles": "What end session does when it is given nothing. Recorded once during the manual sitting; repeated here so the unattended pack carries it and the drift job watches it.",
+  "disposition": "Unclassified",
+  "status": 302,
+  "byteLength": 0,
+  "volatileHeaders": [
+    "Location"
+  ],
+  "volatileBodyPatterns": []
+}

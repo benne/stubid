@@ -1,0 +1,5 @@
+{
+  "method": "GET",
+  "url": "https://pp.netseidbroker.dk/op/connect/endsession?post_logout_redirect_uri=http%3A%2F%2Flocalhost%3A5099%2Fcallback\u0026state=capture",
+  "headers": []
+}

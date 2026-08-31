@@ -1,0 +1,14 @@
+{
+  "id": "CAP-043",
+  "description": "Authorize with no scope",
+  "settles": "Whether scope is required at the authorize endpoint. Discovery publishes no scopes_supported, so there is nothing to check a scope against and no document that says whether one is needed.",
+  "disposition": "LoginRedirect",
+  "status": 302,
+  "byteLength": 0,
+  "volatileHeaders": [
+    "Location"
+  ],
+  "volatileBodyPatterns": [
+    "errorId=[A-Za-z0-9_\\-]\u002B"
+  ]
+}

@@ -125,6 +125,21 @@ public sealed class FixtureStore(string root)
             : Encoding.UTF8.GetBytes(scrubbed);
     }
 
+    /// <summary>When the committed pack says it was recorded, if there is one.</summary>
+    public async Task<string?> CapturedAtAsync(CancellationToken ct)
+    {
+        var path = Path.Combine(Root, "MANIFEST.json");
+        if (!File.Exists(path))
+        {
+            return null;
+        }
+
+        using var document = JsonDocument.Parse(await File.ReadAllBytesAsync(path, ct));
+        return document.RootElement.TryGetProperty("capturedAtUtc", out var value)
+            ? value.GetString()
+            : null;
+    }
+
     public async Task WriteManifestAsync(string capturedAtUtc, CancellationToken ct)
     {
         var files = Directory

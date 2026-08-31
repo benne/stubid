@@ -1,0 +1,14 @@
+{
+  "id": "CAP-040",
+  "description": "Authorize with an idp_params that is not JSON at all",
+  "settles": "Whether a malformed idp_params is a request error, like an unknown idp_values (CAP-009), or is carried through like a malformed value inside it (CAP-010). The broker publishes invalid_idp_params for exactly this, but publishing a code does not say where it is raised.",
+  "disposition": "ErrorPage",
+  "status": 302,
+  "byteLength": 0,
+  "volatileHeaders": [
+    "Location"
+  ],
+  "volatileBodyPatterns": [
+    "errorId=[A-Za-z0-9_\\-]\u002B"
+  ]
+}
