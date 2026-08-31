@@ -44,3 +44,52 @@ jobs:
       - run: |
           docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest \
             dir /repo --redact --no-banner --config /repo/.gitleaks.toml
+
+  # The three client stacks a Danish team actually uses. The .NET handler runs in-process with
+  # the unit tests; these two run against the published image, and they check things .NET
+  # forgives - openid-client compares the discovered issuer with the configured authority
+  # character for character, and Spring derives candidate metadata locations from a
+  # path-bearing issuer and asserts the issuer it finds.
+  interop:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build the image
+        run: docker build -t stubid:ci .
+
+      - name: The container itself, and a restart a cached document survives
+        run: ./scripts/verify-container.sh stubid:ci
+
+      - name: Start it for the client stacks
+        run: |
+          docker run -d --name stubid -p 18080:8080 -v stubid-keys:/keys \
+            -e StubId__PublicBaseUrl=http://localhost:18080 stubid:ci
+          for _ in $(seq 1 40); do
+            curl -fsS -o /dev/null http://localhost:18080/op/.well-known/openid-configuration && break
+            sleep 0.5
+          done
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Node, with openid-client
+        working-directory: tests/interop-node
+        run: |
+          npm install --no-audit --no-fund
+          node signin.mjs
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Java, with Spring Security
+        working-directory: tests/interop-spring
+        run: mvn -q -B compile exec:java
+
+      - name: What the container said, if anything went wrong
+        if: failure()
+        run: docker logs stubid

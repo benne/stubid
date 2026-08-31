@@ -1,0 +1,32 @@
+# The hostname split, which is the thing that catches people out.
+#
+# The browser reaches StubID at localhost; the application container reaches it at "stubid".
+# Both must see the same issuer, because a client library compares the issuer it discovers
+# against the authority it was configured with, character for character. So the issuer is
+# pinned to the name the browser uses, and the application is told to reach the same host.
+services:
+  stubid:
+    image: ghcr.io/benne/stubid:latest
+    build:
+      context: ../..
+    ports:
+      - "8080:8080"
+    environment:
+      # Pinned, not derived from the request. Both callers see this.
+      StubId__PublicBaseUrl: http://localhost:8080
+    volumes:
+      # Without this, a restart regenerates the keys and every client that cached the metadata
+      # fails with a key-resolution error until its cache expires.
+      - stubid-keys:/keys
+
+  # Your application. It resolves "stubid" on the compose network, but must be configured with
+  # the authority the browser uses, or the issuer will not match.
+  #
+  # app:
+  #   environment:
+  #     Authority: http://localhost:8080/op
+  #   extra_hosts:
+  #     - "localhost:host-gateway"
+
+volumes:
+  stubid-keys:

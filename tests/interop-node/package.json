@@ -1,0 +1,8 @@
+{
+  "name": "stubid-interop-node",
+  "private": true,
+  "type": "module",
+  "description": "Checks StubID against the OpenID client library Node applications actually use.",
+  "scripts": { "test": "node signin.mjs" },
+  "dependencies": { "openid-client": "^6.1.7" }
+}

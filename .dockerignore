@@ -1,0 +1,13 @@
+# Credentials for recording. They must never enter a build context, let alone an image.
+capture.local.json
+*.har
+capture-scratch/
+
+bin/
+obj/
+node_modules/
+.git/
+tests/
+tools/
+docs/
+samples/

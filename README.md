@@ -3,9 +3,10 @@
 A stand-in for the test environments of the Danish MitID identity brokers, so you can run
 your MitID login and signing integration in automated tests.
 
-**Status: early development. Nothing works yet.** The protocol surface is being built
-against captured recordings of a real broker. See [docs/roadmap.md](docs/roadmap.md) for
-what is done and what is not.
+**Status: early development.** A login works: a stock ASP.NET Core application signs in
+against it, and so do Node's `openid-client` and Spring Security. What is missing is the part
+that makes it useful for testing — citizens you create and approvals you control. Today every
+login succeeds immediately as one hardcoded person. See [docs/roadmap.md](docs/roadmap.md).
 
 ## The problem
 
