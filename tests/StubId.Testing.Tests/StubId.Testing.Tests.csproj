@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <IsPackable>false</IsPackable>
@@ -9,10 +9,19 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="xunit.runner.visualstudio" />
+    <!-- The client library a Danish integrator actually uses, pointed at a container over TLS.
+         Its RequireHttpsMetadata default is the thing under test. -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" />
+    <!-- For the TestServer the relying party is hosted on. The stub is the container; only the
+         application under test is in memory. -->
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../../src/StubId.Testing/StubId.Testing.csproj" />
+    <!-- To mint a certificate that is not this instance's, which is how the trusting handler is
+         told apart from one that waves validation through. -->
+    <ProjectReference Include="../../src/StubId.Wire/StubId.Wire.csproj" />
   </ItemGroup>
 
 </Project>

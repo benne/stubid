@@ -13,7 +13,11 @@ namespace StubId.Testing;
 /// </remarks>
 public sealed class StubIdConfiguration : ContainerConfiguration
 {
-    public StubIdConfiguration(Uri? publicBaseUrl = null) => PublicBaseUrl = publicBaseUrl;
+    public StubIdConfiguration(Uri? publicBaseUrl = null, bool? tls = null)
+    {
+        PublicBaseUrl = publicBaseUrl;
+        Tls = tls;
+    }
 
     public StubIdConfiguration(IResourceConfiguration<CreateContainerParameters> resourceConfiguration)
         : base(resourceConfiguration)
@@ -31,11 +35,17 @@ public sealed class StubIdConfiguration : ContainerConfiguration
     }
 
     public StubIdConfiguration(StubIdConfiguration oldValue, StubIdConfiguration newValue)
-        : base(oldValue, newValue) =>
+        : base(oldValue, newValue)
+    {
         PublicBaseUrl = BuildConfiguration.Combine(oldValue.PublicBaseUrl, newValue.PublicBaseUrl);
+        Tls = BuildConfiguration.Combine(oldValue.Tls, newValue.Tls);
+    }
 
     /// <summary>
     /// The address the caller pinned, or null to publish the mapped one once Docker has assigned it.
     /// </summary>
     public Uri? PublicBaseUrl { get; }
+
+    /// <summary>Whether the instance serves TLS, which decides which port the address names.</summary>
+    public bool? Tls { get; }
 }

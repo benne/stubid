@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using DotNet.Testcontainers.Containers;
 using StubId.Client;
 
@@ -21,7 +23,16 @@ public sealed class StubIdContainer : DockerContainer
     /// the pinned value - a name that means something to a browser or a sibling container and
     /// possibly nothing to this process.
     /// </remarks>
-    public Uri BaseAddress => _configuration.PublicBaseUrl ?? MappedAddress;
+    public Uri BaseAddress => _configuration.PublicBaseUrl ?? MappedClientAddress;
+
+    /// <summary>
+    /// The certificate this instance serves TLS with, or null when it serves plain HTTP.
+    /// </summary>
+    /// <remarks>
+    /// Read once during start, over the plain-HTTP control API, which is the only transport a caller
+    /// can reach before it knows what to trust.
+    /// </remarks>
+    public X509Certificate2? ServerCertificate { get; internal set; }
 
     /// <summary>Where this process reaches the container: the host and the mapped port.</summary>
     /// <remarks>
@@ -32,6 +43,21 @@ public sealed class StubIdContainer : DockerContainer
     public Uri MappedAddress =>
         new UriBuilder(
             Uri.UriSchemeHttp, Hostname, GetMappedPublicPort(StubIdBuilder.StubIdPort)).Uri;
+
+    /// <summary>
+    /// Where a client library reaches the container: https when TLS is on, and the same as
+    /// <see cref="MappedAddress" /> when it is not.
+    /// </summary>
+    /// <remarks>
+    /// Distinct from <see cref="MappedAddress" /> on purpose. The control API keeps to plain HTTP so
+    /// that creating a citizen never depends on a trust decision, while the address the instance
+    /// publishes as its own - and therefore every issuer it emits - names the secured port.
+    /// </remarks>
+    internal Uri MappedClientAddress =>
+        _configuration.Tls is true
+            ? new UriBuilder(
+                Uri.UriSchemeHttps, Hostname, GetMappedPublicPort(StubIdBuilder.StubIdTlsPort)).Uri
+            : MappedAddress;
 
     /// <summary>
     /// What a client library is configured with. The issuer it then discovers equals this character
@@ -71,6 +97,34 @@ public sealed class StubIdContainer : DockerContainer
     /// tests when it reuses one instance.
     /// </summary>
     public Task ResetAsync(CancellationToken ct = default) => Control.ResetAsync(ct);
+
+    /// <summary>
+    /// An HTTP handler that trusts this instance's certificate, and nothing else.
+    /// </summary>
+    /// <remarks>
+    /// Not a handler that accepts any certificate. The difference matters because the usual shortcut
+    /// - returning true from the validation callback - is a habit that outlives the test it was
+    /// written for, and it is one copied line away from a production client that validates nothing.
+    /// This one compares what was presented against the exact certificate this container generated.
+    /// </remarks>
+    public HttpClientHandler CreateTrustingHandler()
+    {
+        if (ServerCertificate is not { } expected)
+        {
+            throw new InvalidOperationException(
+                "This instance serves plain HTTP, so there is no certificate to trust. "
+                + "Build it with WithTls() if you meant to secure it.");
+        }
+
+        var expectedBytes = expected.RawData;
+
+        return new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = (_, presented, _, _) =>
+                presented is not null
+                && CryptographicOperations.FixedTimeEquals(presented.RawData, expectedBytes),
+        };
+    }
 
     protected override async ValueTask DisposeAsyncCore()
     {

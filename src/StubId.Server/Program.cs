@@ -41,6 +41,22 @@ builder.Services.AddSingleton(new PathRules("/op"));
 builder.Services.AddSingleton<ProfileEndpointDataSource>();
 builder.Services.AddSingleton<IBrokerProfile, NetsEidBrokerProfile>();
 
+// TLS is off unless asked for, and adds a listener rather than replacing one. The issuer is stored
+// data, so both listeners render the same URLs and there is still exactly one issuer; what that buys
+// is a control API reachable without trusting anything, which is what lets a test module create a
+// citizen before it has seen the certificate.
+var serverCertificate = ServerCertificate.Load(builder.Configuration);
+
+if (serverCertificate is not null)
+{
+    builder.Services.AddSingleton(serverCertificate);
+    builder.WebHost.ConfigureKestrel(kestrel =>
+    {
+        kestrel.ListenAnyIP(8080);
+        kestrel.ListenAnyIP(8443, listener => listener.UseHttps(serverCertificate.Certificate));
+    });
+}
+
 var app = builder.Build();
 
 // An instance that has not been told its own address says so, in the same shape the clock

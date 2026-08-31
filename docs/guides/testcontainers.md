@@ -61,6 +61,70 @@ new StubIdBuilder().WithPublicBaseUrl(new Uri("http://localhost:8080"))
 The module then leaves the address alone. `stub.MappedAddress` is still where this process reaches
 the container, which is not the same thing and is what the control API uses.
 
+## Serving TLS
+
+Off by default, because the point of an emulator is being reached quickly and a transport nothing
+trusts yet is a slower first hour. When you want it:
+
+```csharp
+await using var stub = new StubIdBuilder().WithTls().Build();
+await stub.StartAsync();
+
+// options.Authority = stub.Authority.ToString();  → https://localhost:32771/op
+// options.BackchannelHttpHandler = stub.CreateTrustingHandler();
+```
+
+That is the whole configuration. In particular the .NET handler's `RequireHttpsMetadata` is left at
+its default of true, which is the point: the usual advice for testing against a stub is to turn that
+check off, and a relaxation added for a test is one copied line from a production client that accepts
+an unsecured metadata document. `A_stock_client_signs_in_with_the_https_check_left_on` in
+`tests/StubId.Testing.Tests/StockClientOverTlsTests.cs` is that claim, run in CI.
+
+TLS **adds** a listener rather than replacing one. Plain HTTP keeps answering on 8080 and the control
+API keeps using it, so creating a citizen never waits on a trust decision. Both listeners render the
+same URLs, because the issuer is stored data rather than something derived from the request — there
+is still exactly one issuer, and it names the secured port.
+
+### Trusting it
+
+`CreateTrustingHandler()` returns a handler that trusts **this instance's certificate and nothing
+else**. It is not a handler that accepts anything: it compares what the server presented against the
+exact certificate this container generated, which the module read over the plain-HTTP control API
+during start.
+
+That distinction is the reason the method exists. Waving validation through with a callback that
+returns true is the shortcut everyone reaches for, and it is indistinguishable at a glance from code
+that belongs nowhere near production.
+
+StubID ships no certificate and installs nothing into any trust store. A self-signed one is generated
+on first use and written into the keys volume, so it stays stable across restarts for the same reason
+the signing keys do — a client that pinned what it saw gets a different answer after a restart
+otherwise, and reports it as a trust failure rather than as a restart.
+
+### Bringing your own
+
+When the certificate has to chain to something the environment already trusts:
+
+```csharp
+new StubIdBuilder().WithTlsCertificate(File.ReadAllBytes("dev.pfx"), "password")
+```
+
+Or on a container you run yourself:
+
+```
+docker run -p 18080:8080 -p 18443:8443 \
+  -e StubId__PublicBaseUrl=https://localhost:18443 \
+  -e StubId__Tls=pkcs12 \
+  -e StubId__Tls__Path=/tls/dev.pfx \
+  -e StubId__Tls__Password=password \
+  -v "$PWD/dev.pfx:/tls/dev.pfx:ro" ghcr.io/benne/stubid
+```
+
+`StubId__Tls=self-signed` generates one instead. Its subject alternative names cover `localhost`,
+`127.0.0.1`, `::1` and the container hostname; add more with
+`StubId__Tls__SubjectAlternativeNames=stubid,stubid.internal`. A certificate carrying no matching
+name is refused by every current client, and none of them say so in the error.
+
 ## Deciding logins
 
 How a login resolves is [its own guide](approvals.md). Two things matter here.

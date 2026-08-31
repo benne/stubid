@@ -22,6 +22,7 @@ namespace StubId.Client;
 [JsonSerializable(typeof(EnqueueBody))]
 [JsonSerializable(typeof(AdvanceBody))]
 [JsonSerializable(typeof(PublicBaseUrlBody))]
+[JsonSerializable(typeof(TlsCertificateBody))]
 [JsonSerializable(typeof(DecidedBody))]
 [JsonSerializable(typeof(ConflictBody))]
 [JsonSerializable(typeof(FaultBody))]
@@ -46,6 +47,8 @@ internal sealed record EnqueueBody(
 internal sealed record AdvanceBody(double Seconds);
 
 internal sealed record PublicBaseUrlBody(string? PublicBaseUrl);
+
+internal sealed record TlsCertificateBody(string? Certificate, string? Thumbprint);
 
 internal sealed record DecidedBody(bool Decided, string? Citizen, SessionState? State);
 
