@@ -51,7 +51,22 @@ public sealed class Keys : IDisposable
             // certificate that is already expired.
             var notBefore = TimeProvider.System.GetUtcNow().AddDays(-1);
             using var created = CertificateFactory.Create($"StubID {name}", notBefore, notBefore.AddYears(5));
-            File.WriteAllBytes(file, created.Export(X509ContentType.Pkcs12, Password));
+
+            // Written through a temporary file and moved into place, so two processes sharing
+            // a key directory cannot read a half-written one or fight over the same handle.
+            // Whoever loses the race keeps the winner's key, which is the point: a key that
+            // differs per process would defeat the reason for storing it at all.
+            var pending = Path.Combine(directory, $"{name}.{Environment.ProcessId}.tmp");
+            File.WriteAllBytes(pending, created.Export(X509ContentType.Pkcs12, Password));
+
+            try
+            {
+                File.Move(pending, file, overwrite: false);
+            }
+            catch (IOException)
+            {
+                File.Delete(pending);
+            }
         }
 
         return new SigningKey(
