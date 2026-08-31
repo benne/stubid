@@ -44,7 +44,7 @@ public class StubIdBuilderTests
     [Fact]
     public void The_published_image_and_port_are_what_the_module_declares()
     {
-        Assert.Equal("ghcr.io/benne/stubid:0.2.0", StubIdBuilder.StubIdImage);
+        Assert.Equal("ghcr.io/benne/stubid:2026.08.1", StubIdBuilder.StubIdImage);
         Assert.Equal(8080, StubIdBuilder.StubIdPort);
     }
 

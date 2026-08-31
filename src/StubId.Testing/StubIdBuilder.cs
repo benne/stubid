@@ -11,7 +11,13 @@ namespace StubId.Testing;
 public sealed class StubIdBuilder : ContainerBuilder<StubIdBuilder, StubIdContainer, StubIdConfiguration>
 {
     /// <summary>The image this module is tested against.</summary>
-    public const string StubIdImage = "ghcr.io/benne/stubid:0.2.0";
+    /// <remarks>
+    /// Dated rather than numbered, because what this emulator changes is bytes. A fidelity
+    /// correction is a breaking change for anyone asserting on the bytes it corrects, which is not
+    /// a distinction a semantic minor can carry - a date says which recording of the broker you are
+    /// running. The trailing component is pinned and byte-stable; the shorter tag floats.
+    /// </remarks>
+    public const string StubIdImage = "ghcr.io/benne/stubid:2026.08.1";
 
     public const ushort StubIdPort = 8080;
 
