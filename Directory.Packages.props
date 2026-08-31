@@ -5,13 +5,20 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
 
-  <!-- Shipped rather than test-only: this is a dependency of the StubId.Testing package. -->
+  <!-- Shipped rather than test-only: these reach a consumer through a package we publish. -->
   <ItemGroup Label="Shipped">
     <PackageVersion Include="Testcontainers" Version="4.14.0" />
+    <!-- The controllable clock is a product feature, and this provides it. It moved here when
+         StubId.Server became a package: it was already a dependency of the server, and calling it
+         test-only once the server ships would be a false entry in the file that records why each
+         dependency is here. -->
+    <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="9.10.0" />
+    <!-- The in-memory transport StubId.InProcess hosts on. Test-shaped by name, but it reaches a
+         consumer through a package we publish, so it belongs here. -->
+    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.0" />
   </ItemGroup>
 
   <ItemGroup Label="Testing">
-    <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="9.10.0" />
     <PackageVersion Include="xunit.v3" Version="3.2.0" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />

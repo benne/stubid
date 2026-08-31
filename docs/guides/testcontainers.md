@@ -1,7 +1,9 @@
 # Running StubID from a test suite
 
-`StubId.Testing` starts StubID in Docker for the length of a test run. `StubId.Client` is the
-control API on its own, for a suite that already has an instance running somewhere.
+`StubId.Testing` starts StubID in Docker for the length of a test run. `StubId.InProcess` runs it
+inside the test process instead, with no container at all, and is [its own guide](in-process.md).
+`StubId.Client` is the control API on its own, for a suite that already has an instance running
+somewhere.
 
 ```csharp
 await using var stub = new StubIdBuilder()
@@ -169,4 +171,4 @@ using var stub = new StubIdClient(new Uri("http://localhost:8080"));
 ```
 
 That is the shape for [the compose recipe](../../samples/compose/docker-compose.yml), a shared
-development instance, or an in-process host.
+development instance, or [an in-process host](in-process.md).
