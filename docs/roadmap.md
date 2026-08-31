@@ -12,7 +12,7 @@ Status of the first emulated surface, Signaturgruppen Broker ("Nets eID Broker")
 | M4 | Broker profile seam, routing, fidelity ledger | routes and ledger done; claims, errors and keys still engine |
 | M5 | Sessions, approval resolution, citizens | done |
 | M6 | Full request surface, error fidelity, logout | done |
-| M7 | Control API, test modules, TLS trust, quickstarts | control API done; packages, TLS and quickstarts not started |
+| M7 | Control API, test modules, TLS trust, quickstarts | control API and the Testcontainers module done; TLS and the remaining quickstarts not started |
 | M8 | Admin interface | not started |
 | M9 | Transaction signing | not started |
 | M10 | Release engineering | not started |
