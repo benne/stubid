@@ -144,8 +144,42 @@ public static class ControlApi
             return Results.NoContent();
         });
 
+        // Where the address is settable after the process has started. A container does not learn
+        // its own mapped host port until Docker has started it, and the caller that mapped it is
+        // the only party that knows - so a test module starts the instance, reads the port, and
+        // tells it, before anything has discovered a document with the wrong issuer in it.
+        api.MapGet("/runtime/public-base-url", (PublicBaseUrl publicBaseUrl) =>
+            Results.Json(new { publicBaseUrl = publicBaseUrl.Value }));
+
+        api.MapPut("/runtime/public-base-url",
+            (PublicBaseUrl publicBaseUrl, PublicBaseUrlRequest? body) =>
+        {
+            if (!PublicBaseUrl.TryNormalise(body?.PublicBaseUrl, out var normalised, out var fault))
+            {
+                return Results.BadRequest(new { error = fault.Error, detail = fault.Detail });
+            }
+
+            publicBaseUrl.Set(normalised);
+
+            return Results.Json(new { publicBaseUrl = normalised });
+        });
+
         app.MapGet("/_stubid/health/live", () => Results.Ok());
-        app.MapGet("/_stubid/health/ready", () => Results.Ok());
+
+        // Live is "the process answers"; ready is "the process can answer correctly". The split is
+        // what makes the handshake above work: a caller polls live to know it may set the address,
+        // and waits on ready to know the setting landed. There is no shell in the runtime image,
+        // so an HTTP answer is the only readiness signal anything outside can use.
+        app.MapGet("/_stubid/health/ready", (PublicBaseUrl publicBaseUrl) =>
+            publicBaseUrl.IsSet
+                ? Results.Ok()
+                : Results.Json(
+                    new
+                    {
+                        error = "the public base URL is not set",
+                        detail = PublicBaseUrl.NotSetDetail,
+                    },
+                    statusCode: StatusCodes.Status503ServiceUnavailable));
     }
 
     private static IResult Conflict(SessionStore sessions, string id) =>
@@ -181,4 +215,10 @@ public static class ControlApi
         string Name, string DateOfBirth, string? Gender, string? Id, string? UserName, string? Rule);
 
     public sealed record AdvanceRequest(double Seconds);
+
+    /// <remarks>
+    /// Nullable so a missing body is refused with our own message rather than the framework's
+    /// empty one - the caller who sends no body is the caller who most needs telling what to send.
+    /// </remarks>
+    public sealed record PublicBaseUrlRequest(string? PublicBaseUrl);
 }
