@@ -52,11 +52,18 @@ public sealed class Keys : IDisposable
             var notBefore = TimeProvider.System.GetUtcNow().AddDays(-1);
             using var created = CertificateFactory.Create($"StubID {name}", notBefore, notBefore.AddYears(5));
 
-            // Written through a temporary file and moved into place, so two processes sharing
-            // a key directory cannot read a half-written one or fight over the same handle.
-            // Whoever loses the race keeps the winner's key, which is the point: a key that
-            // differs per process would defeat the reason for storing it at all.
-            var pending = Path.Combine(directory, $"{name}.{Environment.ProcessId}.tmp");
+            // Written through a temporary file and moved into place, so nothing sharing a key
+            // directory can read a half-written one or fight over the same handle. Whoever
+            // loses the race keeps the winner's key, which is the point: a key that differed
+            // per caller would defeat the reason for storing it at all.
+            //
+            // The temporary name is unique per attempt, not per process. Naming it after the
+            // process meant every start inside one process wrote the same temporary file, so
+            // one could be moved into place while another was still writing it. Whether that
+            // is what made the race test fail once is unproven - it did not reproduce in
+            // eight further suite runs or in nineteen hundred concurrent starts - but two
+            // writers sharing one path is wrong however narrow the window is.
+            var pending = Path.Combine(directory, $"{name}.{Guid.NewGuid():N}.tmp");
             File.WriteAllBytes(pending, created.Export(X509ContentType.Pkcs12, Password));
 
             try
