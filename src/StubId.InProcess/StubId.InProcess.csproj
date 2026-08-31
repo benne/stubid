@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Runs StubID inside your test process. No Docker, no listener, no browser.</Description>
+    <PackageTags>stubid;mitid;oidc;testing;inprocess;testserver</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- A library rather than a web application, so the framework is referenced rather than the
+         Web SDK used: that SDK defaults IsPackable to false and brings static web asset machinery
+         nothing here has any use for. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The transport, and the whole of what this package adds over StubId.Server. -->
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../StubId.Server/StubId.Server.csproj" />
+    <!-- The module hands back a typed client rather than a base address, as the container one
+         does, so a test never has to assemble a control URL by hand. -->
+    <ProjectReference Include="../StubId.Client/StubId.Client.csproj" />
+  </ItemGroup>
+
+</Project>
