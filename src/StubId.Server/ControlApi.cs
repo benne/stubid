@@ -186,6 +186,33 @@ public static class ControlApi
             });
         });
 
+        // The same certificate as the route above, in the encoding everything that is not .NET
+        // reads. One curl puts it in a file, and curl --cacert, NODE_EXTRA_CA_CERTS and keytool all
+        // take it from there; base64 DER inside a JSON body is consumable by a .NET client and by
+        // nothing else.
+        //
+        // The trailing newline is not cosmetic. A caller trusting a second instance appends to this
+        // file, and without one the join reads "-----END CERTIFICATE----------BEGIN CERTIFICATE-----",
+        // which no parser accepts. Written literally rather than through Environment.NewLine: what
+        // goes on the wire must not depend on the operating system StubID happens to run on.
+        api.MapGet("/runtime/tls-certificate.pem", (IServiceProvider services) =>
+            services.GetService<ServerCertificate>() is { } tls
+                ? Results.Text(
+                    tls.Certificate.ExportCertificatePem() + "\n",
+                    "application/pem-certificate-chain")
+
+                // 404 rather than an empty 200, because this route is the certificate rather than a
+                // question about one. A success that writes an empty file is discovered later, as a
+                // handshake failure with nothing on the caller's side to explain it.
+                : Results.Json(
+                    new
+                    {
+                        error = "this instance serves plain HTTP",
+                        detail = "Start it with StubId:Tls=self-signed to serve TLS, or with "
+                            + "StubId:Tls=pkcs12 and a certificate of your own.",
+                    },
+                    statusCode: StatusCodes.Status404NotFound));
+
         app.MapGet("/_stubid/health/live", () => Results.Ok());
 
         // Live is "the process answers"; ready is "the process can answer correctly". The split is
