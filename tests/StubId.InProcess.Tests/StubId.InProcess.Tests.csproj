@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <!-- The client library a Danish integrator actually uses, pointed at a host in this process. -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" />
+    <!-- Deliberately no Microsoft.AspNetCore.Mvc.Testing. Its absence is part of the claim: a
+         shipped module must not oblige a consumer to add a test framework to reach it, and the
+         relying party below is hosted on the transport that arrives with StubId.InProcess. -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/StubId.InProcess/StubId.InProcess.csproj" />
+  </ItemGroup>
+
+</Project>
