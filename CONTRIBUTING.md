@@ -26,7 +26,7 @@ error messages — is written the way you would write for a colleague.
 **Do not paste vendor documentation prose.** Broker documentation is copyrighted.
 Reimplement from observed behaviour and describe it in your own words. Protocol
 identifiers, error codes, and claim names are functional facts and may be reproduced
-exactly.
+exactly — as are the exact error strings the broker puts on the wire.
 
 **New or changed emulated behaviour must cite a fixture.** A claim about what a broker does
 belongs in `fixtures/`, recorded from the real thing, not in a commit message. Behaviour
@@ -38,6 +38,15 @@ fails if a CPR-shaped string, a real client secret, or an unscrubbed token appea
 tree. The CPR generator produces replacement numbers (day of month 61-91) that cannot
 collide with a real one.
 
+**Contributions may use AI tools; you answer for the output.**
+- The tool's terms must not restrict what this project can do with the output, and must not
+  impose conditions beyond Apache-2.0.
+- Output that reproduces third-party material is held to the same rule as any other
+  copying: if the licence is unknown or incompatible, it does not land. If you would not
+  paste it from someone else's repository, do not paste it from a model.
+- Name the tools that materially contributed, in one line, in the pull-request description.
+  Not in commit trailers — that rule stands.
+
 ## Before you open a pull request
 
 ```
@@ -47,3 +56,7 @@ dotnet test
 
 CI runs the same on Linux and Windows, plus the conformance suite against recorded
 fixtures.
+
+Every commit is signed off (`git commit -s`). The sign-off is the Developer Certificate of
+Origin: your certification that you have the right to submit the work. It is a human
+statement about provenance, not a tool credit, so the no-trailer rule does not touch it.
