@@ -45,6 +45,13 @@ public class RouteCollisionTests
         services.AddSingleton<Keys>();
         services.AddSingleton<BrokerState>();
         services.AddSingleton<Tokens>();
+        services.AddSingleton<StubId.Server.Sessions.Citizens>();
+        services.AddSingleton<StubId.Server.Sessions.EnqueuedDecisions>();
+        services.AddSingleton(sp => new StubId.Server.Sessions.Ladder(
+        [
+        ]));
+        services.AddSingleton(sp => new StubId.Server.Sessions.SessionStore(
+            TimeProvider.System, sp.GetRequiredService<StubId.Server.Sessions.Ladder>()));
         services.AddSingleton<Microsoft.Extensions.Configuration.IConfiguration>(
             new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build());
 

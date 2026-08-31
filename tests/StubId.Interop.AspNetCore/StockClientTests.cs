@@ -148,11 +148,12 @@ public class StockClientTests : IClassFixture<WebApplicationFactory<Program>>
 
         var subject = await secure.Content.ReadAsStringAsync(Ct);
         var state = new StubId.Server.BrokerState();
+        var citizen = new StubId.Server.Sessions.Citizens().Default!;
 
         // Scoped to the organisation rather than the client: two clients of one company get
         // the same subject for the same person, as the broker was recorded doing.
         Assert.Equal(
-            StubId.Server.Tokens.Subject(state.OrganisationOf(ClientId), state.DefaultCitizen),
+            StubId.Server.Tokens.Subject(state.OrganisationOf(ClientId), citizen),
             subject);
     }
 

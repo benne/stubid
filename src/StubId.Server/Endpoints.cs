@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.DataProtection;
 using StubId.Profiles;
+using StubId.Server.Sessions;
 using StubId.Wire;
 
 namespace StubId.Server;
@@ -56,7 +57,8 @@ public static class Endpoints
         });
 
         Map("op/connect/authorize", ["GET", "POST"], RouteRole.Authorize, async (
-            HttpContext http, BrokerState state, Tokens tokens, TimeProvider clock, IDataProtectionProvider protection) =>
+            HttpContext http, BrokerState state, Tokens tokens, TimeProvider clock,
+            IDataProtectionProvider protection, SessionStore sessions, Citizens citizens) =>
         {
             var parameters = await ReadParameters(http);
 
@@ -94,9 +96,35 @@ public static class Endpoints
                     $"Response type '{request.ResponseType}' is not enabled for this client.");
             }
 
-            // The slice approves immediately. Parking the request for a decision is the next
-            // milestone; the shape of what comes back does not change.
-            var issued = state.IssueCode(request, state.DefaultCitizen, clock.GetUtcNow());
+            // The request is parked and the ladder is asked what should happen to it. Most
+            // logins are decided by something already in place and never wait at all; the ones
+            // that do are what the control API and the login page are for.
+            var session = sessions.Park(request.ClientId, http.Request.QueryString.Value ?? "",
+                new SessionContext(
+                    SessionId: "",
+                    ClientId: request.ClientId,
+                    Scope: request.Scope,
+                    Parameters: parameters,
+                    Now: clock.GetUtcNow()));
+
+            if (!session.IsDecided)
+            {
+                // Nobody has an opinion yet, so the browser waits where a person can act on it.
+                return Results.Redirect($"{BaseUrl(http)}/op/Login?session={session.Id}");
+            }
+
+            if (session.State is SessionState.Failed or SessionState.Expired)
+            {
+                // A user-level failure is reported back to the client, unlike an invalid
+                // request, which never reaches it.
+                return Refuse(http, request, session);
+            }
+
+            var citizen = citizens.ById(session.CitizenId!)
+                ?? throw new InvalidOperationException($"No citizen {session.CitizenId}.");
+
+            var issued = state.IssueCode(request, citizen, clock.GetUtcNow());
+            session.TryRedeem();
             var wants = request.ResponseType.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             var organisation = state.OrganisationOf(request.ClientId);
 
@@ -126,7 +154,7 @@ public static class Endpoints
                 response["state"] = request.State;
             }
 
-            response["session_state"] = SessionState(request.ClientId, issued);
+            response["session_state"] = SessionStateParameter(request.ClientId, issued);
 
             // Advertised in discovery, so a client may enforce it - but the broker omits it
             // whenever an id_token is returned, which already carries the issuer.
@@ -251,6 +279,63 @@ public static class Endpoints
             return Results.Empty;
         });
 
+        // Where a parked login waits. Plainly StubID's own page: reproducing the broker's
+        // authenticator would put someone else's trade dress on an emulator, and a page that
+        // looked real is a page someone can be fooled by.
+        Map("op/Login", ["GET", "POST"], RouteRole.Extra("login"), async (
+            HttpContext http, SessionStore sessions, Citizens citizens) =>
+        {
+            var id = http.Request.Query["session"].ToString();
+            var session = sessions.Find(id);
+
+            if (session is null)
+            {
+                return Results.NotFound();
+            }
+
+            if (HttpMethods.IsPost(http.Request.Method))
+            {
+                var form = await http.Request.ReadFormAsync();
+                var chosen = citizens.ById(form["citizen"].ToString()) ?? citizens.Default;
+
+                var decision = form["decision"] == "approve"
+                    ? chosen?.Outcome() ?? Decision.Refused("mitid_identity_not_found")
+                    : Decision.Refused("mitid_user_aborted");
+
+                var decided = sessions.Decide(id, decision, "the login page");
+
+                return Results.Text(
+                    Page(decided ? "Decided" : "Already decided",
+                        decided
+                            ? $"<p>This login is now {sessions.Find(id)?.State}. Return to the application.</p>"
+                            : "<p>Something decided this login first. Nothing was changed.</p>"),
+                    "text/html; charset=utf-8");
+            }
+
+            if (session.IsDecided)
+            {
+                return Results.Text(
+                    Page("Already decided", $"<p>This login is {session.State}.</p>"),
+                    "text/html; charset=utf-8");
+            }
+
+            var options = string.Join("\n", citizens.All.OrderBy(c => c.Id, StringComparer.Ordinal)
+                .Select(c => $"""<option value="{WebUtility.HtmlEncode(c.Id)}">{WebUtility.HtmlEncode(c.Name)}</option>"""));
+
+            return Results.Text(Page("StubID", $"""
+                <p>This is StubID, an emulator.</p>
+                <p><strong>No identity is being verified, and no real authentication is taking place.</strong></p>
+                <form method="post">
+                  <p><label>Sign in as <select name="citizen">{options}</select></label></p>
+                  <p>
+                    <button type="submit" name="decision" value="approve">Approve</button>
+                    <button type="submit" name="decision" value="reject">Abort</button>
+                  </p>
+                </form>
+                <p>A test can do the same through the control API without a browser.</p>
+                """), "text/html; charset=utf-8");
+        });
+
         Map("op/Error", ["GET"], RouteRole.ErrorPage, (HttpContext http, IDataProtectionProvider protection) =>
         {
             var errorId = http.Request.Query["errorId"].ToString();
@@ -270,6 +355,28 @@ public static class Endpoints
         });
 
         return routes;
+    }
+
+    /// <summary>
+    /// Sends a user-level failure back to the client, carrying the broker's own error code in
+    /// error_description rather than a description of it.
+    /// </summary>
+    private static IResult Refuse(HttpContext http, AuthorizationRequest request, AuthSession session)
+    {
+        var response = new Dictionary<string, string>
+        {
+            ["error"] = session.OAuthError ?? "access_denied",
+            ["error_description"] = session.ErrorCode ?? "mitid_unexpected_error",
+        };
+
+        if (request.State is not null)
+        {
+            response["state"] = request.State;
+        }
+
+        return request.ResponseMode == "form_post"
+            ? FormPost(request.RedirectUri, response)
+            : Results.Redirect(Append(request.RedirectUri, response, '?'));
     }
 
     private static async Task<Dictionary<string, string>> ReadParameters(HttpContext http)
@@ -330,7 +437,7 @@ public static class Endpoints
     /// The session-management parameter every recorded callback carries: an opaque value
     /// followed by a salt, separated by a dot.
     /// </summary>
-    private static string SessionState(string clientId, string code)
+    private static string SessionStateParameter(string clientId, string code)
     {
         var salt = Convert.ToHexString(
             System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(code))[..16]);
@@ -350,6 +457,13 @@ public static class Endpoints
     /// The charset is part of what the recordings carry, and the uppercase spelling is the
     /// broker's. Passing the literal keeps it; the encoding overload would lowercase it.
     /// </summary>
+    private static string Page(string title, string body) => $$"""
+        <!DOCTYPE html>
+        <html lang="en"><head><meta charset="utf-8"><title>{{WebUtility.HtmlEncode(title)}}</title>
+        <style>body{font:14px system-ui;margin:2rem;max-width:40rem}</style>
+        </head><body><h1>{{WebUtility.HtmlEncode(title)}}</h1>{{body}}</body></html>
+        """;
+
     private static IResult Json(string body) => Results.Text(body, "application/json; charset=UTF-8");
 
     /// <summary>A bare error object: no description, no uri, exactly as recorded.</summary>

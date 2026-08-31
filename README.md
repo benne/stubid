@@ -4,9 +4,11 @@ A stand-in for the test environments of the Danish MitID identity brokers, so yo
 your MitID login and signing integration in automated tests.
 
 **Status: early development.** A login works: a stock ASP.NET Core application signs in
-against it, and so do Node's `openid-client` and Spring Security. What is missing is the part
-that makes it useful for testing — citizens you create and approvals you control. Today every
-login succeeds immediately as one hardcoded person. See [docs/roadmap.md](docs/roadmap.md).
+against it, and so do Node's `openid-client` and Spring Security. Tests can create citizens,
+decide how each login resolves, and move the clock to force a timeout. What is missing is
+the rest of the request surface, transaction signing, and the packaging that makes any of
+it convenient — there is no NuGet package and no admin interface yet. See
+[docs/roadmap.md](docs/roadmap.md).
 
 ## The problem
 
@@ -28,10 +30,13 @@ and JSON types, so your application only changes its authority URL and client cr
 Behind that surface there is no authenticator: you create citizens yourself and decide how
 each login resolves.
 
-- Approve automatically, from a test, by clicking, or by a rule on a citizen or group.
+- Approve automatically, from a test, or by clicking.
 - Make a login fail with a specific broker error code, on demand and repeatably.
 - Move the clock forward to trigger a timeout, without waiting for it.
 - Run offline, in CI, in milliseconds.
+
+How a login is decided, and how to ask why it went the way it did, is in
+[docs/guides/approvals.md](docs/guides/approvals.md).
 
 ## Fidelity
 

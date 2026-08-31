@@ -11,6 +11,7 @@
     <Project Path="tests/StubId.Fixtures.Tests/StubId.Fixtures.Tests.csproj" />
     <Project Path="tests/StubId.Interop.AspNetCore/StubId.Interop.AspNetCore.csproj" />
     <Project Path="tests/StubId.Profiles.Tests/StubId.Profiles.Tests.csproj" />
+    <Project Path="tests/StubId.Sessions.Tests/StubId.Sessions.Tests.csproj" />
     <Project Path="tests/StubId.Wire.Tests/StubId.Wire.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">

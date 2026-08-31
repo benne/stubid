@@ -10,9 +10,9 @@ Status of the first emulated surface, Signaturgruppen Broker ("Nets eID Broker")
 | M2 | Token writer, keys, JWKS | done |
 | M3 | First working login: a stock ASP.NET Core app signs in — **v0.1** | done |
 | M4 | Broker profile seam, routing, fidelity ledger | routes and ledger done; claims, errors and keys still engine |
-| M5 | Sessions, approval resolution, citizens | not started |
+| M5 | Sessions, approval resolution, citizens | done |
 | M6 | Full request surface, error fidelity, logout | not started |
-| M7 | Control API, test modules, TLS trust, quickstarts | not started |
+| M7 | Control API, test modules, TLS trust, quickstarts | control API done; packages, TLS and quickstarts not started |
 | M8 | Admin interface | not started |
 | M9 | Transaction signing | not started |
 | M10 | Release engineering | not started |

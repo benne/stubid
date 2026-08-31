@@ -6,6 +6,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The controllable clock is a product feature, not a test helper: a timeout that cannot
+         be reached is a timeout nobody tests. -->
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="../StubId.Wire/StubId.Wire.csproj" />
     <ProjectReference Include="../StubId.Profiles.Abstractions/StubId.Profiles.Abstractions.csproj" />
   </ItemGroup>

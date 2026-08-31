@@ -1,4 +1,5 @@
 using StubId.Abstractions;
+using StubId.Server.Sessions;
 using StubId.Wire;
 
 namespace StubId.Server;
@@ -180,8 +181,8 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
             // Base64, and shown to the user when the broker asks for their CPR.
             claims.AddRange(
             [
-                JsonClaim.String("mitid.cpr_consent_text", citizen.CprConsentText),
-                JsonClaim.String("mitid.cpr_consent_header", citizen.CprConsentHeader),
+                JsonClaim.String("mitid.cpr_consent_text", CprConsentText),
+                JsonClaim.String("mitid.cpr_consent_header", CprConsentHeader),
             ]);
         }
 
@@ -255,4 +256,10 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
         Uuid5.Create(SubjectNamespace, $"{organisation}|{citizen.Uuid}").ToString();
 
     private static string Nsis(string level) => $"https://data.gov.dk/concept/core/nsis/{level}";
+
+    /// <summary>The prompt shown when the broker asks a user for their personal number.</summary>
+    /// <remarks>Base64, and the broker's own wording rather than a property of any person.</remarks>
+    private const string CprConsentHeader = "SW5kdGFzdCBkaXQgQ1BSLW51bW1lcg==";
+
+    private const string CprConsentText = "U3R1YklEIGVtdWxlcmVyIE1pdElEIGkgdGVzdA==";
 }

@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using StubId.Abstractions;
+using StubId.Server.Sessions;
 using StubId.Wire;
 
 namespace StubId.Server;
@@ -95,16 +96,6 @@ public sealed class BrokerState
 /// for the same person, which is what the id_token calls org_mapped.
 /// </param>
 public sealed record Client(string ClientId, string[] ResponseTypes, string Organisation);
-
-    /// <summary>
-    /// The person every login authenticates as, until citizens can be created. The personal
-    /// number is a replacement number, so it cannot collide with a real one.
-    /// </summary>
-    public Citizen DefaultCitizen { get; } = new(
-        Uuid: "1a5f8c2e-0b47-4d9a-9f31-6c2e8b7a4d15",
-        Name: "Anders Berg Christiansen",
-        DateOfBirth: "1985-03-29",
-        Cpr: "8903851234");
 
     /// <summary>
     /// Any non-empty secret is accepted. A stub cannot know the secret an existing
