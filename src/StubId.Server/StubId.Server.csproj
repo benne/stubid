@@ -16,13 +16,46 @@
     <ProjectReference Include="../StubId.Profiles.Abstractions/StubId.Profiles.Abstractions.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <!--
-      The recorded documents are the source of truth for what we serve, so they are compiled
-      in rather than reproduced by hand. Emitting a document a serialiser rebuilt would lose
-      member order and the members the broker leaves out.
-    -->
-    <EmbeddedResource Include="../../fixtures/neb/pp/CAP-001/response.raw" Link="Fixtures/discovery.json" LogicalName="discovery.json" />
-  </ItemGroup>
+  <!--
+    The recording is the source of truth for what we serve, so the served template is derived
+    from it at build time rather than reproduced by hand. Emitting a document a serialiser
+    rebuilt would lose member order and the members the broker leaves out. The recording
+    itself is not embedded: the build swaps the broker's host for a placeholder first, so the
+    shipped assembly carries no occurrence of it.
+  -->
+  <UsingTask TaskName="SubstituteInFile" TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Source ParameterType="System.String" Required="true" />
+      <Destination ParameterType="System.String" Required="true" />
+      <Find ParameterType="System.String" Required="true" />
+      <ReplaceWith ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
+        // Not WriteLinesToFile: it splits its input on semicolons, which a re-recorded
+        // document would silently lose.
+        System.IO.File.WriteAllText(
+            Destination,
+            System.IO.File.ReadAllText(Source).Replace(Find, ReplaceWith),
+            new System.Text.UTF8Encoding(false));
+        ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="DeriveDiscoveryTemplate" BeforeTargets="AssignTargetPaths"
+          Inputs="../../fixtures/neb/pp/CAP-001/response.raw"
+          Outputs="$(IntermediateOutputPath)discovery.template.json">
+    <!-- stubid.invalid is reserved by RFC 2606, so nothing resolves it if one ever escapes. -->
+    <SubstituteInFile Source="../../fixtures/neb/pp/CAP-001/response.raw"
+                      Destination="$(IntermediateOutputPath)discovery.template.json"
+                      Find="https://pp.netseidbroker.dk"
+                      ReplaceWith="https://stubid.invalid" />
+    <ItemGroup>
+      <EmbeddedResource Include="$(IntermediateOutputPath)discovery.template.json" LogicalName="discovery.json" />
+    </ItemGroup>
+  </Target>
 
 </Project>

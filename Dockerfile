@@ -5,10 +5,10 @@ WORKDIR /src
 COPY global.json Directory.Build.props Directory.Packages.props ./
 COPY src/ src/
 
-# The recorded discovery document is compiled into the binary, so the build needs it. What
-# StubID serves is the recording with the host substituted, never a document rebuilt from a
-# model - that is how the members the broker leaves out stay left out.
-COPY fixtures/neb/pp/CAP-001/ fixtures/neb/pp/CAP-001/
+# The build derives the served discovery template from this recording, so the build needs it.
+# What StubID serves is the recording with the host substituted, never a document rebuilt from
+# a model - that is how the members the broker leaves out stay left out.
+COPY fixtures/neb/pp/CAP-001/response.raw fixtures/neb/pp/CAP-001/response.raw
 RUN dotnet publish src/StubId.Server -c Release -o /app
 
 # An empty directory to seed the key volume from. Docker initialises a named volume from the
