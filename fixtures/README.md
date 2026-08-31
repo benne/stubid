@@ -114,3 +114,13 @@ The guard tests in `tests/StubId.Fixtures.Tests` fail the build on a credential,
 token, or anything shaped like a CPR number. They are not hypothetical: the first capture run
 wrote a real secret into a fixture, because the scrubber ran after the form had been
 percent-encoded and a plain string replace no longer matched.
+
+## Rights
+
+The recorded bytes are the broker's wire output: factual, functional protocol data, captured so
+an independent implementation can reproduce the surface. StubID claims no copyright in the
+recordings, and the repository's Apache-2.0 licence is not offered over them — they are the
+facts the emulator answers to, not a work of this project. The selection of what to record, the
+scrubbing, `meta.json`, and this document are the project's own and carry Apache-2.0 like
+everything else here. Any database right in the collection as a whole (the EU sui generis right)
+is the project's, and the project does not assert it.
