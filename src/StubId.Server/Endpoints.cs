@@ -647,9 +647,20 @@ public static class Endpoints
         return $"{value}.{salt}";
     }
 
+    /// <summary>
+    /// The address this instance was told to answer at, never the one the request arrived on.
+    /// </summary>
+    /// <remarks>
+    /// Deriving this from the Host header would make the issuer right for whoever asked and
+    /// wrong for everybody else: a browser reaching a container on a mapped port and an
+    /// application reaching it by service name would discover two different issuers from one
+    /// instance, and every client library compares the issuer it discovers against the authority
+    /// it was configured with character for character. An instance that has not been told its
+    /// own address refuses rather than guessing one.
+    /// </remarks>
     private static string BaseUrl(HttpContext http) =>
-        http.RequestServices.GetRequiredService<IConfiguration>()["StubId:PublicBaseUrl"]
-        ?? $"{http.Request.Scheme}://{http.Request.Host}";
+        http.RequestServices.GetRequiredService<PublicBaseUrl>().Value
+        ?? throw new PublicBaseUrlNotSetException();
 
     private static string Issuer(HttpContext http) => $"{BaseUrl(http)}/op";
 
