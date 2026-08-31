@@ -16,6 +16,9 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/StubId.Server/StubId.Server.csproj" />
+    <!-- The shipped client, driven against the in-memory server. Every assertion here is one
+         the containerised suite does not have to make a second time, on a slower machine. -->
+    <ProjectReference Include="../../src/StubId.Client/StubId.Client.csproj" />
   </ItemGroup>
 
 </Project>

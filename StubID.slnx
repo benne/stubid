@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/StubId.Abstractions/StubId.Abstractions.csproj" />
+    <Project Path="src/StubId.Client/StubId.Client.csproj" />
     <Project Path="src/StubId.Profiles.Abstractions/StubId.Profiles.Abstractions.csproj" />
     <Project Path="src/StubId.Profiles.Idura/StubId.Profiles.Idura.csproj" />
     <Project Path="src/StubId.Server/StubId.Server.csproj" />
