@@ -32,7 +32,8 @@ VOLUME /keys
 ENV StubId__KeyPath=/keys
 
 ENV ASPNETCORE_URLS=http://+:8080
-EXPOSE 8080
+# 8443 answers only when StubId__Tls is set; the image serves plain HTTP by default.
+EXPOSE 8080 8443
 
 # Already non-root in the chiselled image.
 ENTRYPOINT ["dotnet", "StubId.Server.dll"]

@@ -164,6 +164,28 @@ public static class ControlApi
             return Results.Json(new { publicBaseUrl = normalised });
         });
 
+        // The public half of the certificate this instance serves TLS with, so a caller can trust
+        // exactly this instance and nothing else. Served over whichever transport asked, which is
+        // the point: fetching it over plain HTTP is how a client learns what to expect on the
+        // secured one without a trust decision it has not been given the means to make yet.
+        //
+        // The private key is not here and has no route that would reach it.
+        api.MapGet("/runtime/tls-certificate", (IServiceProvider services) =>
+        {
+            if (services.GetService<ServerCertificate>() is not { } tls)
+            {
+                return Results.Json(new { certificate = (string?)null, thumbprint = (string?)null });
+            }
+
+            return Results.Json(new
+            {
+                certificate = Convert.ToBase64String(
+                    tls.Certificate.Export(System.Security.Cryptography.X509Certificates.X509ContentType.Cert)),
+                thumbprint = tls.Certificate.Thumbprint,
+                notAfter = tls.Certificate.NotAfter,
+            });
+        });
+
         app.MapGet("/_stubid/health/live", () => Results.Ok());
 
         // Live is "the process answers"; ready is "the process can answer correctly". The split is

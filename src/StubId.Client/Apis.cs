@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
+using System.Security.Cryptography.X509Certificates;
 
 namespace StubId.Client;
 
@@ -230,6 +231,26 @@ public sealed class ClockApi(HttpClient http)
 /// <summary>What the instance knows about itself.</summary>
 public sealed class RuntimeApi(HttpClient http)
 {
+    /// <summary>
+    /// The public half of the certificate this instance serves TLS with, or null when it serves
+    /// plain HTTP.
+    /// </summary>
+    /// <remarks>
+    /// Fetched over whichever transport this client already reaches, which is how a caller learns
+    /// what to expect on the secured one before it has any basis for trusting it. The private key is
+    /// not exposed and there is no route that would reach it.
+    /// </remarks>
+    public async Task<X509Certificate2?> GetTlsCertificateAsync(CancellationToken ct = default)
+    {
+        using var response = await http.GetAsync("/_stubid/v1/runtime/tls-certificate", ct);
+
+        var body = await Control.ReadAsync(response, ControlJson.Default.TlsCertificateBody, ct);
+
+        return body.Certificate is null
+            ? null
+            : X509CertificateLoader.LoadCertificate(Convert.FromBase64String(body.Certificate));
+    }
+
     /// <summary>The address this instance answers at, or null if nothing has told it.</summary>
     public async Task<Uri?> GetPublicBaseUrlAsync(CancellationToken ct = default)
     {
