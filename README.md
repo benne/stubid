@@ -5,10 +5,10 @@ your MitID login and signing integration in automated tests.
 
 **Status: early development.** A login works: a stock ASP.NET Core application signs in
 against it, and so do Node's `openid-client` and Spring Security. Tests can create citizens,
-decide how each login resolves, and move the clock to force a timeout, and a .NET suite can
-start the container and drive all of that from code. What is missing is transaction signing,
-the admin interface, and published packages — nothing is on NuGet or GHCR yet. See
-[docs/roadmap.md](docs/roadmap.md).
+decide how each login resolves, and move the clock to force a timeout, and a .NET suite can drive
+all of that from code — against a container, or against an instance hosted inside the test process
+with no Docker at all. What is missing is transaction signing, the admin interface, and published
+packages — nothing is on NuGet or GHCR yet. See [docs/roadmap.md](docs/roadmap.md).
 
 ## The problem
 
@@ -51,7 +51,9 @@ milliseconds. Both numbers come from a test that runs in CI.
 
 How a login is decided, and how to ask why it went the way it did, is in
 [docs/guides/approvals.md](docs/guides/approvals.md). Running StubID from a test suite is in
-[docs/guides/testcontainers.md](docs/guides/testcontainers.md).
+[docs/guides/testcontainers.md](docs/guides/testcontainers.md) for the container, and in
+[docs/guides/in-process.md](docs/guides/in-process.md) for a host inside the test process, which
+starts in about 150 milliseconds and needs no Docker.
 
 ## Fidelity
 
