@@ -13,6 +13,7 @@
   <PropertyGroup>
     <Product>StubID</Product>
     <Authors>StubID contributors</Authors>
+    <Copyright>Copyright 2026 StubID contributors</Copyright>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/benne/stubid</RepositoryUrl>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
