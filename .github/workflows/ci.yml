@@ -26,7 +26,10 @@ jobs:
 
       - run: dotnet build --no-restore --configuration Release
 
-      - run: dotnet test --no-build --configuration Release
+      # The container tests are held back by trait rather than by project, so a new one cannot
+      # join the cross-platform matrix by accident. Windows runners have no Linux Docker
+      # daemon, and a test that needs one there fails for a reason nobody can fix.
+      - run: dotnet test --no-build --configuration Release --filter "Category!=Container"
 
   secrets:
     runs-on: ubuntu-latest
@@ -94,6 +97,21 @@ jobs:
 
       - name: The container itself, and a restart a cached document survives
         run: ./scripts/verify-container.sh stubid:ci
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      # The module a .NET suite would reach for, against the image this job just built and verified.
+      # STUBID_TEST_IMAGE is what stops it building one of its own, which is the path a developer
+      # with no image takes.
+      - name: The Testcontainers module
+        env:
+          STUBID_TEST_IMAGE: stubid:ci
+        run: >
+          dotnet test tests/StubId.Testing.Tests
+          --configuration Release
+          --filter "Category=Container"
 
       - name: Start it for the client stacks
         run: |
