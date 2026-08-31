@@ -5,6 +5,7 @@
     <Project Path="src/StubId.Profiles.Abstractions/StubId.Profiles.Abstractions.csproj" />
     <Project Path="src/StubId.Profiles.Idura/StubId.Profiles.Idura.csproj" />
     <Project Path="src/StubId.Server/StubId.Server.csproj" />
+    <Project Path="src/StubId.Testing/StubId.Testing.csproj" />
     <Project Path="src/StubId.Wire/StubId.Wire.csproj" />
   </Folder>
   <Folder Name="/tests/">

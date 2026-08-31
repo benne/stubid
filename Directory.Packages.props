@@ -5,6 +5,11 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
 
+  <!-- Shipped rather than test-only: this is a dependency of the StubId.Testing package. -->
+  <ItemGroup Label="Shipped">
+    <PackageVersion Include="Testcontainers" Version="4.14.0" />
+  </ItemGroup>
+
   <ItemGroup Label="Testing">
     <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="9.10.0" />
     <PackageVersion Include="xunit.v3" Version="3.2.0" />
