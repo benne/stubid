@@ -87,6 +87,30 @@ public static class ManualCatalogue
         },
         new()
         {
+            Id = "CAP-031",
+            Step = "Step 9b",
+            Title = "Transaction token with a transaction text, in a signed request",
+            Settles = "How the transaction-text claims are really spelled - transaction_text "
+                + "against transactiontext - and whether transaction_text_sha256 and "
+                + "transaction_text_type are issued at all. The half of question 4 that "
+                + "CAP-022 could not reach.",
+            Operator = "Read the transaction text in the app and check it word for word "
+                + "before approving. Whether it is displayed at all is the finding.",
+            Scope = "openid mitid transaction_token",
+
+            // The only step that sends one. The broker limits the transaction-text flow to
+            // signed requests, which is why this exists and why CAP-022 could not settle the
+            // text claims: docs/research/signed-requests.md.
+            SignRequest = true,
+            Extra = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["idp_params"] = """
+                    {"mitid":{"transaction_text":"U3R1YklEIHRyYW5zYWN0aW9uIHRleHQgb25l","transaction_text_type":"text"}}
+                    """,
+            },
+        },
+        new()
+        {
             Id = "CAP-024",
             Step = "Step 11",
             Title = "Assurance level Low",

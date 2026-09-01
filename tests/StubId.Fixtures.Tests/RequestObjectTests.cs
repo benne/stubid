@@ -149,6 +149,28 @@ public class RequestObjectTests
         Assert.Contains("\"scope\"", extracted.Payload, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The real path, not a synthetic one: the catalogue's own signed step, through the URL
+    /// the sitting would actually send, into the strip that keeps it out of a fixture.
+    /// </summary>
+    [Fact]
+    public void The_catalogue_step_that_signs_survives_a_round_trip()
+    {
+        var signing = ManualCatalogue.All.Single(c => c.SignRequest);
+        var url = WithCredentials(() => Session.BuildAuthorize(signing).Url);
+
+        Assert.True(SensitiveContent.FindSignedToken(url).Found,
+            "the signed step is not producing a request object at all");
+
+        var (stripped, extracted) = RequestObject.StripFrom(url);
+
+        Assert.False(SensitiveContent.FindSignedToken(stripped).Found);
+        Assert.NotNull(extracted);
+
+        // The parameters this step exists to record have to be inside the object, not beside it.
+        Assert.Contains("transaction_text", extracted.Payload, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void A_url_without_a_request_object_is_untouched()
     {
@@ -163,18 +185,32 @@ public class RequestObjectTests
     /// The environment wins over capture.local.json, so this is deterministic on a machine
     /// that has real credentials and on one that has none, which is what CI is.
     /// </summary>
-    private static T WithSecret<T>(Func<T> act)
+    private static T WithSecret<T>(Func<T> act) =>
+        With(act, ("STUBID_NEB_PP_CODE_CLIENT_SECRET", Password));
+
+    /// <summary>The private client's pair, which is what the signing step is configured with.</summary>
+    private static T WithCredentials<T>(Func<T> act) => With(act,
+        ("STUBID_NEB_PP_CLIENT_ID", "00000000-0000-0000-0000-000000000000"),
+        ("STUBID_NEB_PP_CLIENT_SECRET", Password));
+
+    private static T With<T>(Func<T> act, params (string Name, string Value)[] settings)
     {
-        const string Name = "STUBID_NEB_PP_CODE_CLIENT_SECRET";
-        var previous = Environment.GetEnvironmentVariable(Name);
-        Environment.SetEnvironmentVariable(Name, Password);
+        var previous = settings.Select(s => Environment.GetEnvironmentVariable(s.Name)).ToArray();
+        foreach (var (name, value) in settings)
+        {
+            Environment.SetEnvironmentVariable(name, value);
+        }
+
         try
         {
             return act();
         }
         finally
         {
-            Environment.SetEnvironmentVariable(Name, previous);
+            for (var i = 0; i < settings.Length; i++)
+            {
+                Environment.SetEnvironmentVariable(settings[i].Name, previous[i]);
+            }
         }
     }
 

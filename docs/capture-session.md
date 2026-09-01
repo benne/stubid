@@ -693,6 +693,50 @@ single login.
 certainly mis-encoded — drop `idp_params` and retry immediately rather than debugging. The
 plain login still settles everything except the reference-text naming.
 
+### Step 9b. The transaction token with a transaction text
+
+The other half of question 4, and the only step in the sitting that sends a **signed request**.
+Same authentication rules as step 9: its own login, **`prompt=login`**, and no `ssn`.
+
+```
+scope = openid mitid transaction_token
+state = CAP-031, fresh nonce, prompt=login
+idp_params = {"mitid":{"transaction_text":"U3R1YklEIHRyYW5zYWN0aW9uIHRleHQgb25l",
+                       "transaction_text_type":"text"}}
+```
+
+That value is base64 of `StubID transaction text one`. Its SHA-256 is
+`2898ddd6308fd9cf869e42cd97c70012abb28ecc557fa148e84b6855d7611d1f`, so the fixture can tell
+passthrough-base64 from decoded text from a digest — the same trick step 9 uses, and the reason
+the two texts are deliberately different strings.
+
+**Why signed.** The broker limits the transaction-text flow to signed requests, which is why
+step 9 settles the reference-text naming and cannot touch this. The harness builds the object
+itself: everything above travels inside a JWT signed HS256 with the client secret, and the query
+carries only `client_id`, `response_type` and `request`. What the broker accepts here was
+measured rather than assumed — [what the broker does with a signed request
+object](research/signed-requests.md) — including that the object **must** carry `exp`, whose
+absence is refused with bytes identical to a forged signature.
+
+**Then stop and look at the token response before anything else: are the transaction-text claims
+in it?** Reaching the login page proves the request was accepted and nothing more. It does not
+prove the feature is switched on for the client, exactly as step 9 warns about
+`transaction_token` itself. If the text claims are absent, say so and move on — a recorded
+absence is a finding, and hunting for them will cost the sitting more than they are worth.
+
+*Settles:* the four-way spelling contradiction — `mitid.transaction_text` against
+`mitid.transactiontext`, whether `mitid.transaction_text_sha256` is issued and over which of the
+two forms, and whether `mitid.transaction_text_type` echoes back. Whether the transaction text
+reaches the token as the base64 sent, the decoded text, or only as a digest. Whether
+`signing_cert_ocsp_nonce` appears on a token from a signing transaction, which step 9 can only
+answer for a login. And whether `transaction_actions` gains an action beyond `mitid.login`.
+
+*This went wrong if:* the authorize lands on `/op/Error`. Run
+`dotnet run --project tools/StubId.CaptureHarness -- rehearse` before sitting down — it sends
+this exact request and reports `ready` or not, so a broken request object is found the day
+before rather than in the chair. If it fails only here and step 9 is fine, the request object is
+the suspect, not the `idp_params`.
+
 ### Step 10. Key binding, verified in the chair
 
 No browser, no new request. Run the prepared script on step 9's token response against the
@@ -1100,7 +1144,7 @@ dry-run (B16) exists.
 | 1 | id_token member set and order | **Settled.** Header and payload member sets and order at three assurance levels, back-channel and front-channel, first login and silent re-issue. `nbf`, `sid`, `idp_environment`, `at_hash`, the type of `auth_time`, and whether `sid` and `auth_time` are stable across a session. |
 | 2 | The `amr` wire form | **Mostly settled.** The claim name and the value form are settled outright by step 6. Multi-valued `amr` is settled if Low offers password-plus-code-display. `code_app_enchanced` is settled only if the simulator exposes the enhanced approval. **Open:** any documented value the test tool does not offer — `code_reader` and `u2f_token` are the likely gaps, and each would need an identity provisioned with that authenticator. |
 | 3 | Userinfo value types | **Settled** for the `mitid`, `ssn` and `nemid.pid` claims, including whether everything really is a JSON string. **Likely open:** the `ssn.details_*` **success** branch, because a test-tool CPR need not exist in the pre-production register and `unable_to_lookup` is the expected answer — the failure shape is recorded, the success shape stays documentation-only. **Likely open:** `person_status` casing (lowercase versus PascalCase), for the same reason. **Open:** `name_address_protected` as a boolean versus the string `"false"`, unless a protected identity turns out to be creatable (P1's thirty-second check). |
-| 4 | Transaction token claim names | **Settled** for everything a login produces: `identitytype` versus `identity_type`, the presence of `loa`/`aal`/`exp`/`aud`/`nbf`, `auth_time`'s type, `spec_ver`, `recipient_info`'s shape, `transaction_actions` in single- and multi-action form, `mitid.reference_text` versus `mitid.referencetext`, `mitid.psd2`'s type, the full member order, and which key signs it. **Open, and needs a signed request, which the sitting never sent:** the transaction-**text** claims — the four-way spelling contradiction across `mitid.transaction_text_sha256`, `mitid.transactiontext`, `mitid.transaction_text`, `mitid.reference_text`'s signing-context sibling, and `mitid.transaction_text_type`. Also open: whether `signing_cert_ocsp_nonce` appears on a **signing** transaction token; step 9 can only show whether a login produces it. Such a request is now measured to work: see [signed requests](research/signed-requests.md). |
+| 4 | Transaction token claim names | **Settled** for everything a login produces: `identitytype` versus `identity_type`, the presence of `loa`/`aal`/`exp`/`aud`/`nbf`, `auth_time`'s type, `spec_ver`, `recipient_info`'s shape, `transaction_actions` in single- and multi-action form, `mitid.reference_text` versus `mitid.referencetext`, `mitid.psd2`'s type, the full member order, and which key signs it. **Open, and needs a signed request, which the sitting never sent:** the transaction-**text** claims — the four-way spelling contradiction across `mitid.transaction_text_sha256`, `mitid.transactiontext`, `mitid.transaction_text`, `mitid.reference_text`'s signing-context sibling, and `mitid.transaction_text_type`. Also open: whether `signing_cert_ocsp_nonce` appears on a **signing** transaction token; step 9 can only show whether a login produces it. Such a request is now measured to work — see [signed requests](research/signed-requests.md) — and CAP-031 (step 9b) is the step that would settle this row. |
 | 5 | OAuth `error` per broker error code | **Partly settled**, for the codes actually exercised: `mitid_user_aborted`, `login_required`, `mitid_uuid_hint_malformed`, `mitid_cpr_match_failed`, and — if reachable — `user_aborted`, `mitid_core_client_error_user_abort`, the navigation family, and whichever timeout code step 17 produces. **Open:** the rest of the catalogue, which is dozens of codes, most of them infrastructure or internal-error paths that cannot be provoked from a client at all. This question is never fully closable from the outside; the honest ledger entry is per-code. |
 | 6 | The successful token response shape | **Settled.** Member set and order, `token_type` casing, `expires_in`, whether `scope` is echoed and in which order, and what `userinfo_token` and `transaction_token` add and where. **Permanently open, deliberately:** the refresh-grant response — `offline_access` is refused with `invalid_scope`, so no refresh token exists on this client and there is nothing to record. |
 | 7 | `c_hash` | **Closed negatively, before the sitting.** Every `response_type` putting an id_token in the front channel is refused with `unauthorized_client` on the private client, on both published open code clients, and on the published implicit client. No client we can reach is entitled to hybrid, so `c_hash` is unrecordable against this broker and stays `FidelityProvenance.Assumed`, computed by the spec rule already in `HashClaims`. What **is** recorded: the byte-exact `form_post` envelope, and whether `s_hash` exists. |
