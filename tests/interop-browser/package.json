@@ -1,0 +1,11 @@
+{
+  "name": "stubid-interop-browser",
+  "private": true,
+  "type": "module",
+  "description": "Checks that a real browser drives StubID's front channel, in three engines, over TLS.",
+  "scripts": { "test": "node signin.mjs" },
+  "dependencies": {
+    "openid-client": "^6.1.7",
+    "playwright": "1.62.1"
+  }
+}
