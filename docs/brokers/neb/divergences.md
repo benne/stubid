@@ -77,9 +77,13 @@ they are spelled. Nothing is emitted for them rather than guessing which spellin
 The sitting never asked for them: it sent `reference_text` alone. Transaction text is a
 different flow, driven by the `transaction_text` and `transaction_text_type` identity-provider
 parameters, and the broker's Identity Providers document limits that flow to signed requests.
-No signed request has been sent to this broker, so whether the clients this project can reach
-could make one is untested — and StubID does not implement request objects either, as the table
-above records. That reason is documentation rather than measurement.
+
+A signed request works. Both clients this project can reach accept a request object signed
+HS256 with the client secret, with the transaction-text parameters carried inside it — measured
+with controls in [what the broker does with a signed request
+object](../../research/signed-requests.md). So what stands between here and the text claims is a
+sitting: no new entitlement, and nobody at the broker. StubID does not implement request objects
+on its own surface, which is a separate gap, recorded in the table above.
 
 An earlier version of this file said the text claims needed a `signtext_api` scope that only
 the broker's staff could grant. That name has no source: not in the vendor documentation, not

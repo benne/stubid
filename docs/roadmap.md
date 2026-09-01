@@ -24,8 +24,9 @@ document wrapping, the Idura profile, and NemLog-in / OIOSAML.
 
 Still unrecorded, and blocking: the transaction token's text claims. The sitting sent a
 reference text rather than a transaction text, and the broker limits the transaction-text flow
-to signed requests, which have never been attempted here. The address members under
-`ssn.details_*` are also unseen, because the test identity has no register entry behind it.
+to signed requests. Such a request is now measured to work on both clients, so what remains is a
+sitting rather than an entitlement. The address members under `ssn.details_*` are also unseen,
+because the test identity has no register entry behind it.
 
 Three behaviours are implemented from documentation rather than from a recording, because
 reaching them needs a completed login: end session honouring a post-logout redirect when it
