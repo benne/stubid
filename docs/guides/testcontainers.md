@@ -103,6 +103,10 @@ on first use and written into the keys volume, so it stays stable across restart
 the signing keys do — a client that pinned what it saw gets a different answer after a restart
 otherwise, and reports it as a trust failure rather than as a restart.
 
+Trusting it from anything that is not .NET — a Node process, a JVM, `curl`, a browser you drive by
+hand — is [its own guide](certificates.md). The certificate comes off the plain-HTTP control port as
+PEM, so one `curl` gets it with no SDK involved.
+
 ### Bringing your own
 
 When the certificate has to chain to something the environment already trusts:
@@ -122,7 +126,8 @@ docker run -p 18080:8080 -p 18443:8443 \
   -v "$PWD/dev.pfx:/tls/dev.pfx:ro" ghcr.io/benne/stubid
 ```
 
-`StubId__Tls=self-signed` generates one instead. Its subject alternative names cover `localhost`,
+`StubId__Tls=self-signed` generates one instead, and publishes its public half at
+`GET /_stubid/v1/runtime/tls-certificate.pem`. Its subject alternative names cover `localhost`,
 `127.0.0.1`, `::1` and the container hostname; add more with
 `StubId__Tls__SubjectAlternativeNames=stubid,stubid.internal`. A certificate carrying no matching
 name is refused by every current client, and none of them say so in the error.

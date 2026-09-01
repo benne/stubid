@@ -121,6 +121,33 @@ public class ContainerTlsTests : IAsyncLifetime
         Assert.False(string.IsNullOrEmpty(returned["code"]));
         Assert.Equal(_stub.Authority.ToString(), returned["iss"]);
     }
+
+    /// <remarks>
+    /// The file a node process or a JVM is handed has to be the certificate this instance actually
+    /// presents, or every recipe in the certificates guide trusts the wrong thing quietly. Fetched
+    /// over plain HTTP, which is the only transport a caller can reach before it has been given the
+    /// means to decide anything about trust - the same bootstrap the interop job uses.
+    /// </remarks>
+    [Fact]
+    public async Task The_PEM_the_container_publishes_is_the_certificate_it_serves()
+    {
+        using var plain = new HttpClient { BaseAddress = _stub.MappedAddress };
+        using var response = await plain.GetAsync("/_stubid/v1/runtime/tls-certificate.pem", Ct);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("application/pem-certificate-chain", response.Content.Headers.ContentType?.MediaType);
+
+        var pem = await response.Content.ReadAsStringAsync(Ct);
+
+        // Exporting writes no trailing newline, so the route appends one. This is the only place
+        // that guarantee can be checked against what is actually served, and it matters because
+        // appending a second instance's certificate to this file is a thing people do.
+        Assert.EndsWith("\n", pem, StringComparison.Ordinal);
+
+        using var published = X509Certificate2.CreateFromPem(pem);
+
+        Assert.Equal(_stub.ServerCertificate!.Thumbprint, published.Thumbprint);
+    }
 }
 
 /// <summary>

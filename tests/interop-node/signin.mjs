@@ -4,22 +4,37 @@
 // character for character - and StubID's issuer carries a path segment, which is exactly the
 // shape that trips that assertion. And once metadata advertises the iss authorization-response
 // parameter, it refuses a response that omits it.
+//
+// It also runs twice in CI, against two instances. Over plain HTTP it is given openid-client's
+// http allowance; over https it is given nothing at all, and the handshake works because node was
+// started with StubID's certificate in NODE_EXTRA_CA_CERTS. Dropping the allowance is the whole of
+// that second proof, so it is decided from the authority's scheme rather than from a flag somebody
+// could forget to pass.
 import * as client from 'openid-client'
 
 const authority = process.env.STUBID_AUTHORITY ?? 'http://localhost:18080/op'
 const clientId = '0a775a87-878c-4b83-abe3-ee29c720c3e7'
 const redirectUri = 'http://localhost:5099/callback'
 
+const secured = new URL(authority).protocol === 'https:'
+
+// One expression, so there is exactly one place a relaxation could come back.
+const relaxations = secured ? undefined : { execute: [client.allowInsecureRequests] }
+
 function ok(what) {
   console.log(`  ${what}`)
 }
+
+console.log(secured
+  ? `https, and openid-client is given no allowance: ${authority}`
+  : `http, with client.allowInsecureRequests: ${authority}`)
 
 const config = await client.discovery(
   new URL(authority),
   clientId,
   'the-secret-the-existing-configuration-carries',
   undefined,
-  { execute: [client.allowInsecureRequests] },
+  relaxations,
 )
 ok(`discovery resolved and the issuer matched the configured authority: ${authority}`)
 

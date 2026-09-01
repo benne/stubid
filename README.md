@@ -4,7 +4,9 @@ A stand-in for the test environments of the Danish MitID identity brokers, so yo
 your MitID login and signing integration in automated tests.
 
 **Status: early development.** A login works: a stock ASP.NET Core application signs in
-against it, and so do Node's `openid-client` and Spring Security. Tests can create citizens,
+against it, and so do Node's `openid-client` and Spring Security — over TLS as well as plain
+HTTP, each trusting only the certificate the instance hands out, with nothing relaxed on either
+side. Tests can create citizens,
 decide how each login resolves, and move the clock to force a timeout, and a .NET suite can drive
 all of that from code — against a container, or against an instance hosted inside the test process
 with no Docker at all. What is missing is transaction signing, the admin interface, and published
@@ -53,7 +55,8 @@ How a login is decided, and how to ask why it went the way it did, is in
 [docs/guides/approvals.md](docs/guides/approvals.md). Running StubID from a test suite is in
 [docs/guides/testcontainers.md](docs/guides/testcontainers.md) for the container, and in
 [docs/guides/in-process.md](docs/guides/in-process.md) for a host inside the test process, which
-starts in about 150 milliseconds and needs no Docker.
+starts in about 150 milliseconds and needs no Docker. Trusting the certificate it serves over TLS,
+from any stack, is in [docs/guides/certificates.md](docs/guides/certificates.md).
 
 ## Fidelity
 
