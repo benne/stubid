@@ -107,8 +107,11 @@ await File.WriteAllTextAsync(path, stub.ServerCertificate!.ExportCertificatePem(
 
 ## Your operating system, and your browser
 
-These are the recipes for a browser you drive by hand. CI runs none of them; what CI proves is
-Node, Java and curl above.
+These are the recipes for a browser you drive by hand. Three of them are also what a browser
+test installs, and CI runs those three on every change — Ubuntu's `update-ca-certificates`, the
+NSS entry below, and Firefox's profile — through [a browser test](browsers.md). The Fedora,
+Windows and macOS steps are documented rather than run: the job with a running instance in it is
+Linux only.
 
 Debian and Ubuntu:
 
@@ -132,16 +135,32 @@ certutil -d sql:$HOME/.pki/nssdb -A -n stubid -t "P,," -i stubid.crt
 
 `P` means trusted peer for server authentication, as opposed to `C` for a certificate authority.
 That is the right flag for a self-signed leaf, and it is what Microsoft's own documentation
-prescribes for the ASP.NET Core development certificate, which has the same shape.
+prescribes for the ASP.NET Core development certificate, which has the same shape. Chromium
+refuses `C` for this certificate, and says so with `net::ERR_CERT_INVALID` rather than the
+`net::ERR_CERT_AUTHORITY_INVALID` it gives for one it has never seen — so the wrong flag is
+distinguishable from no flag, if you read the error rather than the outcome.
 
 On Windows, `certutil -addstore -user Root stubid.crt` puts it where Chrome and Edge look. On macOS,
 `security add-trusted-cert -d -r trustRoot -k ~/Library/Keychains/login.keychain-db stubid.crt`
 does the same for Safari and Chrome.
 
-Firefox reads no operating-system store on Linux or macOS. On Windows,
-`security.enterprise_roots.enabled` makes it read one. Otherwise the path that certainly works is
-the exception Firefox offers on the first visit — its `policies.json` `Certificates.Install` is
-designed for a certificate authority, and whether it accepts a leaf is untested here.
+Firefox reads no operating-system store on Linux or macOS, and no NSS database but its own
+profile's. On Windows, `security.enterprise_roots.enabled` makes it read one. For a browser you
+are driving by hand, the path that certainly works is the exception Firefox offers on the first
+visit.
+
+For one you are automating, seed the profile before launching it — and with `C,,`, the flag
+Chromium refuses:
+
+```
+certutil -d sql:/path/to/profile -A -n stubid -t "C,," -i stubid.crt
+```
+
+Firefox takes a `CA:FALSE` leaf as a trust anchor under that flag and refuses it under `P,,`,
+which is the opposite of Chromium in both directions. Its `policies.json` `Certificates.Install`
+is the documented enterprise mechanism and takes no effect at all on a Playwright-launched
+Firefox; this guide said that was untested, and it has now been measured. [Driving StubID from a
+browser test](browsers.md) has the rest.
 
 ## When the certificate changes
 

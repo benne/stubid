@@ -105,7 +105,9 @@ otherwise, and reports it as a trust failure rather than as a restart.
 
 Trusting it from anything that is not .NET — a Node process, a JVM, `curl`, a browser you drive by
 hand — is [its own guide](certificates.md). The certificate comes off the plain-HTTP control port as
-PEM, so one `curl` gets it with no SDK involved.
+PEM, so one `curl` gets it with no SDK involved. Driving a login from a browser you are automating
+rather than driving by hand — where each engine trusts by a different mechanism — is
+[another](browsers.md).
 
 ### Bringing your own
 
