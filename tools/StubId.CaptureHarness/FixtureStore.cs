@@ -140,6 +140,22 @@ public sealed class FixtureStore(string root)
             : null;
     }
 
+    /// <summary>
+    /// Rewrites the manifest without changing when the pack says it was recorded.
+    /// </summary>
+    /// <remarks>
+    /// Nothing that rewrites part of a pack may restamp it. The date says when the recordings
+    /// were made, and a sitting records some of the steps rather than all of them - one that
+    /// adds a single case must not claim the eleven beside it were recorded today. Each
+    /// exchange's own date is in its response.head either way, and a pack with no manifest is
+    /// being written for the first time, so it stamps now.
+    /// </remarks>
+    public async Task WriteManifestKeepingDateAsync(CancellationToken ct) =>
+        await WriteManifestAsync(await CapturedAtAsync(ct) ?? Now(), ct);
+
+    /// <summary>Now, in the format the manifest records.</summary>
+    public static string Now() => DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'");
+
     public async Task WriteManifestAsync(string capturedAtUtc, CancellationToken ct)
     {
         var files = Directory

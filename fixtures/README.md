@@ -54,6 +54,11 @@ destroy both.
   and `verify` iterate one catalogue, and a routine run would replay expired codes over the
   sitting's evidence.
 
+  A later sitting records its own cases beside the existing ones and rewrites `MANIFEST.json`
+  to cover them, keeping the date the pack already carries. That date says when the recordings
+  were made and most of them were not made today; each exchange's own date is in its
+  `response.head` either way.
+
   Signed tokens are stored as a placeholder in the response body, with the decoded header and
   payload beside them. Scrubbing inside a token would invalidate its signature, and re-signing
   produces bytes the broker never sent; the response's member order is what the body is for,

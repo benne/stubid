@@ -64,8 +64,9 @@ public static class Sanitise
             }
         }
 
-        await store.WriteManifestAsync(
-            DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"), ct);
+        // Repairing a recording does not re-record it. The remarks above promise idempotence,
+        // which a fresh date on every run would quietly break.
+        await store.WriteManifestKeepingDateAsync(ct);
 
         Console.WriteLine(repaired == 0 ? "Nothing to repair." : $"Repaired {repaired} file(s); manifest rewritten.");
         return 0;
