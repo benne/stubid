@@ -199,6 +199,27 @@ jobs:
           MAVEN_OPTS="-Djavax.net.ssl.trustStore=${{ runner.temp }}/stubid-truststore.p12 \
             -Djavax.net.ssl.trustStorePassword=changeit" mvn -q -B compile exec:java
 
+      # The one thing no other stack here can check. A browser makes the trust decision in its own
+      # TLS stack rather than the platform's - each of the three engines by a different mechanism,
+      # and Chromium and Firefox want opposite flags - and it runs the form_post page's auto-submit,
+      # which needs a JavaScript engine. Every engine is refused first, so the trust is provably
+      # what makes the sign-in work.
+      #
+      # Inside the Playwright image rather than on the runner: it carries the browsers its own npm
+      # package expects, and every trust install is then thrown away with the container, so nothing
+      # is written into the runner's own stores. It enqueues refusals, so it runs after the Node and
+      # Java legs that share this instance.
+      - name: A browser signs in, in three engines, over TLS
+        run: |
+          docker run --rm --network host \
+            -v "$PWD/tests/interop-browser:/suite:ro" \
+            -v "${{ runner.temp }}/stubid.crt:/certs/stubid.crt:ro" \
+            -e STUBID_AUTHORITY=https://localhost:18443/op \
+            -e STUBID_CONTROL=http://localhost:18081 \
+            -e STUBID_CERT=/certs/stubid.crt \
+            mcr.microsoft.com/playwright:v1.62.1-noble \
+            bash /suite/matrix.sh
+
       - name: What the containers said, if anything went wrong
         if: failure()
         run: |
