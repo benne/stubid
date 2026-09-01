@@ -144,8 +144,10 @@ public static class Session
             }
 
             var written = await staging.WriteAsync(store, http.RequestAborted);
-            await store.WriteManifestAsync(
-                DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"), http.RequestAborted);
+
+            // A sitting writes some of the steps and never all of them, so the pack keeps the
+            // date it already has. The first sitting finds no manifest and stamps today.
+            await store.WriteManifestKeepingDateAsync(http.RequestAborted);
 
             return Results.Text(
                 Page("Written", $"{written} exchanges written to {store.Root}."),

@@ -113,6 +113,7 @@
     "CAP-027/token/response.raw": "c1065be504d412d830790c6cb363c6f11a86b6b6e99f8ef5389d2af2b0216615",
     "CAP-027/token/userinfo_token.header.json": "721be441428ac736034f256df386f6ef1ebe939ac0f128e271c9b0f04e049f7f",
     "CAP-027/token/userinfo_token.payload.json": "d933677278001dc8b3608dd5f66905ee5f3407699757f549b461540faae313e0",
+    "CAP-028/meta.json": "d77342a47b30c9d2fb553faf3562d24120f4c629ce188f8fa0d0b5da3148fbb8",
     "CAP-029/callback/meta.json": "74c652f4077a5658e0813dd7984efdf73f5e80a837b3d702ee082227bd2e812a",
     "CAP-029/callback/response.head": "09387b4d71abb0ba93b3f80db02d58eafcb873276d7901a10e415ff2bf6e4ad0",
     "CAP-029/callback/response.raw": "7c26584078dd6a17ac4385446098df99f0adcfdea238a0ae3e283220e82a41cd",

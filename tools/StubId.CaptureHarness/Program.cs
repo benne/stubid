@@ -109,12 +109,9 @@ async Task<int> CaptureAsync()
 
     // A partial run must not restamp the pack: the date says when these recordings were
     // made, and most of them were not made today.
-    await store.WriteManifestAsync(
-        only is null
-            ? DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'")
-            : await store.CapturedAtAsync(cancellation.Token)
-              ?? DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"),
-        cancellation.Token);
+    await (only is null
+        ? store.WriteManifestAsync(FixtureStore.Now(), cancellation.Token)
+        : store.WriteManifestKeepingDateAsync(cancellation.Token));
 
     Console.WriteLine("Wrote MANIFEST.json");
 

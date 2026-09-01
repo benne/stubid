@@ -122,17 +122,25 @@ public class FixtureGuardTests
             $"{relativePath} contains something shaped like a CPR number ({finding.Location}).");
     }
 
-    [Fact]
-    public void Manifest_covers_every_file_and_the_hashes_still_match()
+    /// <summary>
+    /// Both packs. The unattended one is rehashed by every <c>capture</c> run, so it drifts
+    /// only briefly; the sitting's manifest is written when somebody finishes a sitting and
+    /// not again, and those recordings are the ones no run can reproduce. This test was
+    /// covering only the pack that could be recaptured.
+    /// </summary>
+    [Theory]
+    [InlineData("pp")]
+    [InlineData("pp-session")]
+    public void Manifest_covers_every_file_and_the_hashes_still_match(string pack)
     {
-        var manifestPath = Path.Combine(Repository.NebPreProduction, "MANIFEST.json");
-        using var manifest = JsonDocument.Parse(File.ReadAllText(manifestPath));
+        var root = Path.Combine(Repository.Fixtures, "neb", pack);
+        using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "MANIFEST.json")));
         var recorded = manifest.RootElement.GetProperty("files");
 
         var onDisk = Directory
-            .EnumerateFiles(Repository.NebPreProduction, "*", SearchOption.AllDirectories)
+            .EnumerateFiles(root, "*", SearchOption.AllDirectories)
             .Where(f => Path.GetFileName(f) != "MANIFEST.json")
-            .Select(f => Path.GetRelativePath(Repository.NebPreProduction, f).Replace('\\', '/'))
+            .Select(f => Path.GetRelativePath(root, f).Replace('\\', '/'))
             .OrderBy(f => f, StringComparer.Ordinal)
             .ToList();
 
@@ -140,11 +148,11 @@ public class FixtureGuardTests
 
         foreach (var relative in onDisk)
         {
-            var bytes = File.ReadAllBytes(Path.Combine(Repository.NebPreProduction, relative));
+            var bytes = File.ReadAllBytes(Path.Combine(root, relative));
             var actual = Convert.ToHexStringLower(SHA256.HashData(bytes));
 
             Assert.True(recorded.TryGetProperty(relative, out var expected),
-                $"{relative} is not in the manifest.");
+                $"{relative} is not in the {pack} manifest.");
             Assert.Equal(expected.GetString(), actual);
         }
     }
