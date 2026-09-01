@@ -135,6 +135,19 @@ public sealed partial class Staging
             await File.WriteAllTextAsync(
                 Path.Combine(directory, "response.raw"), Scrub(withoutTokens), ct);
 
+            // A signed step's authorize URL carries a compact JWS of our own making, and it
+            // must not reach a fixture: the guard rejects one, and one has arrived in a fixture
+            // twice already. Same treatment as a token in a body - the placeholder holds the
+            // position, the decoded halves are written beside it.
+            var (url, requestObject) = RequestObject.StripFrom(exchange.Url);
+            if (requestObject is not null)
+            {
+                await File.WriteAllTextAsync(Path.Combine(directory, "request_object.header.json"),
+                    Scrub(requestObject.Header), ct);
+                await File.WriteAllTextAsync(Path.Combine(directory, "request_object.payload.json"),
+                    Scrub(requestObject.Payload), ct);
+            }
+
             await File.WriteAllTextAsync(Path.Combine(directory, "response.head"),
                 string.Join('\n', new[] { $"HTTP {exchange.StatusCode} {exchange.ReasonPhrase}" }
                     .Concat(exchange.ResponseHeaders.Select(h => $"{h.Key}: {Scrub(h.Value)}"))) + "\n", ct);
@@ -146,7 +159,10 @@ public sealed partial class Staging
                 title = @case.Title,
                 settles = @case.Settles,
                 exchange = name,
-                request = new { method = exchange.Method, url = Scrub(exchange.Url) },
+                request = new { method = exchange.Method, url = Scrub(url) },
+                requestObject = requestObject is null
+                    ? null
+                    : (object)new { requestObject.Algorithm, requestObject.SegmentLengths },
                 status = exchange.StatusCode,
                 tokens = tokens.ToDictionary(t => t.Key, t => new
                 {

@@ -91,6 +91,19 @@ public sealed class ManualCase
     public IReadOnlyDictionary<string, string> Extra { get; init; } =
         new Dictionary<string, string>(StringComparer.Ordinal);
 
+    /// <summary>
+    /// Sends the whole request as a JWT signed with the client secret, instead of as query
+    /// parameters.
+    /// </summary>
+    /// <remarks>
+    /// The broker limits the transaction-text flow to signed requests, so a step that wants
+    /// the transaction-text claims has to set this. The query then carries only client_id,
+    /// response_type and request, and everything else - scope, redirect_uri, nonce, PKCE and
+    /// the step's own Extra - travels inside the object. That the broker reads them from
+    /// there was measured rather than assumed: docs/research/signed-requests.md.
+    /// </remarks>
+    public bool SignRequest { get; init; }
+
     /// <summary>False when the step is expected to end in a refusal rather than a code.</summary>
     public bool ExpectCode { get; init; } = true;
 

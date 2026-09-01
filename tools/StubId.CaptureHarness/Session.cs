@@ -195,6 +195,21 @@ public static class Session
             parameters[key] = value;
         }
 
+        // Signed last, so the step's own Extra is inside the object rather than beside it -
+        // which is the whole point for a step whose idp_params are what it is recording.
+        if (@case.SignRequest)
+        {
+            var signed = RequestObject.Build(
+                parameters, ClientId(@case.Client), Authority, Secret(@case.Client));
+
+            parameters = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["client_id"] = ClientId(@case.Client),
+                ["response_type"] = @case.ResponseType,
+                ["request"] = signed,
+            };
+        }
+
         var url = $"{Authority}/connect/authorize?" + string.Join('&',
             parameters.Select(p => $"{Uri.EscapeDataString(p.Key)}={Uri.EscapeDataString(p.Value)}"));
 
