@@ -80,12 +80,31 @@ session can reach without involving the broker's own staff.
 | Registered redirect URIs | configurable |
 | Back-channel logout URI | configurable |
 | `simulation` | **no setting exists** |
-| `signtext_api` scope | **cannot be granted from the administration interface** |
+| Which scopes a client may request | **no control exists in the interface** |
 
-The last row is the one that costs something. The transaction token's text claims are a
-three-way contradiction across the broker's own documentation, and only a recorded signing
-flow settles them. That flow needs `signtext_api`, which needs the broker's staff. Everything
+The last row bounds what any sitting can ask for: the administration offers no way to add a
+scope to a client, so a recording can only request what the client already carries. Everything
 else the sitting wants is reachable.
 
-It also confirms the product thesis from the other direction. The capability exists, it is
-worth paying for, and it is not available to someone who just wants to run their test suite.
+The `simulation` row confirms the product thesis from the other direction. The capability
+exists, it is worth paying for, and it is not available to someone who just wants to run their
+test suite.
+
+### Correction, 2026-09-01
+
+The last row originally named a scope, `signtext_api`, and recorded that it could not be
+granted from the administration interface. The paragraph under it concluded that the
+transaction token's text claims needed a scope only the broker's staff could grant.
+
+That name has no source. It appears in no vendor document and nowhere public, and its first
+occurrence in this repository is the probe request that used it. That probe, CAP-016, was
+refused `unauthorized_client` — the error for a client not authorized to use a **grant type**,
+where an unknown or unentitled scope is `invalid_scope`. It was a code client asking for
+`client_credentials`, so the request failed on the grant and the scope string was never read.
+The fixture settles the error shape, which is what it was recorded for, and nothing about the
+scope.
+
+What the administration was observed to lack is any scope-granting control, which is the row as
+it now reads. The real reason the text claims are unrecorded is in
+[the divergences](../brokers/neb/divergences.md): the sitting sent `reference_text` alone, and
+the broker limits the transaction-text flow to signed requests.

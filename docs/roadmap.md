@@ -22,8 +22,9 @@ Status of the first emulated surface, Signaturgruppen Broker ("Nets eID Broker")
 Deferred past 1.0 on purpose: hosted multi-tenant service and its accounts, CIBA, PAdES
 document wrapping, the Idura profile, and NemLog-in / OIOSAML.
 
-Still unrecorded, and blocking: the transaction token's text claims, which need the
-`signtext_api` scope that only the broker's staff can grant. The address members under
+Still unrecorded, and blocking: the transaction token's text claims. The sitting sent a
+reference text rather than a transaction text, and the broker limits the transaction-text flow
+to signed requests, which have never been attempted here. The address members under
 `ssn.details_*` are also unseen, because the test identity has no register entry behind it.
 
 Three behaviours are implemented from documentation rather than from a recording, because
