@@ -65,9 +65,26 @@ Each is marked in the fidelity ledger with the provenance it actually has, so
 
 ## Transaction signing
 
-The transaction token's text claims are unrecorded, because they need the `signtext_api`
-scope, which only the broker's staff can grant. Nothing is emitted for them rather than
-guessing: the broker's own documentation contradicts itself three ways on their names.
+The transaction token itself is recorded. CAP-021 and CAP-022 were taken with
+`transaction_token` in scope, and CAP-022 sent a `reference_text`, which settled
+`mitid.reference_text` against the `mitid.referencetext` the documentation also uses.
+
+The transaction-*text* claims are the ones still unrecorded — `mitid.transaction_text` or
+`mitid.transactiontext`, alongside `mitid.transaction_text_sha256` and
+`mitid.transaction_text_type` — and the broker's own documentation contradicts itself on how
+they are spelled. Nothing is emitted for them rather than guessing which spelling is real.
+
+The sitting never asked for them: it sent `reference_text` alone. Transaction text is a
+different flow, driven by the `transaction_text` and `transaction_text_type` identity-provider
+parameters, and the broker's Identity Providers document limits that flow to signed requests.
+No signed request has been sent to this broker, so whether the clients this project can reach
+could make one is untested — and StubID does not implement request objects either, as the table
+above records. That reason is documentation rather than measurement.
+
+An earlier version of this file said the text claims needed a `signtext_api` scope that only
+the broker's staff could grant. That name has no source: not in the vendor documentation, not
+anywhere public, and not in this repository outside the probe that used it. The capture cited
+for it, CAP-016, settled a grant-type refusal rather than a scope.
 
 ## The OCES3 certificate chain
 
