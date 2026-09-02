@@ -9,6 +9,11 @@ is a cross-origin iframe that detects and blocks browser automation, and the bro
 `simulation` bypass is not entitled on our client (see `docs/research/day-zero-probes.md`).
 So a human does it once, carefully, and everything that was forgotten costs another sitting.
 
+Parts 1 to 5 are that sitting, which ran on 2026-08-30 and is in
+`fixtures/neb/pp-session/CAP-020` to `CAP-030`. They are kept as written rather than
+rewritten in the past tense: the reasoning is what makes the next one cheap. Part 5 says what
+it settled and what it did not, and one row of it costs another sitting — which is Part 6.
+
 Read the whole document before starting. The ordering constraints are not stylistic; several
 steps destroy the state a later step needs, and two of them are irreversible within the
 sitting.
@@ -46,9 +51,9 @@ not have.
 | B13 | Keep the manual pack out of CaptureCatalogue.All | done — separate catalogue, separate directory |
 | B14 | Ignore session artefacts | done |
 
-**B1. The relying party does not exist.** `Program.cs` supports `capture` and `verify` only,
-`RecordingHandler` is referenced by nothing, and nothing listens on `localhost:5099`. Every
-step below assumes a local RP that:
+**B1. The relying party does not exist.** As this was written `Program.cs` supported `capture`
+and `verify` only, `RecordingHandler` was referenced by nothing, and nothing listened on
+`localhost:5099`. Every step below assumes a local RP that:
 
 - serves a launchpad page of pre-built authorize links, one per recording, labelled with the
   step number;
@@ -328,10 +333,11 @@ authentication is spent on them.
 
 ### P5. On the morning of the sitting
 
-Run `dotnet run --project tools/StubId.CaptureHarness -- verify`. Step 11 resolves token
-`kid`s against the committed CAP-002 JWKS, so the JWKS it resolves against must be same-day.
-A `kid` that resolves to nothing means a rotation happened, which is data rather than a
-failure, but it makes CAP-002 stale.
+Run `dotnet run --project tools/StubId.CaptureHarness -- check`, which now fetches the key
+set and prints each `kid` with the certificate subject it resolves to, and says so when the
+committed CAP-002 no longer describes what the broker serves. Step 10 resolves token `kid`s,
+so the key set it resolves against must be same-day. A `kid` that resolves to nothing means a
+rotation happened, which is data rather than a failure, but it makes CAP-002 stale.
 
 ### P6. The browser matrix
 
@@ -655,12 +661,18 @@ not this one's.
 ```
 scope = openid mitid transaction_token
 state = txn1, fresh nonce, prompt=login
-idp_params = {"mitid":{"reference_text":"U3R1YklEIHJlZmVyZW5jZSB0ZXh0IG9uZQ=="}}
+idp_params = {"mitid":{"reference_text":"U3R1YklEIHJlZmVyZW5jZSB0ZXh0"}}
 ```
 
-That value is base64 of `StubID reference text one`. Its SHA-256 is
-`9324bb117ed5b87771f29bffd4dcd1405850cce18a6806e90bf4a659ff2698b2`, so the fixture can tell
-passthrough-base64 from decoded text from a digest.
+That value is base64 of `StubID reference text`. Both digests are written down, because
+which one a digest claim is taken over is itself unknown:
+
+- SHA-256 of the base64 as sent: `83df551db514531064dcbb88cae5a506cff6759b4e3e4d4a270419d04023ec5b`
+- SHA-256 of the decoded text: `b580d47ccb07f6956ab4c26733b4034b5abe93870e77cb739b201b53155b768e`
+
+Between them the fixture can tell passthrough-base64 from decoded text from a digest over
+either form. **Recorded:** it came back as the base64 that was sent, under
+`mitid.reference_text`.
 
 **Deliberately no `ssn` scope**, so no CPR enters this recording. Complete the login with the
 app simulator and the ordinary approval. Note which authenticator you approved with, and
@@ -705,10 +717,14 @@ idp_params = {"mitid":{"transaction_text":"U3R1YklEIHRyYW5zYWN0aW9uIHRleHQgb25l"
                        "transaction_text_type":"text"}}
 ```
 
-That value is base64 of `StubID transaction text one`. Its SHA-256 is
-`2898ddd6308fd9cf869e42cd97c70012abb28ecc557fa148e84b6855d7611d1f`, so the fixture can tell
-passthrough-base64 from decoded text from a digest — the same trick step 9 uses, and the reason
-the two texts are deliberately different strings.
+That value is base64 of `StubID transaction text one`, deliberately a different string from
+step 9's so the two recordings cannot be confused. Both digests, for the same reason as step 9:
+
+- SHA-256 of the base64 as sent: `e12adef5a135ff7e9fa6d1be73ed39542bad073a681d54cabc1763d551a2c75e`
+- SHA-256 of the decoded text: `2898ddd6308fd9cf869e42cd97c70012abb28ecc557fa148e84b6855d7611d1f`
+
+If `mitid.transaction_text_sha256` is issued, which of those two it equals is the answer to
+"over which form", and neither is the answer that it is over something else again.
 
 **Why signed.** The broker limits the transaction-text flow to signed requests, which is why
 step 9 settles the reference-text naming and cannot touch this. The harness builds the object
@@ -776,7 +792,7 @@ exists to correct.
 ### Step 11. Assurance level Low (identity A)
 
 `state=cap023`, `prompt=login`, `scope=openid mitid`,
-`idp_params={"mitid":{"loa_value":"Low"}}` — exactly that, no spaces, percent-encoded.
+`idp_params={"mitid":{"loa_value":"low"}}` — exactly that, no spaces, percent-encoded.
 `prompt=login` is load-bearing: without it an SSO session hands back step 6's authentication
 and step 6's `amr`, and the recording settles nothing.
 
@@ -1164,3 +1180,110 @@ introspection endpoints exist. And, from the unattended pre-flight, that an inte
 **does** redirect back to the client with `state` and `session_state` and no `iss` — which
 contradicts the rule the first pack established and would have made StubID wrong on a case a
 stock client hits routinely.
+
+---
+
+## Part 6 — The second sitting
+
+One step, one authentication, about fifteen minutes. Everything else in Part 5 stays as it
+is: the three behaviours still implemented from documentation would each cost their own
+authentication, and the `ssn.details_*` success branch needs an identity with a register entry
+behind it, which a test-tool CPR need not have. This sitting is
+[step 9b](#step-9b-the-transaction-token-with-a-transaction-text) and nothing else.
+
+It is worth its own sitting because row 4 is the last one a login can close, and M9 —
+transaction signing — is written against whatever it records.
+
+### What changed since the first sitting
+
+The harness could not send a signed request when Part 3 was written, so step 9b was
+unrunnable rather than skipped. It can now: the object is built HS256 over the client secret,
+the query keeps `client_id`, `response_type` and `request`, and what the broker does with one
+was measured rather than assumed —
+[what the broker does with a signed request object](research/signed-requests.md).
+
+Four things were fixed for this sitting specifically, each because it could have cost the
+authentication or the evidence:
+
+- **The callback no longer depends on `state` alone.** A signed step's `state` is inside the
+  object. The broker does echo it — measured, and `rehearse` now checks it every run — but if
+  it ever stops, the callback falls back to the only step outstanding and writes the absence
+  into `meta.json` rather than stranding a code that expires in seconds.
+- **Signatures are checked as they are recorded.** `TokenFixtures.Verify` existed and was
+  called by nothing, so every token in the pack says `SignatureVerified: null`. The session
+  now fetches the key set on startup and checks each token against it, and records the
+  certificate subject the `kid` resolved to. This is step 10, done by the harness. It cannot
+  be done afterwards: the transaction-signing key rotated once already, in May 2026.
+- **`/finish` looks at the request URL.** It scanned bodies, token halves and response headers
+  and not the URL, which for a signed step carries a compact JWS of our own making.
+- **Each exchange records its own capture date.** The pack keeps the date it already carries,
+  so without this a recording made now would be dated August.
+
+### Preparation
+
+Identity A still exists and the redact list is already frozen for it, so there is nothing to
+create. CAP-031 requests no `ssn`, so no personal number enters this recording — but
+`mitid.identity_name` is in the transaction token, as CAP-022 shows, so the identity's name
+still has to be redacted and `check` is what proves that it is.
+
+Do not edit `capture.local.json` with the harness running. `LocalSettings` caches it in a
+static `Lazy`, so a value added to a live process is never redacted — a silent disclosure
+rather than a red build. Edit first, then start.
+
+The day before, or the morning of:
+
+```
+dotnet run --project tools/StubId.CaptureHarness -- check
+dotnet run --project tools/StubId.CaptureHarness -- rehearse --only=CAP-031
+```
+
+`check` must end `Ready to record.`, must list a certificate whose subject is
+`CN=NEB Transact PP`, and must not say the committed CAP-002 has drifted. `rehearse` must
+report `ready` twice: once that the authorize reaches the login page, once that the redirect
+back carries its state. Neither completes anything and both can be run as often as you like.
+
+### The sitting
+
+```
+dotnet run --project tools/StubId.CaptureHarness -- session --only=CAP-031
+```
+
+The launchpad shows one row, which is the point of `--only`: the other eleven steps are
+already committed, and a click on one of them stages a second copy that `/finish` writes
+beside the first.
+
+Take the step. Read the transaction text in the MitID app and check it word for word —
+whether it is displayed at all is part of what this records. Approve with the app simulator.
+
+Then stop, before anything else, and read the token response at `/staged`. Reaching the login
+page proved the request was accepted and nothing more; it did not prove the feature is
+switched on for this client. If the transaction-text claims are not there, say so and stop.
+A recorded absence is a finding, and hunting for them costs more than they are worth.
+
+### If it goes wrong
+
+**Re-running the step stages both attempts.** `Staging` numbers repeats rather than replacing
+them, and there is no discard. For a one-step sitting the discard is to stop the harness and
+start it again: nothing has reached disk, nothing else is staged, and the authorize is free —
+only the authentication behind it is not.
+
+**The authorize lands on `/op/Error`.** `rehearse` would have caught it the day before, which
+is what it is for. If it happens anyway and step 9's equivalent is fine, the request object is
+the suspect rather than the `idp_params`.
+
+**`prompt=login` did not re-authenticate.** `auth_time` unchanged from CAP-022's means MitID
+kept its own session, and the app never showed a text to approve. The recording is not what it
+looks like.
+
+### Teardown
+
+`/finish`, which refuses on anything unaccounted for. Then the guard tests over the whole
+tree, then `git status` and `git add -p` read by a human. The manifest keeps the pack's own
+date and gains CAP-031's files; each new `meta.json` carries the date it was actually
+recorded.
+
+Afterwards, and not before: the transaction token has no section in
+[claims.md](brokers/neb/claims.md), so what CAP-021 and CAP-022 already established — the
+member order, `auth_time` as a string, `transaction_actions` as a string or an array — lives
+only in fixture files. That write-up is where CAP-031's result belongs, together with the
+divergence entry it either closes or makes permanent.

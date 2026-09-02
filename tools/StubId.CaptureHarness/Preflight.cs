@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace StubId.CaptureHarness;
 
 /// <summary>
@@ -11,7 +13,7 @@ namespace StubId.CaptureHarness;
 /// </remarks>
 public static class Preflight
 {
-    public static int Run()
+    public static async Task<int> RunAsync(CancellationToken ct)
     {
         var problems = 0;
         var warnings = 0;
@@ -142,11 +144,92 @@ public static class Preflight
         }
 
         Console.WriteLine();
+        Console.WriteLine("Signing keys");
+        warnings += await ReportKeysAsync(ct);
+
+        Console.WriteLine();
         Console.WriteLine(problems == 0 && warnings == 0
             ? "Ready to record."
             : $"{problems} problem(s), {warnings} warning(s).");
 
         return problems == 0 ? 0 : 1;
+    }
+
+    /// <summary>
+    /// What the broker publishes today, and whether the committed key set still describes it.
+    /// </summary>
+    /// <remarks>
+    /// A recorded token names the key that signed it by thumbprint, and a thumbprint resolves
+    /// to a certificate only while the broker still publishes it. The transaction-signing key
+    /// rotated in May 2026, which is how it came to look as though it were distributed outside
+    /// the key set. Finding a rotation here costs a minute; finding it after a sitting costs
+    /// the sitting's only durable evidence of which key signed what.
+    /// </remarks>
+    private static async Task<int> ReportKeysAsync(CancellationToken ct)
+    {
+        string jwks;
+        try
+        {
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+            jwks = await client.GetStringAsync(
+                "https://pp.netseidbroker.dk/op/.well-known/openid-configuration/jwks", ct);
+        }
+        catch (Exception error) when (error is HttpRequestException or TaskCanceledException)
+        {
+            Console.WriteLine($"  WARNING  the key set could not be fetched: {error.Message}");
+            return 1;
+        }
+
+        var live = Kids(jwks);
+        foreach (var kid in live)
+        {
+            Console.WriteLine($"  {kid}  {TokenFixtures.SubjectFor(kid, jwks) ?? "(no certificate)"}");
+        }
+
+        var warnings = 0;
+
+        // Named rather than counted: it is the one key a transaction token is signed by, and
+        // its absence is what a sitting recording one needs to know before it starts.
+        if (!live.Any(k => TokenFixtures.SubjectFor(k, jwks)?.Contains("Transact", StringComparison.Ordinal) == true))
+        {
+            Console.WriteLine("  WARNING  no transaction-signing certificate is published.");
+            Console.WriteLine("           A transaction token recorded now cannot be bound to a key.");
+            warnings++;
+        }
+
+        var committed = CommittedKids();
+        if (committed is not null && !committed.SequenceEqual(live, StringComparer.Ordinal))
+        {
+            Console.WriteLine("  WARNING  the committed CAP-002 key set is not what the broker serves.");
+            Console.WriteLine("           That is a rotation rather than a fault, but it makes CAP-002 stale.");
+            warnings++;
+        }
+
+        return warnings;
+    }
+
+    private static string[]? CommittedKids()
+    {
+        var path = LocalSettings.Root is null
+            ? null
+            : Path.Combine(LocalSettings.Root, "fixtures", "neb", "pp", "CAP-002", "response.raw");
+
+        return path is null || !File.Exists(path) ? null : Kids(File.ReadAllText(path));
+    }
+
+    private static string[] Kids(string jwksJson)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(jwksJson);
+            return [.. document.RootElement.GetProperty("keys").EnumerateArray()
+                .Select(k => k.TryGetProperty("kid", out var kid) ? kid.GetString() ?? "" : "")
+                .Where(k => k.Length > 0)];
+        }
+        catch (Exception e) when (e is JsonException or KeyNotFoundException)
+        {
+            return [];
+        }
     }
 
     private static List<string> Steps(Func<ManualCase, bool> predicate) =>

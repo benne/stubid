@@ -1,4 +1,8 @@
+using System.Buffers.Text;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Text.Json;
 using StubId.CaptureHarness;
 
 namespace StubId.Fixtures.Tests;
@@ -138,5 +142,207 @@ public class RedactionParsingTests
         var rules = StubId.CaptureHarness.LocalSettings.ParseRedactions(document.RootElement);
 
         Assert.Equal(["{{ORGANISATION_CVR}}"], rules.Keys);
+    }
+}
+
+/// <summary>
+/// What a sitting actually writes, for the one step that has never written anything.
+/// </summary>
+/// <remarks>
+/// The canary dry-run proved the scrubbing on steps that send their parameters in the query.
+/// The signed step sends a compact JWS of our own making in that query instead, and until
+/// CAP-031 is recorded nothing has taken that path as far as a file. A signed token has
+/// reached a fixture twice in this project's history; this is the rehearsal for the third
+/// way in.
+/// </remarks>
+public class StagingWriteTests
+{
+    // Excluded by the credential guard's own negative lookahead, and useless besides.
+    private const string Password = "not-a-real-secret";
+
+    [Fact]
+    public void The_signed_step_writes_no_token_and_no_personal_number_anywhere()
+    {
+        var written = WithCredentials(Record);
+
+        // The evidence the step exists for: what travelled inside the object, beside the
+        // placeholder that holds its position in the URL.
+        Assert.Contains("CAP-031/callback/request_object.payload.json", written.Keys);
+        Assert.Contains("transaction_text", written["CAP-031/callback/request_object.payload.json"],
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("request=ey", written["CAP-031/callback/meta.json"],
+            StringComparison.Ordinal);
+
+        Assert.Contains("{{TRANSACTION_TOKEN}}", written["CAP-031/token/response.raw"],
+            StringComparison.Ordinal);
+
+        // The whole point. Every file, not the ones we expected to be interesting.
+        Assert.All(written, file =>
+        {
+            Assert.False(SensitiveContent.FindSignedToken(file.Value).Found,
+                $"{file.Key} carries a signed token");
+            Assert.False(SensitiveContent.FindCpr(file.Value).Found,
+                $"{file.Key} carries something shaped like a personal number");
+        });
+    }
+
+    [Fact]
+    public void Nothing_is_left_unaccounted_for_before_the_write()
+    {
+        // /finish refuses on anything Suspicious finds, and the operator's only way past it is
+        // a query parameter. A signed step that trips it for its own request object would
+        // teach them to use that parameter, which is how a safety net stops being one.
+        Assert.Empty(WithCredentials(() => Staged(null).Suspicious()));
+    }
+
+    [Fact]
+    public void A_signature_is_checked_while_there_is_still_a_key_to_check_it_against()
+    {
+        // TokenFixtures.Verify existed and was called by nothing, so every recording in the
+        // pack says null here - and once the broker rotates, null is all it can ever say.
+        using var key = RSA.Create(2048);
+        var meta = WithCredentials(() => Written(Jwks(key), key)["CAP-031/token/meta.json"]);
+
+        using var document = JsonDocument.Parse(meta);
+        var token = document.RootElement.GetProperty("tokens").GetProperty("transaction_token");
+
+        Assert.True(token.GetProperty("SignatureVerified").GetBoolean());
+        Assert.Contains("StubID Transact Test", token.GetProperty("Certificate").GetString()!,
+            StringComparison.Ordinal);
+        Assert.False(string.IsNullOrEmpty(
+            document.RootElement.GetProperty("capturedAtUtc").GetString()));
+    }
+
+    [Fact]
+    public void A_callback_that_lost_its_state_says_so_where_it_will_be_read()
+    {
+        // A signed step's state travels inside the request object. If the broker does not echo
+        // it the sitting still has to take the recording, and the absence is a fact about
+        // signed requests rather than a detail to lose in a terminal.
+        var staging = new Staging();
+        var @case = ManualCatalogue.All.Single(c => c.SignRequest);
+        staging.Add(@case, "callback", Exchange("http://localhost:5099/callback", "code=abc"),
+            "The callback carried no state.");
+
+        var written = WithCredentials(() => Write(staging));
+
+        Assert.Contains("carried no state", written["CAP-031/callback/meta.json"],
+            StringComparison.Ordinal);
+    }
+
+    private static Dictionary<string, string> Record() => Written(null, null);
+
+    private static Dictionary<string, string> Written(string? jwks, RSA? key) =>
+        Write(Staged(jwks, key));
+
+    /// <summary>The two exchanges CAP-031 produces, with the URL the sitting would really send.</summary>
+    private static Staging Staged(string? jwks, RSA? key = null)
+    {
+        var staging = new Staging(jwks);
+        var @case = ManualCatalogue.All.Single(c => c.SignRequest);
+        var (url, _, _) = Session.BuildAuthorize(@case);
+
+        staging.Add(@case, "callback", Exchange(url, $"code=a-code\nstate={@case.Id}"));
+        staging.Add(@case, "token", Exchange(
+            "https://pp.netseidbroker.dk/op/connect/token",
+            $$"""{"token_type":"Bearer","transaction_token":"{{TransactionToken(key)}}"}"""));
+
+        return staging;
+    }
+
+    private static Dictionary<string, string> Write(Staging staging)
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"stubid-staging-{Guid.NewGuid():N}");
+        try
+        {
+            staging.WriteAsync(new FixtureStore(root), CancellationToken.None).GetAwaiter().GetResult();
+
+            return Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories).ToDictionary(
+                f => Path.GetRelativePath(root, f).Replace('\\', '/'),
+                File.ReadAllText,
+                StringComparer.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    private static RecordedExchange Exchange(string url, string body) =>
+        new("GET", url, [], null, 200, "OK", [], Encoding.UTF8.GetBytes(body));
+
+    /// <summary>
+    /// A transaction token shaped like the one nobody has recorded: RS256, a thumbprint kid,
+    /// and the text claims CAP-031 is being run to spell.
+    /// </summary>
+    private static string TransactionToken(RSA? key)
+    {
+        static string Segment(string json) =>
+            Base64Url.EncodeToString(Encoding.UTF8.GetBytes(json));
+
+        var header = Segment($$"""{"alg":"RS256","kid":"{{Kid}}","typ":"JWT"}""");
+        var payload = Segment(
+            """{"mitid.transaction_text":"U3R1YklEIHRyYW5zYWN0aW9uIHRleHQgb25l","auth_time":"1788129644"}""");
+
+        var signature = key is null
+            ? "not-a-real-signature-just-enough-to-look-like-one"
+            : Base64Url.EncodeToString(key.SignData(
+                Encoding.ASCII.GetBytes($"{header}.{payload}"),
+                HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pkcs1));
+
+        return $"{header}.{payload}.{signature}";
+    }
+
+    /// <summary>A key set carrying that key, with a certificate so the subject can be resolved.</summary>
+    private static string Jwks(RSA key)
+    {
+        var request = new CertificateRequest(
+            "CN=StubID Transact Test", key, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+
+        using var certificate = request.CreateSelfSigned(
+            DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch.AddYears(60));
+
+        var parameters = key.ExportParameters(includePrivateParameters: false);
+
+        return $$"""
+            {"keys":[{"kty":"RSA","use":"sig","kid":"{{Kid}}",
+            "n":"{{Base64Url.EncodeToString(parameters.Modulus!)}}",
+            "e":"{{Base64Url.EncodeToString(parameters.Exponent!)}}",
+            "x5c":["{{Convert.ToBase64String(certificate.RawData)}}"]}]}
+            """;
+    }
+
+    private const string Kid = "0000000000000000000000000000000000000000";
+
+    /// <summary>
+    /// The environment wins over capture.local.json, so this behaves the same on a machine
+    /// with real credentials and on one with none, which is what CI is.
+    /// </summary>
+    private static T WithCredentials<T>(Func<T> act)
+    {
+        (string Name, string Value)[] settings =
+        [
+            ("STUBID_NEB_PP_CLIENT_ID", "00000000-0000-0000-0000-000000000000"),
+            ("STUBID_NEB_PP_CLIENT_SECRET", Password),
+        ];
+
+        var previous = settings.Select(s => Environment.GetEnvironmentVariable(s.Name)).ToArray();
+        foreach (var (name, value) in settings)
+        {
+            Environment.SetEnvironmentVariable(name, value);
+        }
+
+        try
+        {
+            return act();
+        }
+        finally
+        {
+            for (var i = 0; i < settings.Length; i++)
+            {
+                Environment.SetEnvironmentVariable(settings[i].Name, previous[i]);
+            }
+        }
     }
 }

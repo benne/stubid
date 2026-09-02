@@ -22,24 +22,35 @@ internal sealed record Pending(ManualCase Case, string Verifier, string Nonce, s
 public static class Session
 {
     private const string Authority = "https://pp.netseidbroker.dk/op";
-    private const string RedirectUri = "http://localhost:5099/callback";
+
+    /// <summary>Where a step comes back to. The rehearsal checks the broker redirects here.</summary>
+    public const string RedirectUri = "http://localhost:5099/callback";
 
     private static readonly ConcurrentDictionary<string, Pending> Pendings = new(StringComparer.Ordinal);
 
-    public static async Task<int> RunAsync(FixtureStore store)
+    public static async Task<int> RunAsync(FixtureStore store, IReadOnlyList<ManualCase> cases)
     {
-        var staging = new Staging();
+        // Fetched now, not read from the committed CAP-002. Whether a token's signature checks
+        // out against the broker's published key is the one fact about this sitting that cannot
+        // be established afterwards - the transaction-signing key already rotated once, in May
+        // 2026 - and a stale key set would answer "did not verify" for the wrong reason.
+        var jwks = await FetchJwksAsync();
+        Console.WriteLine(jwks is null
+            ? "The key set could not be fetched. Signatures will be recorded as unchecked."
+            : "Fetched today's key set. Signatures will be checked as they are recorded.");
+
+        var staging = new Staging(jwks);
 
         var builder = WebApplication.CreateBuilder();
         builder.Logging.ClearProviders();
         builder.WebHost.UseUrls("http://localhost:5099");
         var app = builder.Build();
 
-        app.MapGet("/", () => Results.Text(Launchpad(staging), "text/html; charset=utf-8"));
+        app.MapGet("/", () => Results.Text(Launchpad(cases, staging), "text/html; charset=utf-8"));
 
         app.MapGet("/start/{id}", (string id) =>
         {
-            var @case = ManualCatalogue.All.FirstOrDefault(c => c.Id == id);
+            var @case = cases.FirstOrDefault(c => c.Id == id);
             if (@case is null)
             {
                 return Results.NotFound($"No case {id}.");
@@ -61,7 +72,31 @@ public static class Session
 
             // Removed rather than read: reloading the callback would otherwise stage the
             // same exchange again, and the count is how the operator knows what was captured.
-            if (state is null || !Pendings.TryRemove(state, out var pending))
+            Pending? pending = null;
+            string? note = null;
+
+            if (state is not null && Pendings.TryRemove(state, out var matched))
+            {
+                pending = matched;
+            }
+            else if (Pendings.Count == 1 && Pendings.TryRemove(Pendings.Keys.First(), out matched))
+            {
+                // A signed step's state travels inside the request object instead of in the
+                // query, and whether the broker echoes it back has never been observed: every
+                // measurement of a signed request stopped at the authorize response. If it does
+                // not, matching on state alone would strand an authorization code that expires
+                // in seconds, and the authentication that produced it is gone. With one step
+                // outstanding there is nothing to confuse it with, so the recording is taken
+                // and the absence is written into meta.json - it is a fact about signed
+                // requests rather than an error to swallow.
+                pending = matched;
+                note = state is null
+                    ? "The callback carried no state, and was matched to the only step outstanding."
+                    : "The callback carried a state matching no step, and was matched to the "
+                      + "only step outstanding.";
+            }
+
+            if (pending is null)
             {
                 return Results.Text(
                     Page("Unexpected callback",
@@ -72,7 +107,7 @@ public static class Session
                     "text/html; charset=utf-8");
             }
 
-            staging.Add(pending.Case, "callback", FrontChannel(http, parameters, pending));
+            staging.Add(pending.Case, "callback", FrontChannel(http, parameters, pending), note);
 
             if (parameters.TryGetValue("error", out var error))
             {
@@ -164,7 +199,8 @@ public static class Session
     /// Builds the authorize request for a step. Shared with the rehearsal, so what is checked
     /// beforehand is exactly what the sitting sends.
     /// </summary>
-    public static (string Url, string Verifier, string Nonce) BuildAuthorize(ManualCase @case)
+    public static (string Url, string Verifier, string Nonce) BuildAuthorize(
+        ManualCase @case, IReadOnlyDictionary<string, string>? overrides = null)
     {
         var verifier = Base64UrlText(RandomNumberGenerator.GetBytes(32));
         var nonce = Base64UrlText(RandomNumberGenerator.GetBytes(16));
@@ -193,6 +229,13 @@ public static class Session
         }
 
         foreach (var (key, value) in @case.Extra)
+        {
+            parameters[key] = value;
+        }
+
+        // After the step's own Extra, so a rehearsal can turn a step into a variant of itself
+        // without a second copy of it drifting out of step with the one the sitting sends.
+        foreach (var (key, value) in overrides ?? new Dictionary<string, string>(StringComparer.Ordinal))
         {
             parameters[key] = value;
         }
@@ -395,9 +438,31 @@ public static class Session
     private static string Base64UrlText(byte[] bytes) =>
         System.Buffers.Text.Base64Url.EncodeToString(bytes);
 
-    private static string Launchpad(Staging staging)
+    /// <summary>
+    /// The broker's key set, as it stands today.
+    /// </summary>
+    /// <remarks>
+    /// A missing key set is not a reason to refuse a sitting. It costs the signature check,
+    /// which is recorded as unchecked rather than as failed, and the sitting is worth more
+    /// than that one member.
+    /// </remarks>
+    private static async Task<string?> FetchJwksAsync()
     {
-        var rows = string.Join("\n", ManualCatalogue.All.Select(c =>
+        try
+        {
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+            return await client.GetStringAsync($"{Authority}/.well-known/openid-configuration/jwks");
+        }
+        catch (Exception error) when (error is HttpRequestException or TaskCanceledException)
+        {
+            Console.Error.WriteLine($"  could not fetch the key set: {error.Message}");
+            return null;
+        }
+    }
+
+    private static string Launchpad(IReadOnlyList<ManualCase> cases, Staging staging)
+    {
+        var rows = string.Join("\n", cases.Select(c =>
         {
             var done = staging.Recorded.Contains(c.Id) ? "recorded" : "";
             var session = c.ForcesLogin ? "re-authenticates" : "rides the session";
