@@ -134,6 +134,14 @@ Between them they settled things no documentation states:
 - The userinfo endpoint returns `mitid.transaction_text_type` and
   `mitid.transaction_text_sha256` without `mitid.transaction_text` — a digest without the text
   it is over — while a reference text comes back there whole.
+- The OCSP response beside each transaction token says `good`, and says it about the
+  transaction-signing certificate itself: its CertID's serial and issuer-name hash both
+  reconcile against the `CN=NEB Transact PP` certificate in CAP-002. It is **not** fetched per
+  request — `producedAt` is `2026-08-30T22:35:11Z`, `2026-08-30T22:40:11Z` and
+  `2026-09-02T09:45:01Z`, the last of them three and a half minutes before the response that
+  carried it. Two of the CA's responder instances answered across the two sittings, and each
+  `nextUpdate` falls one second before the responder certificate expires, so an answer never
+  outlives the key that signed it.
 
 Written up in [../docs/brokers/neb/claims.md](../docs/brokers/neb/claims.md).
 

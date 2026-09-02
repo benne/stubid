@@ -776,7 +776,10 @@ It must, for every JWS in the sitting so far, not just the transaction token:
 3. **verify the RS256 signature** against the resolved public key, so the binding is proved
    cryptographically rather than read off a header;
 4. if `transaction_token_ocsp_resp` is present, DER-decode it, assert its CertID matches the
-   NEB Transact certificate, and record the status and `producedAt`;
+   NEB Transact certificate, and record the status and `producedAt`. `/finish` now prints this
+   in the chair, and `OcspResponseContractTests` asserts it on every build once the recording
+   is committed, so what is left here is reading the line and noticing if it says something
+   new;
 5. assert the transaction token's `nonce` equals the nonce sent, and print the payload member
    order and each value's JSON type.
 
@@ -1222,8 +1225,11 @@ authentication or the evidence:
   called by nothing, so every token in the pack says `SignatureVerified: null`. The session
   now fetches the key set on startup and checks each token against it, and records the
   certificate subject the `kid` resolved to. That is step 10's first three items done by the
-  harness; its OCSP decode and its member-order print are still by hand. It cannot be done
-  afterwards: the transaction-signing key rotated once already, in May 2026.
+  harness; its member-order print is still by hand. It cannot be done afterwards: the
+  transaction-signing key rotated once already, in May 2026. The OCSP decode is no longer by
+  hand either, but for a different reason - nothing about it perishes, because the responder's
+  certificate travels inside the response, so it is asserted from the committed bytes on every
+  build rather than captured once.
 - **`/finish` looks at the request URL.** It scanned bodies, token halves and response headers
   and not the URL, which for a signed step carries a compact JWS of our own making.
 - **Each exchange records its own capture date.** The pack keeps the date it already carries,

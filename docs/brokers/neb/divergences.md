@@ -136,6 +136,18 @@ its `kid` resolved to in the key set as it stood that day. A client that validat
 certificate *chain*, or the OCSP response, works against pre-production and fails here. There
 is no fix for that; it is disclosed rather than papered over.
 
+What StubID would have to produce is no longer a guess. The three recorded responses are
+decoded and asserted by `OcspResponseContractTests`, and they agree on all of it: a successful
+basic response holding exactly one answer, `good`, whose CertID names the transaction-signing
+certificate by the SHA-1 of its issuer's name and its serial number; signed ECDSA-with-SHA-256
+by a delegated responder — enhanced key usage OCSP signing and nothing else, carrying
+`id-pkix-ocsp-nocheck` — whose own certificate travels inside the response and was issued by
+the same state CA; no nonce and no response-level extensions at all; and one non-critical
+archive-cutoff extension on the answer. `producedAt` is minutes *before* the response that
+carries it, because the broker serves an answer it already had rather than asking for a fresh
+one, so a stub minting `producedAt` at the moment of the token would diverge on the one field
+that is easiest to get wrong by being helpful.
+
 ## What is not reproduced
 
 <a id="emulator-header"></a>

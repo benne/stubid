@@ -80,10 +80,14 @@ Same broker, same response, two answers.
 
 ## transaction token
 
-Returned when the request asked for the `transaction_token` scope, always with a
-`transaction_token_ocsp_resp` beside it in the body. Signed by a **different key** from the
-other three tokens of the same response: `CN=NEB Transact PP`, `kid`
+Returned when the request asked for the `transaction_token` scope. Signed by a **different
+key** from the other three tokens of the same response: `CN=NEB Transact PP`, `kid`
 `7FF447FA0FB65A7E749E8B43AC635862381F0CC3`, published in the same JWKS as the rest.
+
+A `transaction_token_ocsp_resp` is always beside it in the body: a DER OCSP response in
+**standard base64**, where every other encoded value here is base64url, signed with ECDSA on
+P-256 where the token beside it is RS256. Its single answer names that same certificate and
+says `good`. [The certificate chain](divergences.md#the-oces3-certificate-chain) has the rest.
 
 Three recordings: a login, a login that matched a CPR, and a transaction signing. Members that
 only some of them carry say so.
