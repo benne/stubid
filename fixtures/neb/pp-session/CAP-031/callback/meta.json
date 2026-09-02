@@ -1,0 +1,23 @@
+{
+  "id": "CAP-031",
+  "step": "Step 9b",
+  "title": "Transaction token with a transaction text, in a signed request",
+  "settles": "How the transaction-text claims are really spelled - transaction_text against transactiontext - and whether transaction_text_sha256 and transaction_text_type are issued at all. The half of question 4 that CAP-022 could not reach.",
+  "exchange": "callback",
+  "request": {
+    "method": "GET",
+    "url": "https://pp.netseidbroker.dk/op/connect/authorize?client_id={{NEB_PP_CLIENT_ID}}\u0026response_type=code\u0026request={{REQUEST_OBJECT}}"
+  },
+  "requestObject": {
+    "Algorithm": "HS256",
+    "SegmentLengths": [
+      36,
+      906,
+      43
+    ]
+  },
+  "status": 200,
+  "tokens": {},
+  "capturedAtUtc": "2026-09-02T09:48:38Z",
+  "note": null
+}
