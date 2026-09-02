@@ -47,18 +47,31 @@ public static class Sanitise
                 }
             }
 
-            // A callback's headers are the browser's, not the broker's. They are not part of
-            // anything StubID reproduces, and the cookie jar among them carried a signed token.
-            if (name == "callback" && File.Exists(headPath))
+            if (File.Exists(headPath))
             {
                 var lines = await File.ReadAllLinesAsync(headPath, ct);
-                var alreadyDone = lines.Length == 2 && lines[1].StartsWith('#');
+                var alreadyTrimmed = lines.Length == 2 && lines[1].StartsWith('#');
+                string[] repairedLines;
+                string reason;
 
-                if (lines.Length > 1 && !alreadyDone)
+                // A callback's headers are the browser's, not the broker's. They are not part
+                // of anything StubID reproduces, and the cookie jar among them carried a
+                // signed token.
+                if (name == "callback" && lines.Length > 1 && !alreadyTrimmed)
                 {
-                    await File.WriteAllTextAsync(headPath,
-                        lines[0] + "\n# Request headers omitted: the browser's, not the broker's.\n", ct);
-                    Console.WriteLine($"  {Relative(store, headPath)}: dropped {lines.Length - 1} request headers");
+                    repairedLines = [lines[0], "# Request headers omitted: the browser's, not the broker's."];
+                    reason = $"dropped {lines.Length - 1} request headers";
+                }
+                else
+                {
+                    repairedLines = [.. lines.Select(MaskCookieLine)];
+                    reason = "masked a cookie value";
+                }
+
+                if (!repairedLines.SequenceEqual(lines, StringComparer.Ordinal))
+                {
+                    await File.WriteAllTextAsync(headPath, string.Join('\n', repairedLines) + "\n", ct);
+                    Console.WriteLine($"  {Relative(store, headPath)}: {reason}");
                     repaired++;
                 }
             }
@@ -70,6 +83,19 @@ public static class Sanitise
 
         Console.WriteLine(repaired == 0 ? "Nothing to repair." : $"Repaired {repaired} file(s); manifest rewritten.");
         return 0;
+    }
+
+    /// <summary>
+    /// Takes the value out of an already-written Set-Cookie line and leaves everything else
+    /// alone. Idempotent, because masking a masked value produces the same bytes.
+    /// </summary>
+    private static string MaskCookieLine(string line)
+    {
+        const string prefix = "Set-Cookie: ";
+
+        return line.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? prefix + FixtureStore.HeaderValue("Set-Cookie", line[prefix.Length..], value => value)
+            : line;
     }
 
     private static string Relative(FixtureStore store, string path) =>

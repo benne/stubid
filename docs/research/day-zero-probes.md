@@ -105,6 +105,11 @@ The fixture settles the error shape, which is what it was recorded for, and noth
 scope.
 
 What the administration was observed to lack is any scope-granting control, which is the row as
-it now reads. The real reason the text claims are unrecorded is in
-[the divergences](../brokers/neb/divergences.md): the sitting sent `reference_text` alone, and
-the broker limits the transaction-text flow to signed requests.
+it now reads. The real reason the 2026-08-30 sitting did not record the text claims is that it
+sent `reference_text` alone, and the broker limits the transaction-text flow to signed requests
+— see [the divergences](../brokers/neb/divergences.md).
+
+**Recorded 2026-09-02.** CAP-031 sent a signed request carrying a transaction text and the
+claims came back, on the same client and the same granted scope as the sitting before it. No
+scope was added to reach them, which is the retraction's positive half: the argument above
+rests on a missing source and on reading one error shape, and this rests on the claims arriving.

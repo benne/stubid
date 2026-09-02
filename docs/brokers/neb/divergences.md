@@ -65,40 +65,46 @@ Each is marked in the fidelity ledger with the provenance it actually has, so
 
 ## Transaction signing
 
-The transaction token itself is recorded. CAP-021 and CAP-022 were taken with
-`transaction_token` in scope, and CAP-022 sent a `reference_text`, which settled
-`mitid.reference_text` against the `mitid.referencetext` the documentation also uses.
+StubID issues no transaction token. Its token response carries `id_token`, `access_token`,
+`expires_in`, `token_type`, `scope` and `userinfo_token` and stops there: no
+`transaction_token`, and no `transaction_token_ocsp_resp` beside it. `idp_params` is checked
+for being a JSON object and its contents are never read, so `transaction_text` and
+`reference_text` are accepted and discarded.
 
-The transaction-*text* claims are the ones still unrecorded — `mitid.transaction_text` or
-`mitid.transactiontext`, alongside `mitid.transaction_text_sha256` and
-`mitid.transaction_text_type` — and the broker's own documentation contradicts itself on how
-they are spelled. Nothing is emitted for them rather than guessing which spelling is real.
+**Why.** Not because anything is unknown. What the broker sends is recorded three times over —
+CAP-021, CAP-022 and CAP-031 — and written up in [what the tokens carry](claims.md). Until the
+feature is built, issuing part of a transaction token would be worse than issuing none: a
+client that gets one and finds a member missing has been told something false about a token
+whose whole purpose is to be evidence.
 
-The sitting never asked for them: it sent `reference_text` alone. Transaction text is a
-different flow, driven by the `transaction_text` and `transaction_text_type` identity-provider
-parameters, and the broker's Identity Providers document limits that flow to signed requests.
+**What this costs.** A test that drives a signing flow has nothing to assert against. There is
+no partial credit on offer here.
 
-A signed request works. Both clients this project can reach accept a request object signed
-HS256 with the client secret, with the transaction-text parameters carried inside it — measured
-with controls in [what the broker does with a signed request
-object](../../research/signed-requests.md). So what stands between here and the text claims is a
-sitting: no new entitlement, and nobody at the broker. StubID does not implement request objects
-on its own surface, which is a separate gap, recorded in the table above.
+The `request` parameter is the other half of the same gap. The broker limits the
+transaction-text flow to signed requests, and StubID does not implement request objects, so an
+application exercising that flow against the stub cannot send what the real broker requires.
+That one is in the table above; this one is its own section because nothing advertises it.
 
 An earlier version of this file said the text claims needed a `signtext_api` scope that only
 the broker's staff could grant. That name has no source: not in the vendor documentation, not
 anywhere public, and not in this repository outside the probe that used it. The capture cited
-for it, CAP-016, settled a grant-type refusal rather than a scope.
+for it, CAP-016, settled a grant-type refusal rather than a scope. CAP-031 settles it from the
+other side — the text claims came back on the same client and the same granted scope CAP-022
+had, with nothing added to reach them.
 
 ## The OCES3 certificate chain
 
-The broker signs its transaction token with a certificate issued by a Danish state CA, and
-returns an OCSP response alongside it. StubID signs with its own certificate.
+The broker signs its transaction token with a certificate issued by a Danish state CA and
+returns an OCSP response alongside it. StubID issues neither, per the section above, so this
+says what the divergence will be rather than what it is today. It is written down now because
+building the feature is not what removes the constraint.
 
-A client that resolves the signing key by `kid` from the published key set — which is what the
-broker's own verification guide tells you to do — works against both. A client that validates
-the certificate *chain*, or the OCSP response, works against pre-production and fails here.
-There is no fix for that; it is disclosed rather than papered over.
+A client that resolves a signing key by `kid` from the published key set — which is what the
+broker's own verification guide tells you to do — works against both, and CAP-031 is the first
+capture where that path ran end to end against the broker: every token verified under the key
+its `kid` resolved to in the key set as it stood that day. A client that validates the
+certificate *chain*, or the OCSP response, works against pre-production and fails here. There
+is no fix for that; it is disclosed rather than papered over.
 
 ## What is not reproduced
 

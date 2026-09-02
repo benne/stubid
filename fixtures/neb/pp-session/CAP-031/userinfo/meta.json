@@ -1,0 +1,16 @@
+{
+  "id": "CAP-031",
+  "step": "Step 9b",
+  "title": "Transaction token with a transaction text, in a signed request",
+  "settles": "How the transaction-text claims are really spelled - transaction_text against transactiontext - and whether transaction_text_sha256 and transaction_text_type are issued at all. The half of question 4 that CAP-022 could not reach.",
+  "exchange": "userinfo",
+  "request": {
+    "method": "GET",
+    "url": "https://pp.netseidbroker.dk/op/connect/userinfo"
+  },
+  "requestObject": null,
+  "status": 200,
+  "tokens": {},
+  "capturedAtUtc": "2026-09-02T09:48:38Z",
+  "note": null
+}

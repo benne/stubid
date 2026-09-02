@@ -43,7 +43,9 @@ public class ScrubberTests
 
     [Theory]
     // A header beginning with alg, and one beginning with typ. The second is what the old
-    // literal check missed, and it is the shape the unobserved transaction token may take.
+    // literal check missed. The transaction token was the unobserved token that argued for
+    // checking structurally rather than by prefix; it turned out to be alg-first like the
+    // rest, which is a reason to keep the structural check and not a reason to drop it.
     [InlineData("eyJhbGciOiJSUzI1NiIsImtpZCI6IlgifQ.eyJzdWIiOiJhLXN1YmplY3QifQ.c2ln")]
     [InlineData("eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhLXN1YmplY3QifQ.c2ln")]
     public void A_signed_token_is_caught_whatever_its_header_order(string text)

@@ -230,6 +230,32 @@ public class StagingWriteTests
             StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void A_cookie_keeps_its_name_and_flags_and_loses_its_value()
+    {
+        // FixtureStore masked these and Staging did not, so the sitting published the value
+        // the broker served on every exchange it recorded. Nothing in that pack turned out to
+        // be a session cookie, but the writer with the hole is the one recording an
+        // authenticated session, which is where a session cookie would arrive.
+        const string served = "X-Correlation-Id=00000000-1111-2222-3333-444444444444; path=/; secure; httponly";
+
+        var staging = new Staging();
+        staging.Add(ManualCatalogue.All.Single(c => c.SignRequest), "token", new RecordedExchange(
+            "POST", "https://pp.netseidbroker.dk/op/connect/token", [], null, 200, "OK",
+            [new("Set-Cookie", served)], Encoding.UTF8.GetBytes("{}")));
+
+        var head = WithCredentials(() => Write(staging))["CAP-031/token/response.head"];
+        var line = head.Split('\n').Single(l => l.StartsWith("Set-Cookie: ", StringComparison.Ordinal))
+            ["Set-Cookie: ".Length..];
+
+        Assert.StartsWith("X-Correlation-Id=xxxx", line, StringComparison.Ordinal);
+        Assert.EndsWith("; path=/; secure; httponly", line, StringComparison.Ordinal);
+        Assert.DoesNotContain("00000000-1111", line, StringComparison.Ordinal);
+
+        // Same length, so a recorded Content-Length stays true.
+        Assert.Equal(served.Length, line.Length);
+    }
+
     private static Dictionary<string, string> Record() => Written(null, null);
 
     private static Dictionary<string, string> Written(string? jwks, RSA? key) =>

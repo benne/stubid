@@ -167,9 +167,13 @@ public sealed partial class Staging(string? jwks = null)
                     Scrub(requestObject.Payload), ct);
             }
 
+            // Through FixtureStore's rule rather than Scrub alone: a cookie's value is a
+            // credential until the session behind it dies, and this writer published the
+            // served value for every exchange of the first sitting.
             await File.WriteAllTextAsync(Path.Combine(directory, "response.head"),
                 string.Join('\n', new[] { $"HTTP {exchange.StatusCode} {exchange.ReasonPhrase}" }
-                    .Concat(exchange.ResponseHeaders.Select(h => $"{h.Key}: {Scrub(h.Value)}"))) + "\n", ct);
+                    .Concat(exchange.ResponseHeaders.Select(
+                        h => $"{h.Key}: {FixtureStore.HeaderValue(h.Key, h.Value, Scrub)}"))) + "\n", ct);
 
             await File.WriteAllTextAsync(Path.Combine(directory, "meta.json"), JsonSerializer.Serialize(new
             {

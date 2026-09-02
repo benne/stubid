@@ -64,15 +64,21 @@ destroy both.
 
   A later sitting records its own cases beside the existing ones and rewrites `MANIFEST.json`
   to cover them, keeping the date the pack already carries: that date says when the pack was
-  made, and a sitting that adds one recording did not make the rest. Each exchange carries its
-  own `capturedAtUtc` in `meta.json`, which is the only place it appears — the broker's `Date`
-  header is on some of these responses and not others, and a recorded callback has no response
-  headers at all.
+  made, and a sitting that adds one recording did not make the rest. From the second sitting on,
+  each exchange carries its own `capturedAtUtc` in `meta.json`; the thirty from the first
+  predate the field. `meta.json` is the only place an exchange's date is certain to appear —
+  the broker's `Date` header is on twenty-one of the thirty-two responses, and a recorded
+  callback has no response headers at all.
 
   Signed tokens are stored as a placeholder in the response body, with the decoded header and
   payload beside them. Scrubbing inside a token would invalidate its signature, and re-signing
-  produces bytes the broker never sent; the response's member order is what the body is for,
-  and the token's own member order is what the halves are for.
+  produces bytes nobody sent; the response's member order is what the body is for, and the
+  token's own member order is what the halves are for.
+
+  A step that sends a signed request object gets the same treatment on the request side, where
+  the placeholder sits in the URL that `meta.json` records rather than in bytes as served. That
+  object is the harness's own, signed with the client secret, so keeping it out of a fixture is
+  a separate reason for the same rule.
 
 ## What this pack established
 
@@ -97,10 +103,11 @@ have rejected it up front.
 **The error catalogue is PascalCase on the wire and camelCase in the broker's own OpenAPI
 document.** Generating a stub from the specification would be wrong on the first response.
 
-## What the sitting established
+## What the sittings established
 
-`fixtures/neb/pp-session/` holds thirty exchanges from a real MitID login, recorded by
-hand. Between them they settled things no documentation states:
+`fixtures/neb/pp-session/` holds twelve cases and thirty-two exchanges from real MitID logins,
+recorded by hand across two sittings — eleven cases on 2026-08-30, and CAP-031 on 2026-09-02.
+Between them they settled things no documentation states:
 
 - The id_token carries `nbf`, `sid`, `acr`, `idp_transaction_id`, `idtoken_type` and
   `subject_type`, four of which appear in no vendor claim table, and does **not** carry the
@@ -115,6 +122,18 @@ hand. Between them they settled things no documentation states:
 - The `iss` authorization-response parameter is sent only when no id_token is returned.
 - The documented `session_status` and `session_identifier` do not exist; the wire carries
   `session_is_active` and `session_expiry`.
+- `auth_time` is a string in the transaction token too, which sends `amr` as a bare string
+  where the other three tokens of the same response send an array.
+- The transaction text comes back under both spellings at once, prefixed and unprefixed and
+  underscored in both, so `mitid.transactiontext` is not a spelling this broker uses. Its
+  `sha256` member is taken over the decoded text and encoded as base64 rather than hex.
+- `transaction_actions` arrives as a bare string on the login-only recording and as an array
+  on the two that did something else as well.
+- `signing_cert_ocsp_nonce` appears on neither the login (CAP-022) nor the signing
+  transaction (CAP-031), the only two recordings that could have shown it.
+- The userinfo endpoint returns `mitid.transaction_text_type` and
+  `mitid.transaction_text_sha256` without `mitid.transaction_text` — a digest without the text
+  it is over — while a reference text comes back there whole.
 
 Written up in [../docs/brokers/neb/claims.md](../docs/brokers/neb/claims.md).
 
