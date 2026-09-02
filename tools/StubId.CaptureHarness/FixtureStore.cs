@@ -52,11 +52,7 @@ public sealed class FixtureStore(string root)
             // A session cookie is a credential until it expires, not an identifier. The
             // contract is the cookie's name and flags, so those are kept and the value is
             // replaced with one of the same length.
-            var written = name.Equals("Set-Cookie", StringComparison.OrdinalIgnoreCase)
-                ? MaskCookieValue(value)
-                : Scrubber.Scrub(value);
-
-            head.Append(name).Append(": ").AppendLine(written);
+            head.Append(name).Append(": ").AppendLine(HeaderValue(name, value, Scrubber.Scrub));
         }
         await File.WriteAllTextAsync(Path.Combine(dir, "response.head"), head.ToString(), ct);
 
@@ -82,6 +78,21 @@ public sealed class FixtureStore(string root)
     private static bool IsCredentialHeader(string name) =>
         name.Equals("Authorization", StringComparison.OrdinalIgnoreCase)
         || name.Equals("Cookie", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// A response header as a fixture records it: a cookie keeps its name and every attribute
+    /// and loses its value, everything else is scrubbed.
+    /// </summary>
+    /// <remarks>
+    /// Shared, because there are two writers. This one records the unattended pack; Staging
+    /// records the sitting, and it wrote the served cookie value for every exchange of the
+    /// first one - which is the path that matters, since the sitting is the pack with an
+    /// authenticated session behind it.
+    /// </remarks>
+    public static string HeaderValue(string name, string value, Func<string, string> scrub) =>
+        name.Equals("Set-Cookie", StringComparison.OrdinalIgnoreCase)
+            ? MaskCookieValue(value)
+            : scrub(value);
 
     /// <summary>
     /// Replaces a cookie's value while keeping its name and every attribute after it. The
