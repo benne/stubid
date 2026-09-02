@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
 
@@ -164,6 +165,47 @@ public static class TokenFixtures
             return header.RootElement.TryGetProperty(name, out var value) ? value.GetString() : null;
         }
         catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// The subject of the certificate a kid resolves to in the published key set.
+    /// </summary>
+    /// <remarks>
+    /// A thumbprint says nothing on its own. The certificate subjects are what separate the
+    /// transaction-signing key from the ordinary token-signing one, and a fixture that records
+    /// only the kid leaves that to be looked up against a key set which will have rotated.
+    /// </remarks>
+    public static string? SubjectFor(string? kid, string jwksJson)
+    {
+        if (kid is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            using var jwks = JsonDocument.Parse(jwksJson);
+            var key = jwks.RootElement.GetProperty("keys").EnumerateArray()
+                .FirstOrDefault(k => k.TryGetProperty("kid", out var candidate)
+                                     && candidate.GetString() == kid);
+
+            if (key.ValueKind != JsonValueKind.Object
+                || !key.TryGetProperty("x5c", out var chain)
+                || chain.GetArrayLength() == 0)
+            {
+                return null;
+            }
+
+            using var certificate = X509CertificateLoader.LoadCertificate(
+                Convert.FromBase64String(chain[0].GetString()!));
+
+            return certificate.Subject;
+        }
+        catch (Exception e) when (e is FormatException or JsonException or CryptographicException
+                                       or KeyNotFoundException)
         {
             return null;
         }

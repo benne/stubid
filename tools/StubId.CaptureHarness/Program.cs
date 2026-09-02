@@ -6,8 +6,11 @@ using StubId.CaptureHarness;
 //             --only=CAP-040,CAP-041 records just those, leaving the rest committed
 //   verify    record the unattended cases again and compare against what is committed
 //   session   host the relying party for the manual sitting on localhost:5099
+//             --only=CAP-031 lists just that step, so the ones already recorded cannot be
+//             clicked by accident
 //   check     verify the local configuration before a sitting
 //   rehearse  send every step's authorize request, without completing any
+//             --only applies here too
 //   sanitise  reprocess a written session with the current rules
 //
 // Both hit the broker's public pre-production environment with unauthenticated requests.
@@ -35,34 +38,47 @@ var cases = only is null
     ? CaptureCatalogue.All
     : [.. CaptureCatalogue.All.Where(c => only.Contains(c.Id, StringComparer.OrdinalIgnoreCase))];
 
-if (cases.Count == 0)
-{
-    Console.Error.WriteLine("No case matched --only.");
-    return 2;
-}
+// The two catalogues are filtered separately, because a name in one is not in the other: the
+// sitting's steps are deliberately not in CaptureCatalogue, and --only=CAP-031 matching
+// nothing there is the normal case rather than a mistake.
+var manual = ManualCatalogue.Selected(only);
 
 switch (command)
 {
     case "capture":
-        return await CaptureAsync();
+        return Refuse(cases) ?? await CaptureAsync();
     case "verify":
-        return await VerifyAsync();
+        return Refuse(cases) ?? await VerifyAsync();
     case "rehearse":
-        return await Rehearsal.RunAsync(cancellation.Token);
+        return Refuse(manual) ?? await Rehearsal.RunAsync(manual, cancellation.Token);
     case "sanitise":
         return await Sanitise.RunAsync(new FixtureStore(
             Path.GetFullPath(Path.Combine(root, "..", "..", "..", "fixtures", "neb", "pp-session"))),
             cancellation.Token);
     case "check":
-        return Preflight.Run();
+        return await Preflight.RunAsync(cancellation.Token);
     case "session":
         // The manual sitting writes into its own directory: the unattended pack must stay
         // reproducible by re-running capture, and these recordings never are.
-        return await Session.RunAsync(new FixtureStore(
-            Path.GetFullPath(Path.Combine(root, "..", "..", "..", "fixtures", "neb", "pp-session"))));
+        return Refuse(manual) ?? await Session.RunAsync(
+            new FixtureStore(Path.GetFullPath(
+                Path.Combine(root, "..", "..", "..", "fixtures", "neb", "pp-session"))),
+            manual);
     default:
-        Console.Error.WriteLine($"Unknown command '{command}'. Use 'capture', 'verify', 'session' or 'check'.");
+        Console.Error.WriteLine($"Unknown command '{command}'. Use 'capture', 'verify', "
+            + "'session', 'rehearse', 'sanitise' or 'check'.");
         return 2;
+}
+
+int? Refuse<T>(IReadOnlyList<T> selected)
+{
+    if (selected.Count > 0)
+    {
+        return null;
+    }
+
+    Console.Error.WriteLine("No case matched --only.");
+    return 2;
 }
 
 async Task<int> CaptureAsync()

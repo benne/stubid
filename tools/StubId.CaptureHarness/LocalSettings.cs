@@ -88,21 +88,33 @@ public static class LocalSettings
 
     public static string? Path { get; private set; }
 
+    /// <summary>
+    /// The repository, found the same way the settings file is: by walking up for the solution.
+    /// Null when the tool runs from somewhere that is not a checkout.
+    /// </summary>
+    public static string? Root
+    {
+        get
+        {
+            var directory = new DirectoryInfo(AppContext.BaseDirectory);
+            while (directory is not null
+                   && !System.IO.File.Exists(System.IO.Path.Combine(directory.FullName, "StubID.slnx")))
+            {
+                directory = directory.Parent;
+            }
+
+            return directory?.FullName;
+        }
+    }
+
     private static JsonDocument? Load(string fileName)
     {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null
-               && !System.IO.File.Exists(System.IO.Path.Combine(directory.FullName, "StubID.slnx")))
-        {
-            directory = directory.Parent;
-        }
-
-        if (directory is null)
+        if (Root is not { } root)
         {
             return null;
         }
 
-        var path = System.IO.Path.Combine(directory.FullName, fileName);
+        var path = System.IO.Path.Combine(root, fileName);
         if (!System.IO.File.Exists(path))
         {
             return null;

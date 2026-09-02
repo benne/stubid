@@ -184,4 +184,18 @@ public static class ManualCatalogue
             FollowUps = [FollowUp.EndSession],
         },
     ];
+
+    /// <summary>
+    /// The steps a run is about, keeping the catalogue's order.
+    /// </summary>
+    /// <remarks>
+    /// A sitting after the first one wants one step, not twelve. The launchpad listing a step
+    /// whose fixture is already committed invites a click that stages a second copy of it,
+    /// which /finish writes beside the first and the manifest then covers as though both were
+    /// meant. Naming the steps is cheaper than remembering not to click.
+    /// </remarks>
+    public static IReadOnlyList<ManualCase> Selected(IReadOnlyCollection<string>? only) =>
+        only is null || only.Count == 0
+            ? All
+            : [.. All.Where(c => only.Contains(c.Id, StringComparer.OrdinalIgnoreCase))];
 }
