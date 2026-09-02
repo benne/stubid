@@ -92,6 +92,36 @@ for it, CAP-016, settled a grant-type refusal rather than a scope. CAP-031 settl
 other side — the text claims came back on the same client and the same granted scope CAP-022
 had, with nothing added to reach them.
 
+## StubID's login page shows nothing the request carried
+
+The broker's authorize page is built out of the request. Its MitID widget is headed `Godkend
+hos` the relying party's registered display name, and on a signing request the transaction
+text stands in a panel beside the widget. StubID's login page shows none of that: it says it
+is an emulator, offers a dropdown of citizens and an Approve and an Abort button, and names
+neither the client nor anything the request carried.
+
+**Why.** Not wearing MitID's furniture is the deliberate half, for the reason
+[the login page](../../guides/approvals.md#the-login-page) already gives — a page that looked
+convincing is a page someone can be fooled by. The client's name is the other half, and not a
+decision: StubID registers no display name for a client at all, `Client` being a client
+id, its response types and an organisation, and the page does not show even the `client_id` it
+has. That one is an omission rather than a position.
+
+**What this costs.** A browser test that reads the transaction text off the page before
+approving passes against pre-production and fails here. The cost falls on a person watching
+the page rather than on a test suite, because driving `/op/Login` does not complete a login
+here in any case: deciding a parked session renders a page instead of redirecting
+([driving a browser](../../guides/browsers.md)).
+
+Building transaction signing does not on its own remove this. `idp_params` reaches the
+decision ladder as the raw string it arrived as, and the one function that would decode it,
+`RequestGrammar.IdentityProviderParameters`, has no callers anywhere. `AuthSession` keeps the
+raw query rather than the parsed parameters, and that query carries the parameter only on a
+GET — on a POST it is empty, and on the pushed-request path it holds the client id and the
+request reference. Whoever closes those gaps should put the text on StubID's own page rather
+than behind a simulated authenticator, because that is where the broker puts it:
+[what the screens showed](../../research/transaction-screens.md).
+
 ## The OCES3 certificate chain
 
 The broker signs its transaction token with a certificate issued by a Danish state CA and

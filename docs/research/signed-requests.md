@@ -106,11 +106,14 @@ and `rehearse` now sends it for every signing step, so a sitting finds out the d
 ## What this does not settle
 
 The claim names. F shows the transaction-text parameters are *accepted* at the authorize
-endpoint. It says nothing about what the MitID app shows the user, and nothing about which of
+endpoint. It says nothing about what the user is shown, and nothing about which of
 `mitid.transaction_text`, `mitid.transactiontext`, `mitid.transaction_text_sha256` and
 `mitid.transaction_text_type` reach the transaction token, or how they are spelled when they do.
 
 That needs a completed signing login, with a human in MitID's test tool. What this measurement
 changed is that such a sitting was reachable at all — no new entitlement, and nobody from the
 broker. It was taken on 2026-09-02 and is recorded as CAP-031; what came back is in
-[what the tokens carry](../brokers/neb/claims.md).
+[what the tokens carry](../brokers/neb/claims.md), and the half of the question this note
+could not reach — what the user is shown — is in
+[what the screens showed](transaction-screens.md). The broker's own page rendered the text; it
+was not among the flow values MitID held for that transaction.

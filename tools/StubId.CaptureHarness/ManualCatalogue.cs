@@ -94,8 +94,10 @@ public static class ManualCatalogue
                 + "against transactiontext - and whether transaction_text_sha256 and "
                 + "transaction_text_type are issued at all. The half of question 4 that "
                 + "CAP-022 could not reach.",
-            Operator = "Read the transaction text in the app and check it word for word "
-                + "before approving. Whether it is displayed at all is the finding.",
+            Operator = "Read the transaction text on the broker's page, in the panel beside "
+                + "the MitID widget, and check it word for word before approving. Then note "
+                + "what the app simulator's flow values say: on CAP-031 the text was not "
+                + "among them.",
             Scope = "openid mitid transaction_token",
 
             // The only step that sends one. The broker limits the transaction-text flow to

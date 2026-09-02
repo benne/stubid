@@ -1262,8 +1262,11 @@ The launchpad shows one row, which is the point of `--only`: the other eleven st
 already committed, and a click on one of them stages a second copy that `/finish` writes
 beside the first.
 
-Take the step. Read the transaction text in the MitID app and check it word for word —
-whether it is displayed at all is part of what this records. Approve with the app simulator.
+Take the step. The transaction text is on the broker's page, in a panel beside the MitID
+widget — read it there and check it word for word. Then expand the simulator's flow values and
+note what they say: on CAP-031 the text was not among them
+([what the screens showed](research/transaction-screens.md)), and a second look is what turns
+one observation into a rule. Approve with the app simulator.
 
 Then stop, before anything else, and read the token response at `/staged`. Reaching the login
 page proved the request was accepted and nothing more; it did not prove the feature is
@@ -1282,8 +1285,9 @@ is what it is for. If it happens anyway and step 9's equivalent is fine, the req
 the suspect rather than the `idp_params`.
 
 **`prompt=login` did not re-authenticate.** `auth_time` unchanged from CAP-022's means MitID
-kept its own session, and the app never showed a text to approve. The recording is not what it
-looks like.
+kept its own session. The recording is not what it looks like. Do not reach for "no text in
+the app" as a second signal: on CAP-031 the transaction text was not among the simulator's
+flow values on a recording that was fine, so its absence there says nothing either way.
 
 ### Teardown
 
