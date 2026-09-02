@@ -4,7 +4,7 @@ Measured against Signaturgruppen Broker pre-production on 2026-09-01, on two cli
 code client the broker publishes, and a private client belonging to a broker customer — the one
 CAP-021 and CAP-022 were recorded with. Two runs, identical.
 
-The question came out of the transaction-text claims. They are unrecorded, the broker limits
+The question came out of the transaction-text claims. They were unrecorded, the broker limits
 the transaction-text flow to signed requests, and nothing here had ever sent one, so it was an
 open question whether a client this project can reach is able to make one at all. It is.
 
@@ -111,5 +111,6 @@ endpoint. It says nothing about what the MitID app shows the user, and nothing a
 `mitid.transaction_text_type` reach the transaction token, or how they are spelled when they do.
 
 That needs a completed signing login, with a human in MitID's test tool. What this measurement
-changes is that such a sitting is now known to be reachable — it needs no new entitlement and
-nobody from the broker — not that any of it is recorded.
+changed is that such a sitting was reachable at all — no new entitlement, and nobody from the
+broker. It was taken on 2026-09-02 and is recorded as CAP-031; what came back is in
+[what the tokens carry](../brokers/neb/claims.md).

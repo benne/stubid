@@ -12,7 +12,8 @@ So a human does it once, carefully, and everything that was forgotten costs anot
 Parts 1 to 5 are that sitting, which ran on 2026-08-30 and is in
 `fixtures/neb/pp-session/CAP-020` to `CAP-030`. They are kept as written rather than
 rewritten in the past tense: the reasoning is what makes the next one cheap. Part 5 says what
-it settled and what it did not, and one row of it costs another sitting — which is Part 6.
+it settled and what it did not, and one row of it cost another sitting — Part 6, which ran on
+2026-09-02 and took CAP-031.
 
 Read the whole document before starting. The ordering constraints are not stylistic; several
 steps destroy the state a later step needs, and two of them are irreversible within the
@@ -724,7 +725,12 @@ step 9's so the two recordings cannot be confused. Both digests, for the same re
 - SHA-256 of the decoded text: `2898ddd6308fd9cf869e42cd97c70012abb28ecc557fa148e84b6855d7611d1f`
 
 If `mitid.transaction_text_sha256` is issued, which of those two it equals is the answer to
-"over which form", and neither is the answer that it is over something else again.
+"over which form", and neither is the answer that it is over something else again. Decode
+before comparing: the claim came back as base64 of the hash, not as hex.
+
+**Recorded.** It is the decoded text, `2898ddd6…`. The text itself came back as the base64 that
+was sent, under both spellings at once, and `transaction_text_type` echoed. What that settles
+is in [what the tokens carry](brokers/neb/claims.md).
 
 **Why signed.** The broker limits the transaction-text flow to signed requests, which is why
 step 9 settles the reference-text naming and cannot touch this. The harness builds the object
@@ -739,6 +745,9 @@ in it?** Reaching the login page proves the request was accepted and nothing mor
 prove the feature is switched on for the client, exactly as step 9 warns about
 `transaction_token` itself. If the text claims are absent, say so and move on — a recorded
 absence is a finding, and hunting for them will cost the sitting more than they are worth.
+
+The gate was passed on 2026-09-02: the claims were there. It stays as written because it is the
+reasoning a later sitting reuses, not a prediction that has been spent.
 
 *Settles:* the four-way spelling contradiction — `mitid.transaction_text` against
 `mitid.transactiontext`, whether `mitid.transaction_text_sha256` is issued and over which of the
@@ -1160,7 +1169,7 @@ dry-run (B16) exists.
 | 1 | id_token member set and order | **Settled.** Header and payload member sets and order at three assurance levels, back-channel and front-channel, first login and silent re-issue. `nbf`, `sid`, `idp_environment`, `at_hash`, the type of `auth_time`, and whether `sid` and `auth_time` are stable across a session. |
 | 2 | The `amr` wire form | **Mostly settled.** The claim name and the value form are settled outright by step 6. Multi-valued `amr` is settled if Low offers password-plus-code-display. `code_app_enchanced` is settled only if the simulator exposes the enhanced approval. **Open:** any documented value the test tool does not offer — `code_reader` and `u2f_token` are the likely gaps, and each would need an identity provisioned with that authenticator. |
 | 3 | Userinfo value types | **Settled** for the `mitid`, `ssn` and `nemid.pid` claims, including whether everything really is a JSON string. **Likely open:** the `ssn.details_*` **success** branch, because a test-tool CPR need not exist in the pre-production register and `unable_to_lookup` is the expected answer — the failure shape is recorded, the success shape stays documentation-only. **Likely open:** `person_status` casing (lowercase versus PascalCase), for the same reason. **Open:** `name_address_protected` as a boolean versus the string `"false"`, unless a protected identity turns out to be creatable (P1's thirty-second check). |
-| 4 | Transaction token claim names | **Settled** for everything a login produces: `identitytype` versus `identity_type`, the presence of `loa`/`aal`/`exp`/`aud`/`nbf`, `auth_time`'s type, `spec_ver`, `recipient_info`'s shape, `transaction_actions` in single- and multi-action form, `mitid.reference_text` versus `mitid.referencetext`, `mitid.psd2`'s type, the full member order, and which key signs it. **Open, and needs a signed request, which the sitting never sent:** the transaction-**text** claims — the four-way spelling contradiction across `mitid.transaction_text_sha256`, `mitid.transactiontext`, `mitid.transaction_text`, `mitid.reference_text`'s signing-context sibling, and `mitid.transaction_text_type`. Also open: whether `signing_cert_ocsp_nonce` appears on a **signing** transaction token; step 9 can only show whether a login produces it. Such a request is now measured to work — see [signed requests](research/signed-requests.md) — and CAP-031 (step 9b) is the step that would settle this row. |
+| 4 | Transaction token claim names | **Settled.** A login settled `identitytype` versus `identity_type`, the presence of `loa`/`aal`/`exp`/`aud`/`nbf`, `auth_time`'s type, the absence of `spec_ver` and `recipient_info`, `transaction_actions` in single- and multi-action form, `mitid.reference_text` versus `mitid.referencetext`, `mitid.psd2`'s type, the full member order, and which key signs it. CAP-031 settled the other half on 2026-09-02: the transaction-text claims arrive under **both** spellings at once, prefixed and unprefixed and underscored in both, so `mitid.transactiontext` is not a spelling this broker uses; `transaction_text_sha256` is issued, over the decoded text, as base64 rather than hex; `transaction_text_type` echoes; the text itself comes back as the base64 that was sent; `transaction_actions` gains `mitid.transaction_signing` and becomes an array. `signing_cert_ocsp_nonce` is absent on a signing transaction as well as on a login, which closes that question negatively. Written up in [the claims reference](brokers/neb/claims.md). |
 | 5 | OAuth `error` per broker error code | **Partly settled**, for the codes actually exercised: `mitid_user_aborted`, `login_required`, `mitid_uuid_hint_malformed`, `mitid_cpr_match_failed`, and — if reachable — `user_aborted`, `mitid_core_client_error_user_abort`, the navigation family, and whichever timeout code step 17 produces. **Open:** the rest of the catalogue, which is dozens of codes, most of them infrastructure or internal-error paths that cannot be provoked from a client at all. This question is never fully closable from the outside; the honest ledger entry is per-code. |
 | 6 | The successful token response shape | **Settled.** Member set and order, `token_type` casing, `expires_in`, whether `scope` is echoed and in which order, and what `userinfo_token` and `transaction_token` add and where. **Permanently open, deliberately:** the refresh-grant response — `offline_access` is refused with `invalid_scope`, so no refresh token exists on this client and there is nothing to record. |
 | 7 | `c_hash` | **Closed negatively, before the sitting.** Every `response_type` putting an id_token in the front channel is refused with `unauthorized_client` on the private client, on both published open code clients, and on the published implicit client. No client we can reach is entitled to hybrid, so `c_hash` is unrecordable against this broker and stays `FidelityProvenance.Assumed`, computed by the spec rule already in `HashClaims`. What **is** recorded: the byte-exact `form_post` envelope, and whether `s_hash` exists. |
@@ -1212,8 +1221,9 @@ authentication or the evidence:
 - **Signatures are checked as they are recorded.** `TokenFixtures.Verify` existed and was
   called by nothing, so every token in the pack says `SignatureVerified: null`. The session
   now fetches the key set on startup and checks each token against it, and records the
-  certificate subject the `kid` resolved to. This is step 10, done by the harness. It cannot
-  be done afterwards: the transaction-signing key rotated once already, in May 2026.
+  certificate subject the `kid` resolved to. That is step 10's first three items done by the
+  harness; its OCSP decode and its member-order print are still by hand. It cannot be done
+  afterwards: the transaction-signing key rotated once already, in May 2026.
 - **`/finish` looks at the request URL.** It scanned bodies, token halves and response headers
   and not the URL, which for a signed step carries a compact JWS of our own making.
 - **Each exchange records its own capture date.** The pack keeps the date it already carries,
