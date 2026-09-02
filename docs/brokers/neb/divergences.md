@@ -138,6 +138,8 @@ is no fix for that; it is disclosed rather than papered over.
 
 ## What is not reproduced
 
+<a id="emulator-header"></a>
+
 Infrastructure that belongs to the broker's hosting rather than its protocol: the `server`
 header, `x-neb-site`, HSTS and CSP headers, the wording of the error page, and response
 timing. StubID emits an `X-StubID-Emulator` header of its own so an instance cannot be

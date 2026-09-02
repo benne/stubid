@@ -1,3 +1,4 @@
+using StubId.Abstractions;
 using StubId.Profiles;
 using StubId.Server.Sessions;
 
@@ -73,6 +74,11 @@ public static class StubIdApplication
     {
         ArgumentNullException.ThrowIfNull(app);
 
+        // First, so that it is on the answers the rest of this pipeline gives without asking
+        // anyone: the path gate below refuses by setting a status and returning, and a header
+        // added after it would miss every 404.
+        app.Use(AnnounceTheEmulator);
+
         // An instance that has not been told its own address says so, in the same shape the clock
         // refuses in. The alternative is a plausible wrong issuer, which every client accepts when it is
         // configured and rejects later with nothing on its side to explain why.
@@ -125,5 +131,31 @@ public static class StubIdApplication
         ((IEndpointRouteBuilder)app).DataSources.Add(routes);
 
         return app;
+    }
+
+    /// <summary>
+    /// Says on every response that this is an emulator.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The one header StubID adds that the broker does not send, and it is added on purpose:
+    /// everything else here exists to be indistinguishable from the real thing, which is
+    /// precisely why an instance has to be able to say what it is. TRADEMARKS.md states this as
+    /// an undertaking rather than a feature.
+    /// </para>
+    /// <para>
+    /// Set before the request is handled rather than as the response is written, because a
+    /// short-circuiting middleware never gets to a callback. The one path this does not survive
+    /// is an exception escaping to the server, which resets the response and everything on it;
+    /// no placement survives that.
+    /// </para>
+    /// </remarks>
+    [Fidelity(FidelityTier.Exact, FidelityProvenance.Divergent,
+        Reason = "docs/brokers/neb/divergences.md#emulator-header")]
+    private static Task AnnounceTheEmulator(HttpContext http, RequestDelegate next)
+    {
+        http.Response.Headers["X-StubID-Emulator"] = "1";
+
+        return next(http);
     }
 }
