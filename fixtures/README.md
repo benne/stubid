@@ -36,12 +36,13 @@ destroy both.
   The credential is the broker's own published test-client secret, kept out of the repository
   rather than committed. Its documentation is where to get it. Cases needing it stop with a
   message rather than recording a confusing rejection.
-- **CAP-020 onwards** need a human to complete a login in MitID's test tool. They settle the
+- **CAP-020 to CAP-049** need a human to complete a login in MitID's test tool. They settle the
   things only a finished authentication reveals: the `amr` wire form, the id_token member
   set and order, the types of the userinfo values, and the transaction token's claim names.
 
   ```
   dotnet run --project tools/StubId.CaptureHarness -- session
+  dotnet run --project tools/StubId.CaptureHarness -- session --only=CAP-031   # one step
   ```
 
   That hosts a relying party on `http://localhost:5099`. Work down the list it shows; each
@@ -50,14 +51,23 @@ destroy both.
   exchanges recorded before the response that first names them, so scrubbing can only be done
   once, over the whole set. `/finish` refuses if anything is still unaccounted for.
 
+  A sitting after the first one wants a step or two rather than the list, and `--only` is how
+  it says so: a step already recorded is one click away from being staged a second time and
+  written beside the first.
+- **CAP-040 onwards, in the unattended pack**, are probes added after the first sitting. They
+  need no login, and they sit above the sitting's numbers rather than among them so that
+  `capture` and the sitting can never be pointed at the same case.
+
   These land in `fixtures/neb/pp-session/` rather than beside the unattended pack: `capture`
   and `verify` iterate one catalogue, and a routine run would replay expired codes over the
   sitting's evidence.
 
   A later sitting records its own cases beside the existing ones and rewrites `MANIFEST.json`
-  to cover them, keeping the date the pack already carries. That date says when the recordings
-  were made and most of them were not made today; each exchange's own date is in its
-  `response.head` either way.
+  to cover them, keeping the date the pack already carries: that date says when the pack was
+  made, and a sitting that adds one recording did not make the rest. Each exchange carries its
+  own `capturedAtUtc` in `meta.json`, which is the only place it appears — the broker's `Date`
+  header is on some of these responses and not others, and a recorded callback has no response
+  headers at all.
 
   Signed tokens are stored as a placeholder in the response body, with the decoded header and
   payload beside them. Scrubbing inside a token would invalidate its signature, and re-signing
@@ -89,7 +99,7 @@ document.** Generating a stub from the specification would be wrong on the first
 
 ## What the sitting established
 
-`fixtures/neb/pp-session/` holds twenty-eight exchanges from a real MitID login, recorded by
+`fixtures/neb/pp-session/` holds thirty exchanges from a real MitID login, recorded by
 hand. Between them they settled things no documentation states:
 
 - The id_token carries `nbf`, `sid`, `acr`, `idp_transaction_id`, `idtoken_type` and
