@@ -10,7 +10,7 @@ Cache-Control: no-store, no-cache, max-age=0
 Pragma: no-cache
 Date: Sun, 30 Aug 2026 22:40:02 GMT
 Connection: close
-Set-Cookie: X-Correlation-Id=b545c117-0b19-44f5-8475-869e50a96ad9; expires=Wed, 02 Sep 2026 22:40:02 GMT; path=/; secure; samesite=none; httponly
+Set-Cookie: X-Correlation-Id=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx; expires=Wed, 02 Sep 2026 22:40:02 GMT; path=/; secure; samesite=none; httponly
 Content-Type: application/json; charset=utf-8
 Content-Length: 40
 Expires: Sun, 30 Aug 2026 22:40:02 GMT

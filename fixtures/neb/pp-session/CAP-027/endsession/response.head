@@ -11,6 +11,6 @@ Cache-Control: no-store, no-cache, max-age=0
 Pragma: no-cache
 Date: Sun, 30 Aug 2026 22:42:28 GMT
 Connection: keep-alive
-Set-Cookie: X-Correlation-Id=e91b8f0d-feba-44e0-8bef-844ed554a5a6; expires=Wed, 02 Sep 2026 22:42:28 GMT; path=/; secure; samesite=none; httponly
+Set-Cookie: X-Correlation-Id=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx; expires=Wed, 02 Sep 2026 22:42:28 GMT; path=/; secure; samesite=none; httponly
 Content-Length: 0
 Expires: Sun, 30 Aug 2026 22:42:28 GMT
