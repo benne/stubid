@@ -31,9 +31,10 @@ public sealed class Keys : IDisposable
     }
 
     /// <summary>
-    /// Two signing keys and one for decryption, matching the recorded key set. The first
-    /// signs transaction tokens, which the broker publishes alongside the ordinary token
-    /// signing key rather than hiding.
+    /// Two signing keys and one for decryption, matching the recorded key set. The first is
+    /// the broker's transaction-signing key, published alongside the ordinary token signing
+    /// key rather than hidden - so StubID publishes its equivalent, and signs nothing with it
+    /// until it issues the token that key is for. See docs/brokers/neb/divergences.md.
     /// </summary>
     public KeyRing Ring { get; }
 
