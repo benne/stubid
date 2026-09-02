@@ -1,7 +1,9 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -183,6 +185,8 @@ public static class Session
             // A sitting writes some of the steps and never all of them, so the pack keeps the
             // date it already has. The first sitting finds no manifest and stamps today.
             await store.WriteManifestKeepingDateAsync(http.RequestAborted);
+
+            ReportOcsp(staging, jwks);
 
             return Results.Text(
                 Page("Written", $"{written} exchanges written to {store.Root}."),
@@ -500,6 +504,117 @@ public static class Session
             &middot; <a href="/logout">End the broker session</a>
             &middot; <a href="/finish">Finish and write the fixtures</a></p>
             """);
+    }
+
+    /// <summary>
+    /// Says what the OCSP responses in this sitting answered, while the sitting is still open.
+    /// </summary>
+    /// <remarks>
+    /// The runbook's step 10 asked for this and got it by hand. What the recordings say is
+    /// asserted on every build by OcspResponseContractTests, which is the half that lasts; this
+    /// is so the operator reads the answer in the chair rather than a week later. It prints and
+    /// never throws, because nothing here is worth ending a sitting over.
+    /// </remarks>
+    private static void ReportOcsp(Staging staging, string? jwks)
+    {
+        foreach (var (@case, exchange, _, body) in staging.Preview())
+        {
+            if (!body.TrimStart().StartsWith('{'))
+            {
+                continue;
+            }
+
+            string? served;
+            string? tokenKid;
+            try
+            {
+                using var json = JsonDocument.Parse(body);
+                if (!json.RootElement.TryGetProperty("transaction_token_ocsp_resp", out var member))
+                {
+                    continue;
+                }
+
+                served = member.GetString();
+                tokenKid = json.RootElement.TryGetProperty("transaction_token", out var token)
+                    ? KidOf(token.GetString())
+                    : null;
+            }
+            catch (JsonException)
+            {
+                continue;
+            }
+
+            var response = served is null ? null : Ocsp.Describe(served);
+            if (response is null)
+            {
+                Console.WriteLine($"  {@case}/{exchange}: an OCSP response that did not parse. "
+                    + "Keep the bytes and write down that it did not.");
+                continue;
+            }
+
+            var single = response.Responses.FirstOrDefault();
+            Console.WriteLine($"  {@case}/{exchange}: OCSP {single?.CertStatus ?? "with no answer in it"}"
+                + $", produced at {response.ProducedAt:O}, {NamesTheSigningKey(single, tokenKid, jwks)}");
+        }
+    }
+
+    private static string? KidOf(string? compact)
+    {
+        var parts = compact?.Split('.');
+        if (parts is not { Length: 3 })
+        {
+            return null;
+        }
+
+        try
+        {
+            using var header = JsonDocument.Parse(
+                System.Buffers.Text.Base64Url.DecodeFromChars(parts[0]));
+
+            return header.RootElement.TryGetProperty("kid", out var kid) ? kid.GetString() : null;
+        }
+        catch (Exception e) when (e is JsonException or FormatException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Whether the answer is about the certificate that signed the token it arrived with.
+    /// </summary>
+    private static string NamesTheSigningKey(
+        OcspSingleResponse? single, string? kid, string? jwks)
+    {
+        if (single is null || kid is null || jwks is null)
+        {
+            return "nothing to match it against";
+        }
+
+        try
+        {
+            using var keys = JsonDocument.Parse(jwks);
+            var key = keys.RootElement.GetProperty("keys").EnumerateArray()
+                .FirstOrDefault(k => k.TryGetProperty("kid", out var candidate)
+                                     && candidate.GetString() == kid);
+
+            if (key.ValueKind != JsonValueKind.Object
+                || !key.TryGetProperty("x5c", out var chain)
+                || chain.GetArrayLength() == 0)
+            {
+                return $"kid {kid} resolves to no certificate in today's key set";
+            }
+
+            using var certificate = X509CertificateLoader.LoadCertificate(
+                Convert.FromBase64String(chain[0].GetString()!));
+
+            return Ocsp.Matches(single, certificate)
+                ? $"and it names {certificate.Subject}"
+                : $"but it does NOT name {certificate.Subject} - write that down";
+        }
+        catch (Exception e) when (e is JsonException or FormatException or CryptographicException)
+        {
+            return "and the key set could not be read to match it";
+        }
     }
 
     private static string Page(string title, string body) => $$"""
