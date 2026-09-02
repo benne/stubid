@@ -79,6 +79,30 @@ run drop the symmetric algorithms from that list by default, and they have to be
 deliberately — the same setting that fills in the discovery property. What this broker has
 configured was not observed; only that HS256 is advertised and that it works.
 
+## The redirect back carries `state` and goes where the object says
+
+Added 2026-09-02, on the private client. Everything above stops at the authorize response, so
+none of it says what happens on the way back — and for a signed request that matters, because
+`redirect_uri` and `state` are inside the object rather than in the query. A recording harness
+that matches a returning browser by `state` has nothing to match on if the broker does not
+echo one, and an authorization code that arrives unattributable expires in seconds.
+
+Asking costs no authentication. The same signed object, with `prompt=none` added and no cookie
+jar behind it, has no session to satisfy, so the broker refuses — and it refuses by redirecting
+to the client:
+
+```
+302 http://localhost:5099/callback?error=login_required&state=CAP-031&session_state=…#_
+```
+
+Both parameters came out of the object. So the broker resolves them on the refusal path the
+same way E showed it resolves the rest on the way in, and the furniture matches what an
+unsigned interaction failure already produces.
+
+This is the interaction-failure path standing in for the success path: the same object, the
+same validation, a different ending. It is the most that can be had without spending a login,
+and `rehearse` now sends it for every signing step, so a sitting finds out the day before.
+
 ## What this does not settle
 
 The claim names. F shows the transaction-text parameters are *accepted* at the authorize
