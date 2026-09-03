@@ -112,29 +112,46 @@ StubID issues a transaction token when the request asks for the `transaction_tok
 a `transaction_token_ocsp_resp` beside it. The pair is never split, because no recorded body
 splits it.
 
-`idp_params` is read as far as `reference_text`, which reaches the transaction token and the
-userinfo response the way CAP-022 recorded. The `request` parameter it was recorded arriving
-through is read now, on both the authorize and the pushed path — read rather than verified, for
-the reason [above](#request-objects). What is not there yet is the *transaction* text: the six
-members carrying it under both spellings are absent.
+`idp_params` is read, and both texts it can carry reach the places the recordings put them. A
+`reference_text` comes back whole in the transaction token and at the userinfo endpoint, the way
+CAP-022 recorded. A `transaction_text` comes back as six members under both spellings, with a
+digest StubID computes, and as a type and that digest — without the text — at the userinfo
+endpoint, the way CAP-031 recorded. The `request` parameter CAP-031 arrived through is read on
+both the authorize and the pushed path, read rather than verified, for the reason
+[above](#request-objects).
 
-Whether the broker would take a transaction text *without* a signed request is unmeasured. The
-claim that it takes one only inside a request object comes from vendor prose deleted in June
-2025, and no probe ever sent one unsigned — while CAP-022 shows unsigned `idp_params` being
-accepted in a plain query. So the order here is what the recordings could reach, not a
-constraint anyone demonstrated.
+**A transaction text is not gated on a signed request.** Whether the broker would take one in a
+plain query is unmeasured: the claim that it takes one only inside a request object comes from
+vendor prose deleted in June 2025, no probe ever sent one unsigned, and CAP-022 shows unsigned
+`idp_params` being accepted in a plain query. StubID accepts a transaction text however it
+arrives, because refusing one would enforce a restriction nobody has demonstrated and would fail
+a test that may well work against pre-production. `mitid.transaction_signing` follows the text
+rather than the transport for the same reason.
 
-**Why the token came first.** Because the recordings put it there. The transaction token is
-gated on the scope rather than on a signed request: CAP-021 and CAP-022 are plain unsigned
-authorize URLs with no `request` parameter, and both came back with one. Only the transaction
-text needs a signed request, so the token could be built and checked against two recordings
-before any of the request-object work existed.
+**Three things about the text are StubID's own**, because CAP-031 sent a well-formed one and is
+the only recording there is:
 
-**What this costs.** A test that drives a signing flow gets a well-formed transaction token
-whose transaction-text members are absent — so a client reading `transaction_text` finds nothing,
-where against pre-production it would find the text it sent. That is a smaller gap than issuing
-no token at all, and unlike the members themselves it is visible: the claim is missing rather
-than wrong. A `reference_text` flow is complete.
+- **A text that cannot be decoded keeps its members and loses its digest.** Four members instead
+  of six in the transaction token, and at the userinfo endpoint a
+  `mitid.transaction_text_type` standing without a `mitid.transaction_text_sha256` beside it.
+  The alternative is an empty 500 out of the token endpoint on a value the client controls, and
+  that is the one answer the broker never gives. What the broker does here is unrecorded.
+- **A text with no type gets no type.** Each of the three values is conditional on its own, so a
+  client that sends only a text gets four members and no invented `text`. Emitting a JSON `null`
+  would break the userinfo endpoint's every-value-is-a-string invariant; emitting `"text"` would
+  be StubID answering a question nobody asked it.
+- **Both base64 alphabets are accepted**, and whitespace is refused rather than skipped. The
+  recorded text sits in the intersection of standard and URL-safe base64 — no `+`, `/`, `-` or
+  `_`, and a length that is a multiple of four — so no recording says which the broker parses.
+  Whitespace is the half with a trap in it: `Convert.FromBase64String` skips it, which changes
+  the answer without saying so, since a value with characters removed still decodes and decodes
+  to different bytes. Refused, such a text keeps its members and loses its digest like any other
+  that will not decode.
+
+The digest itself is not a choice. It is base64 of SHA-256 over the **decoded** bytes, standard
+alphabet and padded, recomputed from CAP-031 and matched. The digest over the base64 as sent —
+the answer a stub reaches for first — is a different value, and there is a test that computes
+both so a failure says which one was emitted.
 
 An earlier version of this file said the text claims needed a `signtext_api` scope that only
 the broker's staff could grant. That name has no source: not in the vendor documentation, not
@@ -143,36 +160,43 @@ for it, CAP-016, settled a grant-type refusal rather than a scope. CAP-031 settl
 other side — the text claims came back on the same client and the same granted scope CAP-022
 had, with nothing added to reach them.
 
-## StubID's login page shows nothing the request carried
+## StubID's login page shows the transaction text and nothing else
 
-<a id="the-login-page-shows-nothing"></a>
+<a id="the-login-page"></a>
 
 The broker's authorize page is built out of the request. Its MitID widget is headed `Godkend
-hos` the relying party's registered display name, and on a signing request the transaction
-text stands in a panel beside the widget. StubID's login page shows none of that: it says it
-is an emulator, offers a dropdown of citizens and an Approve and an Abort button, and names
-neither the client nor anything the request carried.
+hos` the relying party's registered display name, and on a signing request the transaction text
+stands in a panel beside the widget. StubID's login page carries the text — decoded, on
+StubID's own page rather than behind a simulated authenticator, which is where the broker put it
+too ([what the screens showed](../../research/transaction-screens.md)). It carries nothing else
+the request sent: no client name, no `client_id`, none of MitID's furniture.
 
-**Why.** Not wearing MitID's furniture is the deliberate half, for the reason
-[the login page](../../guides/approvals.md#the-login-page) already gives — a page that looked
-convincing is a page someone can be fooled by. The client's name is the other half, and not a
-decision: StubID registers no display name for a client at all, `Client` being a client
-id, its response types and an organisation, and the page does not show even the `client_id` it
-has. That one is an omission rather than a position.
+**Why the text and not the rest.** A person is being asked to approve something, and the text is
+what they are approving. Everything else on the broker's page is the broker's — a widget, a
+brand, a registered display name — and reproducing it would put someone else's trade dress on an
+emulator, which is what
+[the login page](../../guides/approvals.md#the-login-page) already gives as the reason a page
+that looked convincing is a page someone can be fooled by. The client's name is a separate
+matter and not a decision: StubID registers no display name for a client at all, `Client` being
+a client id, its response types and an organisation.
 
-**What this costs.** A browser test that reads the transaction text off the page before
-approving passes against pre-production and fails here. The cost falls on a person watching
-the page rather than on a test suite, because driving `/op/Login` does not complete a login
-here in any case: deciding a parked session renders a page instead of redirecting
-([driving a browser](../../guides/browsers.md)).
+**The text is escaped whether it says `text` or `html`.** The broker parses an html transaction
+text against a tag allowlist and renders it. StubID escapes both, because this is the first
+client-controlled string the page has ever shown and it is shown in a window a browser has just
+been redirected to from a real authorize request. A test asserting that markup in an html
+transaction text renders as markup passes against pre-production and fails here.
 
-Building transaction signing does not on its own remove this. `idp_params` is decoded now, but
-it is decoded into the request rather than into the session: `AuthSession` keeps the raw query,
-and that query carries the parameter only on a GET — on a POST it is empty, and on the
-pushed-request path it holds the client id and the request reference. So the page has nothing to
-render even though the token does. Whoever closes that should put the text on StubID's own page
-rather than behind a simulated authenticator, because that is where the broker puts it:
-[what the screens showed](../../research/transaction-screens.md).
+**What this still costs.** Driving `/op/Login` does not complete a login here in any case:
+deciding a parked session renders a page instead of redirecting
+([driving a browser](../../guides/browsers.md)). So a browser test can read the text off the
+page, and cannot then approve and be returned to the client. That is the resume gap, which
+predates this and affects every flow.
+
+The text reaches the page from the parsed request rather than from the query the session parked
+with, and that placement is the whole of it: after a push the browser arrives carrying a client
+id and a request reference, and on a signed request the parameters are inside a JWS. A page fed
+from the raw query works on a plain GET and goes blank on the other two arrival shapes, with no
+error to say why.
 
 ## The OCES3 certificate chain
 

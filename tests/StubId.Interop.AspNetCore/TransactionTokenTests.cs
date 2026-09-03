@@ -4,6 +4,7 @@ using System.Net;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using StubId.Wire;
+using Signer = harness::StubId.CaptureHarness.RequestObject;
 
 namespace StubId.Interop.AspNetCore;
 
@@ -27,20 +28,32 @@ public class TransactionTokenTests : IClassFixture<WebApplicationFactory<Program
 {
     private const string CodeClient = "0a775a87-878c-4b83-abe3-ee29c720c3e7";
     private const string RedirectUri = "http://localhost:5099/callback";
+    private const string Authority = "http://localhost/op";
+
+    // Excluded by the credential guard's own negative lookahead, and useless besides: StubID
+    // reads a request object without checking who signed it.
+    private const string Password = "not-a-real-secret";
+
+    /// <summary>Fixed, so a signed request is the same bytes on every run.</summary>
+    private static readonly DateTimeOffset Issued = new(2026, 9, 2, 9, 45, 0, TimeSpan.Zero);
+
+    /// <summary>Base64 of "StubID transaction text one", which is what CAP-031 sent.</summary>
+    private const string RecordedText = "U3R1YklEIHRyYW5zYWN0aW9uIHRleHQgb25l";
 
     /// <summary>
     /// Every recording StubID can be driven to reproduce. A row is added as each becomes
     /// reachable, and no member is ever filtered out of the comparison.
     /// </summary>
     /// <remarks>
-    /// CAP-031 is the one still missing, and it is missing for a reason a row could not paper
-    /// over: its transaction token carries six transaction-text members that StubID does not
-    /// emit, so a row for it could only pass by leaving members out of the comparison. The
-    /// signed request it arrived in is driven by <c>SignedRequestTests</c> instead, which is
-    /// as far as the recording can be reproduced today.
+    /// CAP-031 is driven the way it was recorded, through a signed request object, because its
+    /// parameters were never in a query: the recorded URL carries <c>client_id</c>,
+    /// <c>response_type</c> and a scrubbed <c>request</c>, and the scope, idp_values, idp_params
+    /// and prompt are inside the object's payload. Reproducing it unsigned would bake in the one
+    /// claim this repository says is unmeasured — that the broker takes a transaction text
+    /// without a signed request.
     /// </remarks>
     public static TheoryData<string> EveryRecordingStubIdCanReproduce() =>
-        ["CAP-021", "CAP-022"];
+        ["CAP-021", "CAP-022", "CAP-031"];
 
     private readonly HttpClient _client;
 
@@ -130,6 +143,11 @@ public class TransactionTokenTests : IClassFixture<WebApplicationFactory<Program
     [
         "dk.cpr", "nemid.pid", "nemid.pid_status", "ssn.details.status",
         "mitid.cpr_consent_text", "mitid.cpr_consent_header",
+
+        // The six the transaction text brings. Nothing sent one here, so a rule that emitted
+        // them on the scope alone - the scope CAP-031 also carried - would leak all six.
+        "mitid.transaction_text", "mitid.transaction_text_type", "mitid.transaction_text_sha256",
+        "transaction_text", "transaction_text_type", "transaction_text_sha256",
     ];
 
     [Theory]
@@ -272,28 +290,49 @@ public class TransactionTokenTests : IClassFixture<WebApplicationFactory<Program
     /// retyped here. A scope copied into a test drifts from the recording it claims to reproduce
     /// and nothing notices; read from the fixture, the two cannot disagree.
     /// </remarks>
-    private Task<JsonElement> TokenFor(string caseId) => Token(RecordedQuery(caseId));
+    private Task<JsonElement> TokenFor(string caseId)
+    {
+        var (parameters, signed) = RecordedRequest(caseId);
+        return Token(parameters, signed);
+    }
 
     /// <summary>Drives a full login and returns the parsed token response.</summary>
     private async Task<JsonElement> Token(string scope) =>
         await Token(new Dictionary<string, string>(StringComparer.Ordinal) { ["scope"] = scope });
 
-    private async Task<JsonElement> Token(IReadOnlyDictionary<string, string> recorded)
+    private async Task<JsonElement> Token(IReadOnlyDictionary<string, string> recorded, bool signed = false)
     {
         var verifier = Base64Url.Encode(
             System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
         var challenge = Base64Url.Encode(System.Security.Cryptography.SHA256.HashData(
             System.Text.Encoding.ASCII.GetBytes(verifier)));
 
-        var query = string.Join('&', recorded.Select(
-            p => $"{Uri.EscapeDataString(p.Key)}={Uri.EscapeDataString(p.Value)}"));
+        var parameters = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["client_id"] = CodeClient,
+            ["response_type"] = "code",
+            ["redirect_uri"] = RedirectUri,
+            ["state"] = "abc",
+            ["nonce"] = "n-0S6_WzA2Mj",
+            ["code_challenge"] = challenge,
+            ["code_challenge_method"] = "S256",
+        };
 
-        using var authorize = await _client.GetAsync(
-            $"/op/connect/authorize?client_id={CodeClient}&response_type=code"
-            + $"&redirect_uri={Uri.EscapeDataString(RedirectUri)}"
-            + $"&{query}"
-            + $"&state=abc&nonce=n-0S6_WzA2Mj&code_challenge={challenge}"
-            + "&code_challenge_method=S256", Ct);
+        foreach (var (name, value) in recorded)
+        {
+            parameters[name] = value;
+        }
+
+        // A signed sitting is driven the way it was recorded: the object carries everything and
+        // the query names the client, the response type and the object. The writer is the one
+        // that produced the recording's own request object.
+        var query = signed
+            ? $"client_id={CodeClient}&response_type=code&request="
+              + Uri.EscapeDataString(Signer.Build(parameters, CodeClient, Authority, Password, Issued))
+            : string.Join('&', parameters.Select(
+                p => $"{Uri.EscapeDataString(p.Key)}={Uri.EscapeDataString(p.Value)}"));
+
+        using var authorize = await _client.GetAsync($"/op/connect/authorize?{query}", Ct);
 
         Assert.Equal(HttpStatusCode.Redirect, authorize.StatusCode);
 
@@ -346,18 +385,41 @@ public class TransactionTokenTests : IClassFixture<WebApplicationFactory<Program
     /// own parameters. The client, redirect and PKCE are StubID's, since the recorded ones name
     /// a client StubID does not have and a challenge whose verifier was never written down.
     /// </summary>
-    private static IReadOnlyDictionary<string, string> RecordedQuery(string caseId)
+    private static (IReadOnlyDictionary<string, string> Parameters, bool Signed) RecordedRequest(
+        string caseId)
     {
-        using var meta = JsonDocument.Parse(File.ReadAllText(Path.Combine(
-            RepositoryRoot(), "fixtures", "neb", "pp-session", caseId, "callback", "meta.json")));
+        var callback = Path.Combine(
+            RepositoryRoot(), "fixtures", "neb", "pp-session", caseId, "callback");
 
+        using var meta = JsonDocument.Parse(File.ReadAllText(Path.Combine(callback, "meta.json")));
         var url = meta.RootElement.GetProperty("request").GetProperty("url").GetString()!;
+
+        // A signed sitting's parameters were never in the URL: what is recorded there is a
+        // placeholder, because a compact JWS must not reach a fixture. The payload beside it is
+        // where they live, and reading them from there is what lets the recording be driven at
+        // all rather than approximated.
+        if (url.Contains(Signer.Placeholder, StringComparison.Ordinal))
+        {
+            using var payload = JsonDocument.Parse(
+                File.ReadAllText(Path.Combine(callback, "request_object.payload.json")));
+            var root = payload.RootElement.Clone();
+
+            return (Wanted(name =>
+                root.TryGetProperty(name, out var claim) && claim.ValueKind == JsonValueKind.String
+                    ? claim.GetString()
+                    : null), true);
+        }
+
         var query = System.Web.HttpUtility.ParseQueryString(url.Split('?')[1]);
 
-        return new[] { "scope", "idp_values", "idp_params", "prompt" }
-            .Where(key => query[key] is { Length: > 0 })
-            .ToDictionary(key => key, key => query[key]!, StringComparer.Ordinal);
+        return (Wanted(name => query[name]), false);
     }
+
+    /// <summary>The four the sitting chose. The rest is StubID's, or the JWT's own furniture.</summary>
+    private static IReadOnlyDictionary<string, string> Wanted(Func<string, string?> read) =>
+        new[] { "scope", "idp_values", "idp_params", "prompt" }
+            .Where(key => read(key) is { Length: > 0 })
+            .ToDictionary(key => key, key => read(key)!, StringComparer.Ordinal);
 
     private static JsonElement Recorded(string caseId) =>
         JsonDocument.Parse(File.ReadAllText(Path.Combine(
@@ -374,5 +436,278 @@ public class TransactionTokenTests : IClassFixture<WebApplicationFactory<Program
 
         return directory?.FullName
             ?? throw new InvalidOperationException("Could not find the repository root.");
+    }
+
+    [Fact]
+    public async Task The_recorded_signing_actions_come_back_by_value()
+    {
+        // The type theory sees only that transaction_actions is an Array. An array with the
+        // wrong entries, or the right entries in the wrong order, passes it - and the whole
+        // reason this member is interesting is what is inside it.
+        var emitted = await TransactionTokenFor("CAP-031");
+        var recorded = Recorded("CAP-031");
+
+        Assert.Equal(
+            recorded.GetProperty("transaction_actions").EnumerateArray()
+                .Select(a => a.GetString()),
+            emitted.GetProperty("transaction_actions").EnumerateArray()
+                .Select(a => a.GetString()));
+    }
+
+    [Fact]
+    public async Task The_digest_is_over_the_decoded_text_and_matches_the_recording()
+    {
+        // The wrong answer a stub reaches for first is the digest of the base64 it was handed.
+        // Both are computed here, so a failure says which one was emitted rather than printing
+        // two hashes.
+        var emitted = await TransactionTokenFor("CAP-031");
+
+        var sent = emitted.GetProperty("mitid.transaction_text").GetString()!;
+        var overDecoded = Convert.ToBase64String(System.Security.Cryptography.SHA256.HashData(
+            Convert.FromBase64String(sent)));
+        var overTheBase64 = Convert.ToBase64String(System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(sent)));
+
+        var digest = emitted.GetProperty("mitid.transaction_text_sha256").GetString();
+
+        Assert.Equal(Recorded("CAP-031").GetProperty("mitid.transaction_text_sha256").GetString(), digest);
+        Assert.Equal(overDecoded, digest);
+        Assert.NotEqual(overTheBase64, digest);
+
+        // Standard base64 rather than base64url, and padded: the OCSP response beside it is the
+        // only other value in this response encoded that way.
+        Assert.EndsWith("=", digest, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Each_value_comes_back_twice_under_both_spellings()
+    {
+        var emitted = await TransactionTokenFor("CAP-031");
+
+        foreach (var name in new[] { "transaction_text", "transaction_text_type", "transaction_text_sha256" })
+        {
+            Assert.Equal(
+                emitted.GetProperty($"mitid.{name}").GetString(),
+                emitted.GetProperty(name).GetString());
+        }
+
+        // The spelling the vendor's prose used and the broker does not.
+        Assert.DoesNotContain("mitid.transactiontext", Members(emitted));
+    }
+
+    [Fact]
+    public async Task The_JWS_payload_carries_a_literal_plus_where_the_recording_does()
+    {
+        // The recorded digest contains a +, and the same broker sends it two different ways: a
+        // literal + inside the JWT payload, \u002B inside the userinfo response body. StubID
+        // matches both only because JwsWriter and the userinfo writer picked different JSON
+        // encoders, and every other test on this surface parses before comparing - so aligning
+        // the two encoders would break a recording with nothing turning red. This reads bytes.
+        var recorded = await File.ReadAllTextAsync(Path.Combine(
+            RepositoryRoot(), "fixtures", "neb", "pp-session", "CAP-031", "token",
+            "transaction_token.payload.json"), Ct);
+
+        Assert.Contains("+", recorded, StringComparison.Ordinal);
+
+        var body = await Token(RecordedRequest("CAP-031").Parameters, signed: true);
+        var payload = System.Text.Encoding.UTF8.GetString(
+            Base64Url.Decode(body.GetProperty("transaction_token").GetString()!.Split('.')[1]));
+
+        Assert.Contains("\"mitid.transaction_text_sha256\":\"", payload, StringComparison.Ordinal);
+        Assert.Contains("+", payload, StringComparison.Ordinal);
+        Assert.DoesNotContain("\\u002B", payload, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Values a client can put in transaction_text that this cannot turn into bytes.
+    /// </summary>
+    /// <remarks>
+    /// Every one is answered rather than thrown over. A FormatException on this path leaves the
+    /// pipeline as an empty 500 - the one answer the broker never gives - and the value is
+    /// entirely the client's, reachable without authenticating anything.
+    /// </remarks>
+    public static TheoryData<string> TextsThatCannotBeDecoded() =>
+    [
+        "not base64 at all!",
+        "====",
+        "YQ==x",
+        "%%%%",
+
+        // Whitespace, which Convert.FromBase64String skips rather than refusing. Skipped, this
+        // decodes - to different bytes than the client's - and the digest comes back looking
+        // right and matching nothing.
+        "AAA AAA AAA AAA ",
+    ];
+
+    [Theory]
+    [MemberData(nameof(TextsThatCannotBeDecoded))]
+    public async Task A_text_that_cannot_be_decoded_loses_its_digest_and_nothing_else(string text)
+    {
+        var emitted = await TransactionToken("openid mitid transaction_token", text, "text");
+
+        Assert.Equal(text, emitted.GetProperty("mitid.transaction_text").GetString());
+        Assert.Equal("text", emitted.GetProperty("mitid.transaction_text_type").GetString());
+        Assert.False(emitted.TryGetProperty("mitid.transaction_text_sha256", out _));
+        Assert.False(emitted.TryGetProperty("transaction_text_sha256", out _));
+
+        // Four members, the pairs still whole, and the signing action still there: the text was
+        // sent and is carried, and only the value StubID could not compute is missing.
+        Assert.Equal(
+            ["mitid.transaction_text", "mitid.transaction_text_type",
+                "transaction_text", "transaction_text_type"],
+            Members(emitted).Where(m => m.Contains("transaction_text", StringComparison.Ordinal)));
+
+        Assert.Equal(
+            ["mitid.login", "mitid.transaction_signing"],
+            emitted.GetProperty("transaction_actions").EnumerateArray().Select(a => a.GetString()));
+    }
+
+    [Fact]
+    public async Task A_text_with_no_type_gets_four_members_and_no_invented_type()
+    {
+        // CAP-031 sent both, so this is unrecorded. Emitting nothing is the rule that never
+        // invents a value: a null type would break the userinfo endpoint's every-value-is-a-
+        // string invariant, and "text" would be StubID answering a question nobody asked it.
+        var emitted = await TransactionToken(
+            "openid mitid transaction_token", RecordedText, type: null);
+
+        Assert.Equal(
+            ["mitid.transaction_text", "mitid.transaction_text_sha256",
+                "transaction_text", "transaction_text_sha256"],
+            Members(emitted).Where(m => m.Contains("transaction_text", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public async Task An_empty_text_is_no_text_at_all()
+    {
+        // The digest of nothing is a real-looking value, and a presence check written as a null
+        // check would emit it. A whitespace-only text is the neighbouring case: it decodes to
+        // zero bytes rather than failing, so the length guard alone does not cover it.
+        foreach (var text in new[] { "", " " })
+        {
+            var emitted = await TransactionToken("openid mitid transaction_token", text, "text");
+
+            Assert.DoesNotContain(
+                "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+                Members(emitted).Select(m => emitted.GetProperty(m).ToString()));
+
+            Assert.False(emitted.TryGetProperty("mitid.transaction_text_sha256", out _));
+        }
+    }
+
+    [Fact]
+    public async Task An_unescaped_plus_reaches_both_transports_intact()
+    {
+        // Base64 of any real Danish sentence carries a + about every twenty-one characters, and
+        // the recorded text happens to carry none - so no fixture can say what happens to one,
+        // and the obvious worry is that a client which forgets to escape it gets a digest over
+        // something else. Measured here rather than assumed, on both transports: a query string
+        // is not form-encoded and ASP.NET Core leaves a literal + alone there, and the form
+        // reader behind the push leaves it alone too. Both answer with the digest of the text
+        // the client meant.
+        //
+        // The plus count is a multiple of four on purpose. Had the + been eaten, what arrived
+        // would still have decoded - to different bytes - so the failure would have been a
+        // confident wrong digest rather than a missing one, which is the shape worth pinning.
+        const string Text = "AAA+AAA+AAA+AAA+";
+
+        var section = JsonSerializer.Serialize(
+            new Dictionary<string, object>(StringComparer.Ordinal)
+            {
+                ["mitid"] = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["transaction_text"] = Text,
+                    ["transaction_text_type"] = "text",
+                },
+            });
+
+        // Escaped properly, then un-escaped again for the one character this is about.
+        var unescaped = Uri.EscapeDataString(section).Replace("%2B", "+", StringComparison.Ordinal);
+
+        var meant = Convert.ToBase64String(
+            System.Security.Cryptography.SHA256.HashData(Convert.FromBase64String(Text)));
+        var hadThePlusesBeenEaten = Convert.ToBase64String(
+            System.Security.Cryptography.SHA256.HashData(Convert.FromBase64String("AAAAAAAAAAAA")));
+
+        Assert.NotEqual(meant, hadThePlusesBeenEaten);
+
+        using var authorize = await _client.GetAsync(
+            $"/op/connect/authorize?client_id={CodeClient}&response_type=code"
+            + $"&redirect_uri={Uri.EscapeDataString(RedirectUri)}"
+            + "&scope=openid%20mitid%20transaction_token&state=s&nonce=n"
+            + $"&idp_values=mitid&idp_params={unescaped}", Ct);
+
+        var fromQuery = await Redeem(authorize);
+
+        // The same value through the push, whose body really is form-encoded.
+        // FormUrlEncodedContent would escape the +, so the body is written out by hand.
+        using var pushed = await _client.PostAsync("/op/connect/par", new StringContent(
+            $"client_id={CodeClient}&client_secret=any&response_type=code"
+            + $"&redirect_uri={Uri.EscapeDataString(RedirectUri)}"
+            + "&scope=openid%20mitid%20transaction_token"
+            + $"&idp_values=mitid&idp_params={unescaped}",
+            System.Text.Encoding.UTF8, "application/x-www-form-urlencoded"), Ct);
+
+        using var reference = JsonDocument.Parse(await pushed.Content.ReadAsStringAsync(Ct));
+
+        using var redirected = await _client.GetAsync(
+            $"/op/connect/authorize?client_id={CodeClient}&request_uri="
+            + Uri.EscapeDataString(reference.RootElement.GetProperty("request_uri").GetString()!), Ct);
+
+        var fromForm = await Redeem(redirected);
+
+        foreach (var emitted in new[] { fromQuery, fromForm })
+        {
+            Assert.Equal(Text, emitted.GetProperty("mitid.transaction_text").GetString());
+            Assert.Equal(meant, emitted.GetProperty("mitid.transaction_text_sha256").GetString());
+            Assert.NotEqual(
+                hadThePlusesBeenEaten,
+                emitted.GetProperty("mitid.transaction_text_sha256").GetString());
+        }
+    }
+
+    /// <summary>Redeems the code an authorize redirect carries and returns the transaction token.</summary>
+    private async Task<JsonElement> Redeem(HttpResponseMessage authorize)
+    {
+        var code = System.Web.HttpUtility.ParseQueryString(
+            authorize.Headers.Location!.ToString().Split('?')[1])["code"]!;
+
+        using var token = await _client.PostAsync("/op/connect/token", new FormUrlEncodedContent(
+        [
+            new("grant_type", "authorization_code"),
+            new("code", code),
+            new("redirect_uri", RedirectUri),
+            new("client_id", CodeClient),
+            new("client_secret", "any"),
+        ]), Ct);
+
+        using var body = JsonDocument.Parse(await token.Content.ReadAsStringAsync(Ct));
+        return Payload(body.RootElement.GetProperty("transaction_token").GetString()!);
+    }
+
+    /// <summary>Drives a login carrying a transaction text, in a query rather than an object.</summary>
+    private async Task<JsonElement> TransactionToken(string scope, string text, string? type)
+    {
+        var mitid = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["transaction_text"] = text,
+        };
+
+        if (type is not null)
+        {
+            mitid["transaction_text_type"] = type;
+        }
+
+        var section = JsonSerializer.Serialize(
+            new Dictionary<string, object>(StringComparer.Ordinal) { ["mitid"] = mitid });
+
+        var body = await Token(new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["scope"] = scope,
+            ["idp_values"] = "mitid",
+            ["idp_params"] = section,
+        });
+
+        return Payload(body.GetProperty("transaction_token").GetString()!);
     }
 }

@@ -133,6 +133,11 @@ a line on the page saying no identity is being verified. Reproducing the real UI
 put someone else's trade dress on an emulator, and a page that looked convincing is a
 page someone can be fooled by.
 
+One thing from the request does reach it: a transaction text, decoded and escaped, under a
+heading of its own. A person being asked to approve something is entitled to see what, and
+the broker puts that text on its own page too. Nothing else the request carried is shown —
+not the client's name, not even its `client_id`.
+
 It submits to the same store the control API writes to, so a manual click and an API
 call are the same code path, not two implementations that agree until one of them
 changes.
