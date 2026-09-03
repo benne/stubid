@@ -330,5 +330,36 @@ public static class CaptureCatalogue
                 + $"?post_logout_redirect_uri={Uri.EscapeDataString(RedirectUri)}&state=capture",
             VolatileHeaders = ["Location"],
         },
+        new()
+        {
+            Id = "CAP-046",
+            Expected = Disposition.Unclassified,
+            Description = "Pushed authorisation request whose request parameter is not a JWT",
+            Settles = "How PAR refuses a request object it cannot read, and with which status. "
+                + "The refusal's body was measured on 2026-09-01 and written down in "
+                + "docs/research/signed-requests.md, but never recorded, and that measurement "
+                + "did not note the status - so StubID's own 400 is an inference from RFC 9126 "
+                + "and from CAP-019. It also settles a value the measurement never sent: every "
+                + "probe there was a real JWS that failed validation, where this is not a JWS "
+                + "at all, which is the case StubID's tests actually drive. Authenticated, "
+                + "because CAP-019 shows an unauthenticated push is refused for that first and "
+                + "never reaches the object.",
+            Method = "POST",
+            Url = $"{PreProduction}/connect/par",
+            Form = new Dictionary<string, string>
+            {
+                ["client_id"] = OpenCodeClient,
+                ["client_secret"] = "{{NEB_PP_OPEN_CLIENT_CODE_SECRET}}",
+                ["response_type"] = "code",
+                ["redirect_uri"] = RedirectUri,
+                ["scope"] = "openid mitid",
+
+                // Deliberately not a JWS. A real one signed HS256 with the client secret is a
+                // known-plaintext HMAC tag over that secret, so committing one would commit an
+                // offline oracle for it - which is why the manual sitting records a request
+                // object's segment lengths and never its signature.
+                ["request"] = "not-a-jwt",
+            },
+        },
     ];
 }

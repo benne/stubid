@@ -31,13 +31,24 @@ public static class RequestObject
     /// The broker's code and sentence for an object it will not read, byte for byte.
     /// </summary>
     /// <remarks>
-    /// Measured rather than recorded: a flipped signature byte, a random key and a missing
-    /// <c>exp</c> each earn exactly this from the PAR endpoint, on two clients and two runs.
-    /// The measurement is a note rather than a fixture because no capture step sends a broken
-    /// object - see docs/research/signed-requests.md.
+    /// <para>
+    /// CAP-046 is the recording, and it is of the case this code actually meets: a
+    /// <c>request</c> parameter that is not a JWS at all. The broker answers 400 with these
+    /// bytes and nothing else, which also settles the status - until that recording it was an
+    /// inference from RFC 9126 and from CAP-019's other refusal.
+    /// </para>
+    /// <para>
+    /// Three further causes earn the identical answer and are measured rather than recorded: a
+    /// flipped signature byte, a signature from a random key, and a missing <c>exp</c>, on two
+    /// clients and two runs. They stay in docs/research/signed-requests.md because recording one
+    /// means committing a request object signed HS256 with the client secret, and a compact JWS
+    /// like that is a known-plaintext HMAC tag over the secret that signed it - an offline
+    /// oracle, in a public repository. The manual sitting takes the same view: CAP-031 records a
+    /// request object's algorithm and segment lengths and never its signature.
+    /// </para>
     /// </remarks>
     [Fidelity(FidelityTier.Exact, FidelityProvenance.VerifiedLive,
-        Evidence = "docs/research/signed-requests.md")]
+        Evidence = "fixtures/neb/pp/CAP-046, docs/research/signed-requests.md")]
     public const string Fault = "invalid_request_object";
 
     /// <summary>The sentence beside it. The broker sends one here; at the token endpoint it does not.</summary>

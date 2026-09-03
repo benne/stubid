@@ -100,6 +100,28 @@ public class SignedRequestTests : IClassFixture<WebApplicationFactory<Program>>
         System.Web.HttpUtility
             .ParseQueryString(new Uri(response.Headers.Location!.ToString()).Query)["code"]!;
 
+    private static string RepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "StubID.slnx")))
+        {
+            directory = directory.Parent;
+        }
+
+        return directory!.FullName;
+    }
+
+    private static string Recorded(string caseId, string file) =>
+        File.ReadAllText(Path.Combine(RepositoryRoot(), "fixtures", "neb", "pp", caseId, file));
+
+    /// <summary>The refusal the broker sent, byte for byte.</summary>
+    private static string RecordedBody(string caseId) => Recorded(caseId, "response.raw");
+
+    /// <summary>The status it sent it with, read off the first line of the recorded head.</summary>
+    private static int RecordedStatus(string caseId) => int.Parse(
+        Recorded(caseId, "response.head").Split('\n')[0].Split(' ')[1],
+        System.Globalization.CultureInfo.InvariantCulture);
+
     private static JsonElement Payload(string compact) =>
         JsonDocument.Parse(Base64Url.Decode(compact.Split('.')[1])).RootElement.Clone();
 
@@ -279,10 +301,11 @@ public class SignedRequestTests : IClassFixture<WebApplicationFactory<Program>>
             new KeyValuePair<string, string>("request", request),
         ]), Ct);
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal(
-            """{"error":"invalid_request_object","error_description":"Invalid JWT request"}""",
-            await response.Content.ReadAsStringAsync(Ct));
+        // Both halves out of the recording rather than typed here. The status in particular
+        // was an inference until CAP-046 was taken - RFC 9126 for this refusal and CAP-019 for
+        // the other way PAR refuses - and a literal in a test cannot tell anyone that.
+        Assert.Equal(RecordedStatus("CAP-046"), (int)response.StatusCode);
+        Assert.Equal(RecordedBody("CAP-046"), await response.Content.ReadAsStringAsync(Ct));
     }
 
     [Fact]

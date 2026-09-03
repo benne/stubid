@@ -1,0 +1,6 @@
+{
+  "method": "POST",
+  "url": "https://pp.netseidbroker.dk/op/connect/par",
+  "headers": [],
+  "body": "client_id=0a775a87-878c-4b83-abe3-ee29c720c3e7\u0026client_secret=%7B%7BNEB_PP_OPEN_CLIENT_CODE_SECRET%7D%7D\u0026response_type=code\u0026redirect_uri=http%3A%2F%2Flocalhost%3A5099%2Fcallback\u0026scope=openid%20mitid\u0026request=not-a-jwt"
+}

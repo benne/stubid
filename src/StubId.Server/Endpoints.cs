@@ -816,8 +816,9 @@ public static class Endpoints
     /// endpoint worth debugging a signed request against.
     /// </summary>
     /// <remarks>
-    /// The status is 400, which is CAP-019's for the other way PAR refuses and RFC 9126 2.3 for
-    /// this one. The measurement that settled the body did not record it.
+    /// The status is 400 and CAP-046 records it. It was an inference until then - RFC 9126 2.3
+    /// for this refusal, CAP-019 for the other way PAR refuses - because the measurement that
+    /// settled the body never noted the status.
     /// </remarks>
     private static IResult OAuthError(HttpContext http, string error, string description)
     {

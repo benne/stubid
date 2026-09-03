@@ -65,13 +65,21 @@ Two decisions the recordings could not settle, taken here rather than left to be
 An empty `request=` is treated as no object at all, which is what every other optional parameter
 here does with an empty value. Unmeasured: no probe sent one.
 
-**Where the refusal came from.** Not a fixture. A flipped signature byte, a random key and a
-missing `exp` were each measured earning `invalid_request_object` from the PAR endpoint, on two
-clients and two runs, and the bytes are in
-[what the broker does with a signed request object](../../research/signed-requests.md). No
-capture step sends a broken object, so there is nothing under `fixtures/` to point at. The
-accepted half *is* recorded: CAP-031's authorize URL carried `client_id`, `response_type` and
-`request` and nothing else, and the login it started completed.
+**Where the refusal came from.** CAP-046, which pushes a `request` parameter that is not a JWS
+at all and records the 400 and the bytes that come back. That case also settled the status,
+which until it was taken was an inference from RFC 9126 and from CAP-019's other refusal.
+
+Three further causes earn the identical answer and stay a measurement rather than a recording:
+a flipped signature byte, a random key, and a missing `exp`, each on two clients and two runs
+([what the broker does with a signed request object](../../research/signed-requests.md)).
+Recording one would mean committing a request object signed HS256 with the client secret, and a
+compact JWS like that is a known-plaintext HMAC tag over the secret that signed it — an offline
+oracle for it, in a public repository. The manual sitting reached the same conclusion from the
+other direction: CAP-031 records a request object's algorithm and its segment lengths, and never
+its signature.
+
+The accepted half *is* recorded: CAP-031's authorize URL carried `client_id`, `response_type`
+and `request` and nothing else, and the login it started completed.
 
 ## Advertised but not implemented
 
