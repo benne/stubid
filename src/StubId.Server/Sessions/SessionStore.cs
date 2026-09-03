@@ -33,7 +33,12 @@ public sealed class SessionStore(TimeProvider clock, Ladder ladder)
         }
     }
 
-    public AuthSession Park(string clientId, string rawQuery, SessionContext context)
+    public AuthSession Park(
+        string clientId,
+        string rawQuery,
+        SessionContext context,
+        string? transactionText = null,
+        string? transactionTextType = null)
     {
         var now = clock.GetUtcNow();
         var session = new AuthSession
@@ -41,6 +46,8 @@ public sealed class SessionStore(TimeProvider clock, Ladder ladder)
             Id = Guid.NewGuid().ToString(),
             ClientId = clientId,
             RawQuery = rawQuery,
+            TransactionText = transactionText,
+            TransactionTextType = transactionTextType,
             CreatedAt = now,
             Deadline = now + Timeout,
         };

@@ -41,10 +41,20 @@ are not. A `uuid_hint` that is not a UUID is carried through and fails later ins
 flow — which is why the broker publishes an error code for it at all, and why StubID must not
 reject it up front.
 
-StubID reads the `mitid` section and carries it with the request. What it does with the contents
-is one member so far: `reference_text` reaches the transaction token and the userinfo response,
-whole and undecoded, exactly as CAP-022 recorded. The rest is carried and unread, which is the
-same thing the broker does with a `uuid_hint` it will reject three steps later.
+StubID reads the `mitid` section and carries it with the request. Three members are acted on.
+`reference_text` reaches the transaction token and the userinfo response, whole and undecoded,
+exactly as CAP-022 recorded. `transaction_text` and `transaction_text_type` reach the transaction
+token as six members under both spellings, with a digest StubID computes over the decoded bytes,
+and reach the userinfo response as a type and a digest without the text — the way CAP-031
+recorded, and the reverse of what the same endpoint does with a reference text. The transaction
+text is also what the login page renders. The rest is carried and unread, which is the same thing
+the broker does with a `uuid_hint` it will reject three steps later.
+
+An unescaped `+` inside a base64 value survives both transports — a query string is not
+form-encoded, and the form reader behind the push leaves one alone too. Both were measured
+rather than assumed, because the recorded text contains no `+` and could not have said. A value
+carrying actual whitespace is the case that loses its digest; see
+[divergences](divergences.md#transaction-signing).
 
 The `mitid` section alone. A login through `mitid_erhverv` produces private-identity claims
 anyway, and what a business identity would put here is unobserved.
@@ -94,7 +104,7 @@ handed back to the client already carries what the object said. The two paths pa
 that, and not because of the object: a redeemed `request_uri` arrives at the authorize endpoint
 with a query holding the client id and the reference, so what decides a parked login sees the
 query rather than the pushed parameters. That gap predates this and is the same one
-[the login page](divergences.md#the-login-page-shows-nothing) entry describes.
+[the login page](divergences.md#the-login-page) entry describes.
 
 ## prompt
 
@@ -107,4 +117,5 @@ broker needs a client with single sign-on and a session already open.
 
 `language` and `login_hint` are accepted and kept with the request. Nothing reads them yet.
 
-`simulation` is read. So is the `mitid` section of `idp_params`, as far as `reference_text`.
+`simulation` is read. So are three members of the `mitid` section of `idp_params`:
+`reference_text`, `transaction_text` and `transaction_text_type`.

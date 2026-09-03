@@ -74,6 +74,27 @@ public sealed class AuthSession
     /// </remarks>
     public required string RawQuery { get; init; }
 
+    /// <summary>
+    /// The transaction text the request carried, base64 as it was sent, or null.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Carried rather than read back out of <see cref="RawQuery"/>, because on two of the three
+    /// arrival shapes it is not in there: a pushed request leaves a query holding the client id
+    /// and a reference, and a signed one leaves the parameters inside a JWS. The value is taken
+    /// where the request has been parsed and every path has converged.
+    /// </para>
+    /// <para>
+    /// Stored as it arrived and decoded where it is rendered. Keeping the decoded string on a
+    /// long-lived session would put a client-controlled string into everything that describes
+    /// one, for the sake of a decode that costs nothing to repeat.
+    /// </para>
+    /// </remarks>
+    public string? TransactionText { get; init; }
+
+    /// <summary>What the request said the text is. Not rendered; it decides nothing here yet.</summary>
+    public string? TransactionTextType { get; init; }
+
     public required DateTimeOffset CreatedAt { get; init; }
 
     public required DateTimeOffset Deadline { get; init; }

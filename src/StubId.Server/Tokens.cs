@@ -132,7 +132,15 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
     /// </remarks>
     [Fidelity(FidelityTier.Exact, FidelityProvenance.VerifiedLive,
         Evidence = "fixtures/neb/pp-session/CAP-021/userinfo/response.raw, "
-                   + "fixtures/neb/pp-session/CAP-022/userinfo/response.raw")]
+                   + "fixtures/neb/pp-session/CAP-022/userinfo/response.raw, "
+                   + "fixtures/neb/pp-session/CAP-031/userinfo/response.raw")]
+    [Fidelity(FidelityTier.Exact, FidelityProvenance.Assumed,
+        AwaitingCapture = "The same unrecorded slot as the transaction token's: the ssn consent "
+                          + "pair and the transaction text's type and digest both land after "
+                          + "mitid.geo_ip_distance_km, and no recording carries both. A type "
+                          + "standing here without a digest beside it is also StubID's own - it "
+                          + "is what a text this cannot decode leaves behind, and CAP-031, the "
+                          + "only recording, sent a text that decodes.")]
     public IReadOnlyList<JsonClaim> UserInfo(string organisation, IssuedAccessToken token)
     {
         var now = clock.GetUtcNow();
@@ -203,6 +211,19 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
                 JsonClaim.String("mitid.cpr_consent_text", CprConsentText),
                 JsonClaim.String("mitid.cpr_consent_header", CprConsentHeader),
             ]);
+        }
+
+        // A digest and the type it describes, without the text they are about - the reverse of
+        // the reference text five slots up, and a later slot than that one. CAP-031 recorded
+        // both here, after mitid.geo_ip_distance_km and before the subject.
+        if (token.TransactionTextType is { } textType)
+        {
+            claims.Add(JsonClaim.String("mitid.transaction_text_type", textType));
+        }
+
+        if (token.TransactionTextSha256 is { } digest)
+        {
+            claims.Add(JsonClaim.String("mitid.transaction_text_sha256", digest));
         }
 
         claims.Add(JsonClaim.String("sub", Subject(organisation, citizen)));
@@ -280,7 +301,17 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
     /// </remarks>
     [Fidelity(FidelityTier.Exact, FidelityProvenance.VerifiedLive,
         Evidence = "fixtures/neb/pp-session/CAP-021/token/transaction_token.payload.json, "
-                   + "fixtures/neb/pp-session/CAP-022/token/transaction_token.payload.json")]
+                   + "fixtures/neb/pp-session/CAP-022/token/transaction_token.payload.json, "
+                   + "fixtures/neb/pp-session/CAP-031/token/transaction_token.payload.json")]
+    [Fidelity(FidelityTier.Exact, FidelityProvenance.Assumed,
+        AwaitingCapture = "One slot in this sequence is a guess. The ssn consent pair and the six "
+                          + "transaction-text members both land after mitid.geo_ip_distance_km, "
+                          + "and no recording carries both: CAP-021 has the consent pair without "
+                          + "a text, CAP-031 has the text without the ssn scope. The consent pair "
+                          + "comes first here because that is the slot CAP-021 recorded for it. A "
+                          + "signing login that also asks for ssn would settle it. Everything "
+                          + "else in the order is forced by the three recordings together, which "
+                          + "merge without a conflict.")]
     public string TransactionToken(string issuer, IssuedCode code, string organisation)
     {
         var now = clock.GetUtcNow();
@@ -353,9 +384,10 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
             JsonClaim.String("mitid.psd2", "false"),
         ]);
 
-        // One slot earlier than the transaction text, which lands after geo_ip_distance_km.
-        // Nothing sent both, so the order between them is unobserved; this is the slot CAP-022
-        // recorded for a reference text on its own.
+        // One slot earlier than the transaction text, and not a guess: CAP-022 puts a reference
+        // text before mitid.geo_ip_distance_km, CAP-031 puts the transaction text after it, and
+        // that member is unconditional - so no recording carries both and their order is still
+        // forced.
         if (code.Request.ReferenceText is { } reference)
         {
             claims.Add(JsonClaim.String("mitid.reference_text", reference));
@@ -372,9 +404,11 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
             ]);
         }
 
+        claims.AddRange(TransactionText(code.Request));
+
         claims.AddRange(
         [
-            TransactionActions(scopes),
+            TransactionActions(scopes, code.Request.TransactionText is not null),
             JsonClaim.String("transaction_client_ip", code.ClientIp),
             JsonClaim.Number("nbf", now.ToUnixTimeSeconds()),
             JsonClaim.Number("exp", now.AddSeconds(TransactionTokenLifetimeSeconds).ToUnixTimeSeconds()),
@@ -429,15 +463,26 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
     /// would have been issued. So the rule is the one already applied to <c>dk.cpr</c> and the
     /// consent pair, and it is a reading of one recording rather than a recorded rule.
     /// </remarks>
+    /// <remarks>
+    /// <c>mitid.transaction_signing</c> is recorded, in CAP-031, and what it turns on is not:
+    /// that recording arrived in a signed request object, and the scope it carried is the one
+    /// CAP-022 carried without a text. Scope therefore cannot tell the two apart, and the text
+    /// itself is what this keys on. How the request arrived deliberately does not enter into it
+    /// — see docs/brokers/neb/divergences.md#transaction-signing for why the signed route is
+    /// what the recordings could reach rather than a constraint anyone demonstrated.
+    /// </remarks>
     [Fidelity(FidelityTier.Exact, FidelityProvenance.Assumed,
         Evidence = "fixtures/neb/pp-session/CAP-021/token/transaction_token.payload.json, "
-                   + "fixtures/neb/pp-session/CAP-022/token/transaction_token.payload.json",
-        AwaitingCapture = "The string-or-array form is recorded; deriving mitid.cpr_match from "
-                          + "the ssn scope is not. A login asking for ssn that does not match a "
-                          + "CPR, or a CPR match without the scope, would settle it. CAP-021 did "
-                          + "both at once, so it cannot say which of the two put the action in "
-                          + "the token.")]
-    private static JsonClaim TransactionActions(string[] scopes)
+                   + "fixtures/neb/pp-session/CAP-022/token/transaction_token.payload.json, "
+                   + "fixtures/neb/pp-session/CAP-031/token/transaction_token.payload.json",
+        AwaitingCapture = "The string-or-array form is recorded, and so is each action on its "
+                          + "own. Two things are not. Deriving mitid.cpr_match from the ssn scope "
+                          + "is inferred - CAP-021 asked for ssn and matched a CPR in the same "
+                          + "sitting, so it cannot say which put the action there. And no "
+                          + "recording carries more than two actions, so the order between "
+                          + "mitid.cpr_match and mitid.transaction_signing is unobserved: a "
+                          + "signing login that also asks for ssn would settle it.")]
+    private static JsonClaim TransactionActions(string[] scopes, bool signing)
     {
         List<string> actions = ["mitid.login"];
 
@@ -446,9 +491,56 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
             actions.Add("mitid.cpr_match");
         }
 
+        if (signing)
+        {
+            actions.Add("mitid.transaction_signing");
+        }
+
         return actions.Count == 1
             ? JsonClaim.String("transaction_actions", actions[0])
             : JsonClaim.Strings("transaction_actions", [.. actions]);
+    }
+
+    /// <summary>
+    /// The transaction text, under both spellings: three values, six members, prefixed triple
+    /// first and unprefixed triple second.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Each of the three values is conditional on its own, rather than all six on the text. A
+    /// client that sends a text and no type gets four members and no invented type; one that
+    /// sends a text this cannot decode gets four members and no digest, rather than a confident
+    /// hash of something else or an empty 500 out of the token endpoint. Both shapes are
+    /// StubID's own: CAP-031 sent all three and is the only recording there is.
+    /// </para>
+    /// <para>
+    /// <c>mitid.transactiontext</c> does not exist. All six names are underscored, and the three
+    /// unprefixed ones join four unprefixed members this token already carries.
+    /// </para>
+    /// </remarks>
+    [Fidelity(FidelityTier.Exact, FidelityProvenance.VerifiedLive,
+        Evidence = "fixtures/neb/pp-session/CAP-031/token/transaction_token.payload.json")]
+    private static List<JsonClaim> TransactionText(AuthorizationRequest request)
+    {
+        List<JsonClaim> prefixed = [];
+        List<JsonClaim> bare = [];
+
+        void Both(string name, string? value)
+        {
+            if (value is null)
+            {
+                return;
+            }
+
+            prefixed.Add(JsonClaim.String($"mitid.{name}", value));
+            bare.Add(JsonClaim.String(name, value));
+        }
+
+        Both("transaction_text", request.TransactionText);
+        Both("transaction_text_type", request.TransactionTextType);
+        Both("transaction_text_sha256", request.TransactionTextSha256);
+
+        return [.. prefixed, .. bare];
     }
 
     /// <summary>

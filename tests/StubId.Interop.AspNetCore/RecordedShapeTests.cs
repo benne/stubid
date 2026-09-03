@@ -1,7 +1,10 @@
+extern alias harness;
+
 using System.Net.Http.Headers;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using StubId.Wire;
+using Signer = harness::StubId.CaptureHarness.RequestObject;
 
 namespace StubId.Interop.AspNetCore;
 
@@ -17,6 +20,13 @@ public class RecordedShapeTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private const string CodeClient = "0a775a87-878c-4b83-abe3-ee29c720c3e7";
     private const string RedirectUri = "http://localhost:5099/callback";
+    private const string Authority = "http://localhost/op";
+
+    // Excluded by the credential guard's own negative lookahead. StubID reads a request object
+    // without checking who signed it, so what this is does not matter to the server.
+    private const string Password = "not-a-real-secret";
+
+    private static readonly DateTimeOffset Issued = new(2026, 9, 2, 9, 45, 0, TimeSpan.Zero);
 
     private readonly HttpClient _client;
 
@@ -49,6 +59,35 @@ public class RecordedShapeTests : IClassFixture<WebApplicationFactory<Program>>
         return Shape(document.RootElement);
     }
 
+    /// <summary>
+    /// Signs in the way a signing sitting did: everything inside a request object, and a query
+    /// naming the client, the response type and the object. Driving the same parameters
+    /// unsigned would work against StubID and would claim to reproduce a sitting the broker
+    /// only ever accepted signed.
+    /// </summary>
+    private async Task<JsonDocument> SignInSigned(string scope, string identityProviderParameters)
+    {
+        var request = Signer.Build(
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["client_id"] = CodeClient,
+                ["response_type"] = "code",
+                ["redirect_uri"] = RedirectUri,
+                ["scope"] = scope,
+                ["state"] = "s",
+                ["nonce"] = "n",
+                ["idp_values"] = "mitid",
+                ["idp_params"] = identityProviderParameters,
+            },
+            CodeClient, Authority, Password, Issued);
+
+        var authorize = await _client.GetAsync(
+            $"/op/connect/authorize?client_id={CodeClient}&response_type=code"
+            + $"&request={Uri.EscapeDataString(request)}", Ct);
+
+        return await Redeem(authorize);
+    }
+
     private async Task<JsonDocument> SignIn(string scope, string? identityProviderParameters = null)
     {
         var extra = identityProviderParameters is null
@@ -60,6 +99,11 @@ public class RecordedShapeTests : IClassFixture<WebApplicationFactory<Program>>
             $"&redirect_uri={Uri.EscapeDataString(RedirectUri)}&scope={Uri.EscapeDataString(scope)}" +
             $"&state=s&nonce=n{extra}", Ct);
 
+        return await Redeem(authorize);
+    }
+
+    private async Task<JsonDocument> Redeem(HttpResponseMessage authorize)
+    {
         var code = System.Web.HttpUtility
             .ParseQueryString(authorize.Headers.Location!.ToString().Split('?')[1])["code"]!;
 
@@ -73,6 +117,16 @@ public class RecordedShapeTests : IClassFixture<WebApplicationFactory<Program>>
         ]), Ct);
 
         return JsonDocument.Parse(await token.Content.ReadAsStringAsync(Ct));
+    }
+
+    private async Task<JsonDocument> UserInfo(JsonDocument response)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/op/connect/userinfo");
+        request.Headers.Authorization = new AuthenticationHeaderValue(
+            "Bearer", response.RootElement.GetProperty("access_token").GetString());
+
+        using var userinfo = await _client.SendAsync(request, Ct);
+        return JsonDocument.Parse(await userinfo.Content.ReadAsStringAsync(Ct));
     }
 
     [Fact]
@@ -198,5 +252,66 @@ public class RecordedShapeTests : IClassFixture<WebApplicationFactory<Program>>
         using var response = await SignIn("openid mitid");
 
         Assert.Equal(RecordedShape("CAP-024", "token", "response.raw"), Shape(response.RootElement));
+    }
+
+    [Fact]
+    public async Task Userinfo_hands_over_a_transaction_text_s_digest_without_the_text()
+    {
+        // CAP-031, which is the opposite of what this endpoint does with a reference text: the
+        // type and the digest come over and the text they describe does not, and they sit a slot
+        // later - after mitid.geo_ip_distance_km rather than before it. Mirroring the reference
+        // text's carrier and its slot together produces the right members in the wrong order,
+        // and only this comparison would say so.
+        using var response = await SignInSigned(
+            "openid mitid transaction_token",
+            """{"mitid":{"transaction_text":"U3R1YklEIHRyYW5zYWN0aW9uIHRleHQgb25l","transaction_text_type":"text"}}""");
+
+        using var claims = await UserInfo(response);
+
+        Assert.Equal(
+            RecordedShape("CAP-031", "userinfo", "response.raw"),
+            Shape(claims.RootElement));
+
+        Assert.False(claims.RootElement.TryGetProperty("mitid.transaction_text", out _));
+    }
+
+    [Fact]
+    public async Task The_userinfo_body_escapes_the_plus_the_JWS_payload_leaves_alone()
+    {
+        // The recorded digest contains a +, and the same broker sends it two ways: \u002B in
+        // this body, a literal + inside the transaction token in the same exchange. StubID
+        // matches both only because the two writers picked different JSON encoders, and every
+        // other assertion here parses before comparing - so aligning them would break a
+        // recording with nothing turning red. Bytes, then, and against the fixture rather than
+        // against a literal typed here.
+        var recorded = await File.ReadAllTextAsync(Path.Combine(
+            Root(), "fixtures", "neb", "pp-session", "CAP-031", "userinfo", "response.raw"), Ct);
+
+        Assert.Contains("\\u002B", recorded, StringComparison.Ordinal);
+        Assert.DoesNotContain("2c+G", recorded, StringComparison.Ordinal);
+
+        using var response = await SignInSigned(
+            "openid mitid transaction_token",
+            """{"mitid":{"transaction_text":"U3R1YklEIHRyYW5zYWN0aW9uIHRleHQgb25l","transaction_text_type":"text"}}""");
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/op/connect/userinfo");
+        request.Headers.Authorization = new AuthenticationHeaderValue(
+            "Bearer", response.RootElement.GetProperty("access_token").GetString());
+
+        using var userinfo = await _client.SendAsync(request, Ct);
+        var body = await userinfo.Content.ReadAsStringAsync(Ct);
+
+        Assert.Contains("\\u002B", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("2c+G", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Userinfo_carries_no_transaction_text_members_when_none_was_sent()
+    {
+        using var response = await SignIn("openid mitid transaction_token");
+        using var claims = await UserInfo(response);
+
+        Assert.False(claims.RootElement.TryGetProperty("mitid.transaction_text_type", out _));
+        Assert.False(claims.RootElement.TryGetProperty("mitid.transaction_text_sha256", out _));
     }
 }

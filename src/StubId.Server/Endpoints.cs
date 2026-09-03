@@ -130,7 +130,9 @@ public static class Endpoints
                     ClientId: request.ClientId,
                     Scope: request.Scope,
                     Parameters: parameters,
-                    Now: clock.GetUtcNow()));
+                    Now: clock.GetUtcNow()),
+                request.TransactionText,
+                request.TransactionTextType);
 
             if (!session.IsDecided)
             {
@@ -432,6 +434,7 @@ public static class Endpoints
             return Results.Text(Page("StubID", $"""
                 <p>This is StubID, an emulator.</p>
                 <p><strong>No identity is being verified, and no real authentication is taking place.</strong></p>
+                {TransactionTextPanel(session)}
                 <form method="post">
                   <p><label>Sign in as <select name="citizen">{options}</select></label></p>
                   <p>
@@ -758,6 +761,49 @@ public static class Endpoints
     }
 
     /// <summary>A bare error object: no description, no uri, exactly as recorded.</summary>
+    /// <summary>
+    /// What the request asked the user to approve, rendered on StubID's own page.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The broker puts the transaction text on its own page rather than behind the
+    /// authenticator, and that is where this goes too - the sitting that recorded CAP-031 found
+    /// the text on the broker's page and not among the values MitID held for the transaction.
+    /// </para>
+    /// <para>
+    /// Escaped whether the request called it text or html. The broker parses an html text
+    /// against a tag allowlist and renders it; StubID does not, because this is the first
+    /// client-controlled string this page has ever shown and it is shown in a window a browser
+    /// has just been redirected to from a real authorize request.
+    /// </para>
+    /// <para>
+    /// Decoded here rather than where the session was parked, and with the same decoder the
+    /// digest uses. A text that will not decode says so instead of disappearing: a page that
+    /// silently shows nothing is indistinguishable from one that was never sent a text.
+    /// </para>
+    /// </remarks>
+    [Fidelity(FidelityTier.Shape, FidelityProvenance.Divergent,
+        Reason = "docs/brokers/neb/divergences.md#the-login-page")]
+    private static string TransactionTextPanel(AuthSession session)
+    {
+        if (session.TransactionText is null)
+        {
+            return "";
+        }
+
+        var body = AuthorizationRequest.DecodeTransactionText(session.TransactionText) is { } bytes
+
+            // Replacement characters rather than an exception: the bytes are the client's, and
+            // a page that 500s on them is worse than a page that shows they were not text.
+            ? $"<pre>{WebUtility.HtmlEncode(Encoding.UTF8.GetString(bytes))}</pre>"
+            : "<p>The request carried a transaction text that could not be decoded.</p>";
+
+        return $"""
+            <h2>Transaction text</h2>
+            {body}
+            """;
+    }
+
     private static IResult OAuthError(HttpContext http, string error)
     {
         http.Response.StatusCode = (int)HttpStatusCode.BadRequest;

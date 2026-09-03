@@ -46,6 +46,79 @@ public sealed record AuthorizationRequest(
     /// </remarks>
     public string? ReferenceText =>
         MitIdParameters?.GetValueOrDefault("reference_text") is { Length: > 0 } text ? text : null;
+
+    /// <summary>
+    /// The transaction text, base64 as the client sent it. The broker echoes it undecoded.
+    /// </summary>
+    public string? TransactionText =>
+        MitIdParameters?.GetValueOrDefault("transaction_text") is { Length: > 0 } text ? text : null;
+
+    /// <summary>What the client said the text is. <c>text</c> and <c>html</c> are the documented pair.</summary>
+    public string? TransactionTextType =>
+        MitIdParameters?.GetValueOrDefault("transaction_text_type") is { Length: > 0 } type ? type : null;
+
+    /// <summary>
+    /// The digest the broker publishes beside the text: base64 of SHA-256 over the
+    /// <em>decoded</em> bytes, standard alphabet and padded. Null when there is nothing to hash.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Computed here rather than at either writer. The transaction token and the userinfo
+    /// endpoint both carry it, they run at different times, and a decode in each is how the two
+    /// drift apart - so there is one decoder, one rule for what it refuses, and both writers
+    /// inherit it. It is also the only guard: a FormatException anywhere on this path leaves the
+    /// pipeline as an empty 500, which is the one answer the broker never gives.
+    /// </para>
+    /// <para>
+    /// Not <see cref="HashClaims"/>. That helper is for at_hash and c_hash - the left half of the
+    /// digest, base64url, over the ASCII of the value as sent - and it is wrong here three
+    /// separate ways.
+    /// </para>
+    /// </remarks>
+    public string? TransactionTextSha256 =>
+        DecodedTransactionText is { Length: > 0 } bytes
+            ? Convert.ToBase64String(SHA256.HashData(bytes))
+            : null;
+
+    /// <summary>The bytes behind the text, or null when the value is not something this can decode.</summary>
+    /// <remarks>
+    /// <para>
+    /// Both alphabets are accepted. The recorded text sits in the intersection of standard and
+    /// URL-safe base64 - no <c>+</c>, <c>/</c>, <c>-</c> or <c>_</c>, and a length that is a
+    /// multiple of four - so no recording says which the broker parses, and this repository
+    /// already reads that same value with a base64url decoder in its fixture contract test.
+    /// Accepting both is the reading that refuses fewest of the values a client might send.
+    /// </para>
+    /// <para>
+    /// Whitespace is refused rather than skipped, which is what
+    /// <see cref="Convert.FromBase64String(string)"/> would do with it. Skipping it changes the
+    /// answer without saying so: a value with characters removed still decodes, to different
+    /// bytes, so the digest comes back looking right and matching nothing the client holds. A
+    /// missing digest is the more useful failure.
+    /// </para>
+    /// </remarks>
+    public byte[]? DecodedTransactionText => DecodeTransactionText(TransactionText);
+
+    /// <summary>
+    /// The one decoder. Public because the login page needs the same answer this does, and two
+    /// readings of one value is how a page and a token come to disagree about what was signed.
+    /// </summary>
+    public static byte[]? DecodeTransactionText(string? value)
+    {
+        if (value is null || value.Any(char.IsWhiteSpace))
+        {
+            return null;
+        }
+
+        var standard = value.Replace('-', '+').Replace('_', '/');
+        standard = standard.PadRight(standard.Length + ((4 - (standard.Length % 4)) % 4), '=');
+
+        var buffer = new byte[standard.Length];
+
+        return Convert.TryFromBase64String(standard, buffer, out var written) && written > 0
+            ? buffer[..written]
+            : null;
+    }
 }
 
 /// <summary>An issued authorization code and everything the token endpoint needs to redeem it.</summary>
@@ -78,6 +151,14 @@ public sealed record IssuedCode(
 /// endpoint answers from an access token alone. The recorded userinfo response returns a
 /// reference text whole, in the same slot the transaction token puts it.
 /// </param>
+/// <param name="TransactionTextType">
+/// Carried for the same reason, and this is the half of the transaction text userinfo sends.
+/// </param>
+/// <param name="TransactionTextSha256">
+/// The other half. The text itself is deliberately not here: CAP-031's userinfo response hands
+/// over the digest and the type and withholds the text they describe, which is the opposite of
+/// what the same endpoint does with a reference text.
+/// </param>
 public sealed record IssuedAccessToken(
     string ClientId,
     Citizen Citizen,
@@ -85,7 +166,9 @@ public sealed record IssuedAccessToken(
     string SessionId,
     string IdpTransactionId,
     DateTimeOffset AuthenticatedAt,
-    string? ReferenceText = null);
+    string? ReferenceText = null,
+    string? TransactionTextType = null,
+    string? TransactionTextSha256 = null);
 
 /// <summary>
 /// Everything the slice remembers. In memory, single tenant, deliberately small.
@@ -226,7 +309,9 @@ public sealed record Client(string ClientId, string[] ResponseTypes, string Orga
         _accessTokens[token] = new IssuedAccessToken(
             code.Request.ClientId, code.Citizen, code.Request.Scope,
             code.SessionId, code.IdpTransactionId, code.AuthenticatedAt,
-            code.Request.ReferenceText);
+            code.Request.ReferenceText,
+            code.Request.TransactionTextType,
+            code.Request.TransactionTextSha256);
         return token;
     }
 
