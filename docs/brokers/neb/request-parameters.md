@@ -100,11 +100,11 @@ over the query's, and its JWT claims — `iss`, `aud`, `exp`, `iat`, `nbf`, `jti
 parameters.
 
 Both endpoints read one. A pushed request is unpacked where it is pushed, so the reference
-handed back to the client already carries what the object said. The two paths part company after
-that, and not because of the object: a redeemed `request_uri` arrives at the authorize endpoint
-with a query holding the client id and the reference, so what decides a parked login sees the
-query rather than the pushed parameters. That gap predates this and is the same one
-[the login page](divergences.md#the-login-page) entry describes.
+handed back to the client already carries what the object said. What arrives at the authorize
+endpoint afterwards is a query holding the client id and that reference and nothing else, and
+the reference has been redeemed by the time anything downstream could read it — which is why a
+parked login carries the parsed request rather than the query it arrived on. See
+[resuming a parked login](divergences.md#resuming-a-parked-login).
 
 ## prompt
 

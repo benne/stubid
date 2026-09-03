@@ -207,8 +207,15 @@ public class ControlApiTests
                 new KeyValuePair<string, string>("citizen", "default"),
             ]), Ct);
 
-        Assert.Equal(HttpStatusCode.OK, submitted.StatusCode);
-        Assert.Equal("Approved", await StateOf(client, session));
+        // The click returns the browser to the client, the way an automatically approved login
+        // does. This used to answer 200 with a page telling the person to navigate back by
+        // hand, which is the whole of what "cannot be resumed" meant.
+        Assert.Equal(HttpStatusCode.Redirect, submitted.StatusCode);
+        Assert.StartsWith(RedirectUri, submitted.Headers.Location!.ToString(), StringComparison.Ordinal);
+        Assert.Contains("code=", submitted.Headers.Location!.ToString(), StringComparison.Ordinal);
+
+        // Collected, not merely decided.
+        Assert.Equal("Redeemed", await StateOf(client, session));
     }
 
     [Fact]

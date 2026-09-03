@@ -15,14 +15,21 @@ built: three engines, each refused first and then trusted by its own mechanism, 
 over TLS with nothing relaxed. A copied example that has quietly stopped working is worse than no
 example, so what follows is that script explained rather than a second version of it.
 
-## Queue the outcome; do not click through
+## Clicking through works; queueing is usually still better
 
-A parked login redirects the browser to `/op/Login`, and it is tempting to drive it: pick a
-citizen, click Approve, carry on. **That does not complete a login.** Deciding a parked session
-settles its state and renders a page saying so; it does not issue an authorization code to the
-browser waiting on the redirect. A login that parks cannot be resumed.
+A parked login redirects the browser to `/op/Login`, and driving it does what it looks like it
+does: pick a citizen, click Approve, and the browser is carried back to the client with a code,
+exactly as an automatically approved login is. Aborting returns
+`error=access_denied&error_description=mitid_user_aborted`. A decision made through the control
+API while the browser sits on that page is collected the same way, on its next navigation.
 
-So a browser test either leaves automatic approval on, or queues the outcome first:
+That was not always true — a parked login could not be resumed at all, and every guide here told
+you to queue the outcome instead. It is true now, and a browser test that wants to exercise the
+page should.
+
+For everything else, queue the outcome anyway. It is one request rather than three, it needs no
+page to drive and no second navigation, and it is the only way to get an outcome a person cannot
+produce by clicking. So a browser test either leaves automatic approval on, or queues first:
 
 ```
 POST /_stubid/v1/behaviours/enqueue

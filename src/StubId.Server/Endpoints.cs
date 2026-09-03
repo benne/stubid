@@ -124,15 +124,14 @@ public static class Endpoints
             // The request is parked and the ladder is asked what should happen to it. Most
             // logins are decided by something already in place and never wait at all; the ones
             // that do are what the control API and the login page are for.
-            var session = sessions.Park(request.ClientId, http.Request.QueryString.Value ?? "",
+            var session = sessions.Park(
+                request,
                 new SessionContext(
                     SessionId: "",
                     ClientId: request.ClientId,
                     Scope: request.Scope,
                     Parameters: parameters,
-                    Now: clock.GetUtcNow()),
-                request.TransactionText,
-                request.TransactionTextType);
+                    Now: clock.GetUtcNow()));
 
             if (!session.IsDecided)
             {
@@ -161,64 +160,7 @@ public static class Endpoints
                 return Refuse(http, request, session);
             }
 
-            var citizen = citizens.ById(session.CitizenId!)
-                ?? throw new InvalidOperationException($"No citizen {session.CitizenId}.");
-
-            var issued = state.IssueCode(request, citizen, clock.GetUtcNow(), ClientIp(http));
-            session.TryRedeem();
-            var wants = request.ResponseType.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            var organisation = state.OrganisationOf(request.ClientId);
-
-            // Member order as recorded: the code first, then a front-channel id_token if one
-            // was asked for, then state and session_state.
-            var response = new Dictionary<string, string>();
-
-            if (wants.Contains("code"))
-            {
-                response["code"] = issued;
-            }
-
-            if (wants.Contains("id_token"))
-            {
-                // The front-channel token covers the code with c_hash rather than an access
-                // token with at_hash: there is no access token in the front channel.
-                response["id_token"] = tokens.IdToken(
-                    Issuer(http),
-                    state.PeekCode(issued)!,
-                    accessToken: null,
-                    organisation,
-                    authorizationCode: wants.Contains("code") ? issued : null);
-            }
-
-            if (request.State is not null)
-            {
-                response["state"] = request.State;
-            }
-
-            response["session_state"] = SessionStateParameter(request.ClientId, issued);
-
-            // Advertised in discovery, so a client may enforce it - but the broker omits it
-            // whenever an id_token is returned, which already carries the issuer.
-            if (!wants.Contains("id_token"))
-            {
-                response["iss"] = Issuer(http);
-            }
-
-            // A response carrying an id_token defaults to form_post, since a token in a query
-            // string ends up in logs and history.
-            if (request.ResponseMode == "query" && wants.Contains("id_token"))
-            {
-                request = request with { ResponseMode = "form_post" };
-            }
-
-            return request.ResponseMode switch
-            {
-                "form_post" => FormPost(request.RedirectUri, response),
-                "query" => Results.Redirect(Append(request.RedirectUri, response, '?')),
-                "fragment" => Results.Redirect(Append(request.RedirectUri, response, '#')),
-                _ => ErrorPage(http, protection, "invalid_request",
-                    $"Response mode '{request.ResponseMode}' is not supported."),
-            };
+            return Complete(http, request, session, state, tokens, citizens, clock, protection);
         });
 
         Map("op/connect/token", ["POST"], RouteRole.Token, async (HttpContext http, BrokerState state, Tokens tokens, TimeProvider clock) =>
@@ -392,7 +334,9 @@ public static class Endpoints
         // authenticator would put someone else's trade dress on an emulator, and a page that
         // looked real is a page someone can be fooled by.
         Map("op/Login", ["GET", "POST"], RouteRole.Extra("login"), async (
-            HttpContext http, SessionStore sessions, Citizens citizens) =>
+            HttpContext http, SessionStore sessions, Citizens citizens,
+            BrokerState state, Tokens tokens, TimeProvider clock,
+            IDataProtectionProvider protection) =>
         {
             var id = http.Request.Query["session"].ToString();
             var session = sessions.Find(id);
@@ -401,6 +345,19 @@ public static class Endpoints
             {
                 return Results.NotFound();
             }
+
+            // Where a decided login goes, whichever verb asked and whoever decided it. A GET
+            // lands here when something else decided the session while the browser sat on the
+            // page - the control API, a queued behaviour, the deadline - and that browser is
+            // owed the same answer the clicker gets.
+            IResult Finish() => session.State switch
+            {
+                SessionState.Approved => Complete(
+                    http, session.Request, session, state, tokens, citizens, clock, protection),
+                SessionState.Failed or SessionState.Expired =>
+                    Refuse(http, session.Request, session),
+                _ => AlreadyCollected(),
+            };
 
             if (HttpMethods.IsPost(http.Request.Method))
             {
@@ -411,21 +368,17 @@ public static class Endpoints
                     ? chosen?.Outcome() ?? Decision.Refused("mitid_identity_not_found")
                     : Decision.Refused("mitid_user_aborted");
 
-                var decided = sessions.Decide(id, decision, "the login page");
+                // The return value is deliberately not read. Losing the race means something
+                // else decided this login, and the browser in front of us still has to be sent
+                // wherever that decision leads - which is the same place its own would have.
+                sessions.Decide(id, decision, "the login page");
 
-                return Results.Text(
-                    Page(decided ? "Decided" : "Already decided",
-                        decided
-                            ? $"<p>This login is now {sessions.Find(id)?.State}. Return to the application.</p>"
-                            : "<p>Something decided this login first. Nothing was changed.</p>"),
-                    "text/html; charset=utf-8");
+                return Finish();
             }
 
             if (session.IsDecided)
             {
-                return Results.Text(
-                    Page("Already decided", $"<p>This login is {session.State}.</p>"),
-                    "text/html; charset=utf-8");
+                return Finish();
             }
 
             var options = string.Join("\n", citizens.All.OrderBy(c => c.Id, StringComparer.Ordinal)
@@ -442,7 +395,8 @@ public static class Endpoints
                     <button type="submit" name="decision" value="reject">Abort</button>
                   </p>
                 </form>
-                <p>A test can do the same through the control API without a browser.</p>
+                <p>Approving returns this browser to the application, with a code. A test
+                can decide the same login through the control API without a browser.</p>
                 """), "text/html; charset=utf-8");
         });
 
@@ -485,15 +439,143 @@ public static class Endpoints
     }
 
     /// <summary>
+    /// Issues the code and sends the browser back to the client. The end of every login that
+    /// succeeds, whichever decided it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Extracted so the login page can reach it. It used to be inline in the authorize handler,
+    /// which is why approving a parked login rendered a page saying "return to the application"
+    /// instead of taking the browser there: the code that would have taken it there was
+    /// unreachable once the request had left that lambda.
+    /// </para>
+    /// <para>
+    /// Redeeming comes first and gates the rest. The session is the only thing that can say a
+    /// code has already been collected, and until a login could be resumed the window between
+    /// deciding and collecting was nil, so redeeming after issuing was as good. It is not any
+    /// more: a person who submits the page twice, or a browser that replays the request, would
+    /// otherwise get two codes for one login and leave one of them in a store nothing evicts.
+    /// </para>
+    /// </remarks>
+    [Fidelity(FidelityTier.Shape, FidelityProvenance.Divergent,
+        Reason = "docs/brokers/neb/divergences.md#resuming-a-parked-login")]
+    private static IResult Complete(
+        HttpContext http,
+        AuthorizationRequest request,
+        AuthSession session,
+        BrokerState state,
+        Tokens tokens,
+        Citizens citizens,
+        TimeProvider clock,
+        IDataProtectionProvider protection)
+    {
+        var wants = request.ResponseType.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        // Everything that can fail comes first, and the gate comes last. Redeeming is the
+        // irreversible half - it moves the session to a state whose whole meaning is "the code
+        // was collected" - so anything between it and the code being issued is a way to record
+        // a collection that never happened.
+        if (citizens.ById(session.CitizenId!) is not { } citizen)
+        {
+            // The citizen can be gone. Deciding and collecting used to happen in the same
+            // request, so the only way here was through a citizen that existed a line earlier;
+            // a resumed login can be collected long after the control API deleted the person it
+            // names. The session stays approved: nothing was collected, and recreating the
+            // citizen makes the same browser work on its next try.
+            return Refuse(http, request, session, "mitid_identity_not_found");
+        }
+
+        // A response carrying an id_token defaults to form_post, since a token in a query
+        // string ends up in logs and history.
+        if (request.ResponseMode == "query" && wants.Contains("id_token"))
+        {
+            request = request with { ResponseMode = "form_post" };
+        }
+
+        // Checked here rather than in the switch below, which is where it used to be. Nothing
+        // validates response_mode on the way in, so an unsupported one reached the end of this
+        // method, minted a code and then answered with an error page - leaving the session
+        // collected and the code in a store nothing evicts.
+        if (request.ResponseMode is not ("form_post" or "query" or "fragment"))
+        {
+            return ErrorPage(http, protection, "invalid_request",
+                $"Response mode '{request.ResponseMode}' is not supported.");
+        }
+
+        if (!session.TryRedeem())
+        {
+            return AlreadyCollected();
+        }
+
+        var issued = state.IssueCode(request, citizen, clock.GetUtcNow(), ClientIp(http));
+        var organisation = state.OrganisationOf(request.ClientId);
+
+        // Member order as recorded: the code first, then a front-channel id_token if one
+        // was asked for, then state and session_state.
+        var response = new Dictionary<string, string>();
+
+        if (wants.Contains("code"))
+        {
+            response["code"] = issued;
+        }
+
+        if (wants.Contains("id_token"))
+        {
+            // The front-channel token covers the code with c_hash rather than an access
+            // token with at_hash: there is no access token in the front channel.
+            response["id_token"] = tokens.IdToken(
+                Issuer(http),
+                state.PeekCode(issued)!,
+                accessToken: null,
+                organisation,
+                authorizationCode: wants.Contains("code") ? issued : null);
+        }
+
+        if (request.State is not null)
+        {
+            response["state"] = request.State;
+        }
+
+        response["session_state"] = SessionStateParameter(request.ClientId, issued);
+
+        // Advertised in discovery, so a client may enforce it - but the broker omits it
+        // whenever an id_token is returned, which already carries the issuer.
+        if (!wants.Contains("id_token"))
+        {
+            response["iss"] = Issuer(http);
+        }
+
+        return request.ResponseMode switch
+        {
+            "form_post" => FormPost(request.RedirectUri, response),
+            "fragment" => Results.Redirect(Append(request.RedirectUri, response, '#')),
+            _ => Results.Redirect(Append(request.RedirectUri, response, '?')),
+        };
+    }
+
+    /// <summary>The answer to a second collection. One login, one code.</summary>
+    private static IResult AlreadyCollected() => Results.Text(
+        Page("Already collected",
+            "<p>This login was already returned to the application. Nothing was issued a "
+            + "second time.</p>"),
+        "text/html; charset=utf-8");
+
+    /// <summary>
     /// Sends a user-level failure back to the client, carrying the broker's own error code in
     /// error_description rather than a description of it.
     /// </summary>
-    private static IResult Refuse(HttpContext http, AuthorizationRequest request, AuthSession session)
+    /// <param name="errorCode">
+    /// Overrides the session's own code, for a failure the session never recorded: a citizen
+    /// deleted between deciding and collecting refuses the login without the session ever having
+    /// been anything but approved.
+    /// </param>
+    private static IResult Refuse(
+        HttpContext http, AuthorizationRequest request, AuthSession session, string? errorCode = null)
     {
         var response = new Dictionary<string, string>
         {
             ["error"] = session.OAuthError ?? "access_denied",
-            ["error_description"] = session.ErrorCode ?? "mitid_unexpected_error",
+            ["error_description"] = errorCode ?? session.ErrorCode ?? "mitid_unexpected_error",
         };
 
         if (request.State is not null)
@@ -506,9 +588,15 @@ public static class Endpoints
         // only when an id_token is returned; a failure omits it either way.
         response["session_state"] = SessionStateParameter(request.ClientId, session.Id);
 
-        return request.ResponseMode == "form_post"
-            ? FormPost(request.RedirectUri, response)
-            : Results.Redirect(Append(request.RedirectUri, response, '?'));
+        // The same three modes the success path honours. This answered every mode with a query
+        // until a second caller made the asymmetry worth closing: a client that asked for a
+        // fragment got its failure somewhere it was not reading.
+        return request.ResponseMode switch
+        {
+            "form_post" => FormPost(request.RedirectUri, response),
+            "fragment" => Results.Redirect(Append(request.RedirectUri, response, '#')),
+            _ => Results.Redirect(Append(request.RedirectUri, response, '?')),
+        };
     }
 
     /// <summary>

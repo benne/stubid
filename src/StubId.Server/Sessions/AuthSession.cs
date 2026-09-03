@@ -67,33 +67,31 @@ public sealed class AuthSession
 
     public required string ClientId { get; init; }
 
-    /// <summary>The raw query, replayed verbatim on resume.</summary>
-    /// <remarks>
-    /// Kept as text rather than reconstructed. A nonce is echoed byte for byte, and rebuilding
-    /// a query from parsed parts is where that quietly stops being true.
-    /// </remarks>
-    public required string RawQuery { get; init; }
-
-    /// <summary>
-    /// The transaction text the request carried, base64 as it was sent, or null.
-    /// </summary>
+    /// <summary>The request this login is for, as it was parsed.</summary>
     /// <remarks>
     /// <para>
-    /// Carried rather than read back out of <see cref="RawQuery"/>, because on two of the three
-    /// arrival shapes it is not in there: a pushed request leaves a query holding the client id
-    /// and a reference, and a signed one leaves the parameters inside a JWS. The value is taken
-    /// where the request has been parsed and every path has converged.
+    /// The whole record rather than the query it arrived on, because the query cannot answer for
+    /// it. There are four arrival shapes and the query is enough for two: a plain GET and a
+    /// signed request object both carry everything, a form POST leaves it empty because the
+    /// parameters were in the body, and a pushed request leaves a client id and a reference that
+    /// has already been redeemed and cannot be redeemed twice.
     /// </para>
     /// <para>
+    /// So the value is taken where the request has been parsed and every path has converged,
+    /// which is the same rule the transaction text was carried by before this record subsumed
+    /// it. Resuming a login needs the redirect URI, the response type and mode, the state and
+    /// the PKCE challenge, and every one of them is in here on every shape.
+    /// </para>
+    /// </remarks>
+    public required AuthorizationRequest Request { get; init; }
+
+    /// <summary>The transaction text the request carried, base64 as it was sent, or null.</summary>
+    /// <remarks>
     /// Stored as it arrived and decoded where it is rendered. Keeping the decoded string on a
     /// long-lived session would put a client-controlled string into everything that describes
     /// one, for the sake of a decode that costs nothing to repeat.
-    /// </para>
     /// </remarks>
-    public string? TransactionText { get; init; }
-
-    /// <summary>What the request said the text is. Not rendered; it decides nothing here yet.</summary>
-    public string? TransactionTextType { get; init; }
+    public string? TransactionText => Request.TransactionText;
 
     public required DateTimeOffset CreatedAt { get; init; }
 
@@ -178,6 +176,38 @@ public sealed class AuthSession
             ErrorCode = "mitid_timeout";
             OAuthError = "access_denied";
             DecidedAt = now;
+            Version++;
+
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Expires a session that was approved and never collected. A second window, and it has to
+    /// be a second one.
+    /// </summary>
+    /// <remarks>
+    /// Approving stops the first deadline mattering - that is what
+    /// <see cref="TryExpire(DateTimeOffset)"/> guarding on <see cref="IsDecided"/> is for, so
+    /// that the operator who clicks at the last moment gets their approval. But until a login
+    /// could be resumed, nothing ever collected an approval, and an approved session simply
+    /// stayed in the store for the life of the instance. Measuring this window from the decision
+    /// keeps both true: the last-moment approval still wins, and a day-old one does not still
+    /// hand out a code.
+    /// </remarks>
+    public bool TryExpireUncollected(DateTimeOffset now, TimeSpan window)
+    {
+        lock (_gate)
+        {
+            if (State != SessionState.Approved || DecidedAt is not { } decided
+                || now < decided + window)
+            {
+                return false;
+            }
+
+            State = SessionState.Expired;
+            ErrorCode = "mitid_timeout";
+            OAuthError = "access_denied";
             Version++;
 
             return true;
