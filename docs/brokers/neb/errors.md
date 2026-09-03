@@ -52,8 +52,27 @@ No `error_description`, no `error_uri`, nothing else. Which code you get:
 | Unusable or already-redeemed code | `invalid_grant` | CAP-015 |
 | A grant the client may not use | `unauthorized_client` | CAP-016 |
 | PAR without client authentication | `invalid_client` | CAP-019 |
+| A `request` object that cannot be read (PAR) | `invalid_request_object` | measured, not recorded |
 
 Every one carries `Cache-Control: no-store, no-cache, max-age=0`.
+
+The last row is the exception to "bare", and it is the reason to debug a signed request against
+PAR rather than authorize:
+
+```json
+{"error":"invalid_request_object","error_description":"Invalid JWT request"}
+```
+
+The authorize endpoint answers the same object with a 302 to `/op/Error?errorId=…` and says
+nothing, so every failure there looks the same. A flipped signature byte, a random key and a
+missing `exp` claim each earn the body above — the last of those being why a probe that omits
+`exp` fails its own negative control and reads as "signed requests do not work here". Measured
+on two clients and two runs rather than recorded, because no capture step sends a broken object:
+[what the broker does with a signed request object](../../research/signed-requests.md).
+
+StubID checks that the object can be read and not who signed it, so it answers this for a
+malformed object and accepts a forged one. See
+[divergences](divergences.md#request-objects).
 
 StubID answers `invalid_grant` where the broker answers `invalid_client` for a *wrong* secret,
 because it does not check secrets. See [divergences](divergences.md#client-secrets).

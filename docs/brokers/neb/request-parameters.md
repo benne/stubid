@@ -70,6 +70,32 @@ A mode the broker does not define is **ignored**, not refused — CAP-013 record
 being accepted and sent on to the authenticator. Naming a person who does not exist is
 different: that fails with `mitid_simulation_unknown_user`.
 
+## request
+
+An authorization request packed into a JWT, which is how the broker wants a transaction text
+sent. There is no row for it in the table above, because the table's rows come from recordings
+and this one's refusals come from a measurement instead —
+[what the broker does with a signed request object](../../research/signed-requests.md), taken on
+two clients and two runs.
+
+The broker verifies the signature: HS256 over the client secret, which is what discovery's
+`request_object_signing_alg_values_supported` advertises. It also requires `exp`, whose absence
+is refused with bytes identical to a forged signature. Both refusals are `invalid_request_object`
+— a body at the PAR endpoint, an opaque error page at authorize.
+
+StubID reads the object and takes its parameters. It does not check the signature, and it checks
+`exp` for presence rather than against the clock; see
+[divergences](divergences.md#request-objects) for what that costs. The object's parameters win
+over the query's, and its JWT claims — `iss`, `aud`, `exp`, `iat`, `nbf`, `jti` — do not become
+parameters.
+
+Both endpoints read one. A pushed request is unpacked where it is pushed, so the reference
+handed back to the client already carries what the object said. The two paths part company after
+that, and not because of the object: a redeemed `request_uri` arrives at the authorize endpoint
+with a query holding the client id and the reference, so what decides a parked login sees the
+query rather than the pushed parameters. That gap predates this and is the same one
+[the login page](divergences.md#the-login-page-shows-nothing) entry describes.
+
 ## prompt
 
 `login`, `none` and `select_account` are advertised in discovery. `none` is implemented as the

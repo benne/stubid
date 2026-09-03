@@ -50,7 +50,17 @@ public static class Endpoints
                 return OAuthError(http, "invalid_client");
             }
 
-            var requestUri = state.PushRequest(Parse(form.ToDictionary(f => f.Key, f => f.Value.ToString())));
+            var parameters = form.ToDictionary(f => f.Key, f => f.Value.ToString(), StringComparer.Ordinal);
+
+            // A push is where a request object is most worth sending, because this is the
+            // endpoint that says what it thinks of one. The authorize endpoint answers the same
+            // bad object with an opaque error reference and a page.
+            if (!RequestObject.TryMerge(parameters))
+            {
+                return OAuthError(http, RequestObject.Fault, RequestObject.FaultDescription);
+            }
+
+            var requestUri = state.PushRequest(Parse(parameters));
 
             // 201, and the reference expires in ten minutes.
             http.Response.StatusCode = (int)HttpStatusCode.Created;
@@ -73,6 +83,13 @@ public static class Endpoints
                 {
                     return ErrorPage(http, protection, "invalid_request", "Unknown or expired request_uri.");
                 }
+            }
+            else if (!RequestObject.TryMerge(parameters))
+            {
+                // Read here rather than in ReadParameters, so everything below - the grammar's
+                // faults, the prompts, the parked session's parameters - sees what the object
+                // carried. A pushed request was merged when it was pushed and is not read again.
+                return ErrorPage(http, protection, RequestObject.Fault, RequestObject.FaultDescription);
             }
 
             request ??= Parse(parameters);
@@ -745,6 +762,21 @@ public static class Endpoints
     {
         http.Response.StatusCode = (int)HttpStatusCode.BadRequest;
         return Json($"{{\"error\":\"{error}\"}}");
+    }
+
+    /// <summary>
+    /// The same refusal with a sentence beside it. The token endpoint never sends one; the PAR
+    /// endpoint sends one for a request object it will not read, which is what makes it the
+    /// endpoint worth debugging a signed request against.
+    /// </summary>
+    /// <remarks>
+    /// The status is 400, which is CAP-019's for the other way PAR refuses and RFC 9126 2.3 for
+    /// this one. The measurement that settled the body did not record it.
+    /// </remarks>
+    private static IResult OAuthError(HttpContext http, string error, string description)
+    {
+        http.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+        return Json($"{{\"error\":\"{error}\",\"error_description\":\"{description}\"}}");
     }
 
     private static IResult ErrorPage(HttpContext http, IDataProtectionProvider protection, string code, string description)

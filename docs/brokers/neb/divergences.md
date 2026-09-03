@@ -31,6 +31,48 @@ likely than an attack on a stub, and refusing it would fail a test that works.
 **What this costs.** A test asserting that a forged hint is rejected passes against
 pre-production and fails here.
 
+## A request object is read, not verified
+
+<a id="request-objects"></a>
+
+The broker verifies the `request` parameter's signature against the client secret, HS256, and
+refuses a bad one with `invalid_request_object`. StubID reads the object and takes its
+parameters without checking who signed it. What it does check is that the object can be read at
+all: three segments, a payload that is base64url, that is JSON, that is an object, and that
+carries `exp`. Anything else earns the same refusal the broker gives.
+
+**Why.** The same trade twice over, and here it is forced: the signature is over the client
+secret, and StubID registers no secret for a client, so there is nothing to check one against. A
+test that assembles an object by hand is far more likely than an attack on a stub, and refusing
+one would fail a test that works.
+
+**What this costs.** A test asserting that a forged or wrongly-signed request object is rejected
+passes against pre-production and fails here. So does one asserting that an *expired* object is
+rejected: `exp` has to be there and is not compared against the clock, because checking a
+lifetime while ignoring a signature is a strange half of a check to keep.
+
+Two decisions the recordings could not settle, taken here rather than left to be discovered:
+
+- **The object wins over the query** where both carry the same name, which is what OpenID
+  Connect Core 6.1 says. CAP-031 cannot show it: its query and its object agree on the two
+  names they share.
+- **`iss`, `aud`, `exp`, `iat`, `nbf` and `jti` do not become request parameters.** They are the
+  JWT's own furniture rather than anything a client sent, and RFC 9101 draws the same line — an
+  endpoint takes the object's *authorization request parameters* out of it. Nothing downstream
+  reads any of the six, so the only place the difference would show is a parked session's
+  parameter view.
+
+An empty `request=` is treated as no object at all, which is what every other optional parameter
+here does with an empty value. Unmeasured: no probe sent one.
+
+**Where the refusal came from.** Not a fixture. A flipped signature byte, a random key and a
+missing `exp` were each measured earning `invalid_request_object` from the PAR endpoint, on two
+clients and two runs, and the bytes are in
+[what the broker does with a signed request object](../../research/signed-requests.md). No
+capture step sends a broken object, so there is nothing under `fixtures/` to point at. The
+accepted half *is* recorded: CAP-031's authorize URL carried `client_id`, `response_type` and
+`request` and nothing else, and the login it started completed.
+
 ## Advertised but not implemented
 
 The discovery document is served from a recording, so it advertises everything the broker
@@ -40,7 +82,6 @@ does. Some of that is not implemented:
 | --- | --- |
 | `backchannel_authentication_endpoint` (CIBA) | not implemented; the endpoint 404s |
 | `frontchannel_logout_supported`, `backchannel_logout_supported` | ending a session works; notifying the other clients in it does not |
-| Request objects (`request` parameter) | not implemented |
 | Request-object encryption | not implemented |
 | DPoP | not implemented |
 
@@ -72,9 +113,10 @@ a `transaction_token_ocsp_resp` beside it. The pair is never split, because no r
 splits it.
 
 `idp_params` is read as far as `reference_text`, which reaches the transaction token and the
-userinfo response the way CAP-022 recorded. What is not there yet is the *transaction* text: the
-six members carrying it under both spellings are absent, and the `request` parameter they were
-recorded arriving through is unimplemented. That one is in the table above.
+userinfo response the way CAP-022 recorded. The `request` parameter it was recorded arriving
+through is read now, on both the authorize and the pushed path — read rather than verified, for
+the reason [above](#request-objects). What is not there yet is the *transaction* text: the six
+members carrying it under both spellings are absent.
 
 Whether the broker would take a transaction text *without* a signed request is unmeasured. The
 claim that it takes one only inside a request object comes from vendor prose deleted in June
@@ -102,6 +144,8 @@ other side — the text claims came back on the same client and the same granted
 had, with nothing added to reach them.
 
 ## StubID's login page shows nothing the request carried
+
+<a id="the-login-page-shows-nothing"></a>
 
 The broker's authorize page is built out of the request. Its MitID widget is headed `Godkend
 hos` the relying party's registered display name, and on a signing request the transaction
