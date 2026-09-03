@@ -33,21 +33,14 @@ public sealed class SessionStore(TimeProvider clock, Ladder ladder)
         }
     }
 
-    public AuthSession Park(
-        string clientId,
-        string rawQuery,
-        SessionContext context,
-        string? transactionText = null,
-        string? transactionTextType = null)
+    public AuthSession Park(AuthorizationRequest request, SessionContext context)
     {
         var now = clock.GetUtcNow();
         var session = new AuthSession
         {
             Id = Guid.NewGuid().ToString(),
-            ClientId = clientId,
-            RawQuery = rawQuery,
-            TransactionText = transactionText,
-            TransactionTextType = transactionTextType,
+            ClientId = request.ClientId,
+            Request = request,
             CreatedAt = now,
             Deadline = now + Timeout,
         };
@@ -109,6 +102,12 @@ public sealed class SessionStore(TimeProvider clock, Ladder ladder)
         if (!session.IsDecided && now >= session.Deadline)
         {
             session.TryExpire(now);
+            return;
         }
+
+        // The second window. An approval nobody collects used to sit here for the life of the
+        // instance, because expiry only ever looked at undecided sessions - which was invisible
+        // while nothing could collect one.
+        session.TryExpireUncollected(now, Timeout);
     }
 }

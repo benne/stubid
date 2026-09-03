@@ -194,17 +194,54 @@ client-controlled string the page has ever shown and it is shown in a window a b
 been redirected to from a real authorize request. A test asserting that markup in an html
 transaction text renders as markup passes against pre-production and fails here.
 
-**What this still costs.** Driving `/op/Login` does not complete a login here in any case:
-deciding a parked session renders a page instead of redirecting
-([driving a browser](../../guides/browsers.md)). So a browser test can read the text off the
-page, and cannot then approve and be returned to the client. That is the resume gap, which
-predates this and affects every flow.
-
 The text reaches the page from the parsed request rather than from the query the session parked
 with, and that placement is the whole of it: after a push the browser arrives carrying a client
 id and a request reference, and on a signed request the parameters are inside a JWS. A page fed
 from the raw query works on a plain GET and goes blank on the other two arrival shapes, with no
 error to say why.
+
+## A parked login resumes in one hop, at StubID's own page
+
+<a id="resuming-a-parked-login"></a>
+
+Approving on `/op/Login` returns the browser to the client with a code. The broker gets there by
+a different route: it parks by redirecting to
+`/op/Account/Login?ReturnUrl=%2Fop%2Fconnect%2Fauthorize%2Fcallback%3F…`, so approving re-enters
+its own authorize pipeline at an internal callback path and the browser is carried onwards from
+there. StubID parks at `/op/Login?session=…` and completes in place.
+
+**Why not the two-hop shape.** Four reasons, and the first is decisive:
+
+- **It is not recorded.** That `ReturnUrl` is a `Location` header from a day-zero probe, and
+  [the capture session](../../capture-session.md) says plainly that every existing fixture stops
+  at the 302 — the page sequence itself is captured nowhere. Building it means inventing a flow
+  in a repository whose rule is that emulated behaviour cites a recording.
+- **The `ReturnUrl` is the raw-query replay**, and that replay cannot work here. A form POST
+  leaves no query to replay, and a pushed request's reference is consumed on the way in, so
+  replaying it earns "Unknown or expired request_uri". Reproduce the shape faithfully and you
+  reproduce a login that resumes on two of the four ways it can arrive.
+- **The page path already differs**, deliberately and for the reason above. Copying the broker's
+  internal routing while refusing its page is the wrong half.
+- **A client cannot see it.** The hop is between the broker's own endpoints; what reaches the
+  client is a redirect to its `redirect_uri` either way.
+
+**What this costs.** A test that asserts on the broker's intermediate URL sees StubID's instead.
+Nothing that reads the callback can tell the difference.
+
+**An approval nobody collects expires.** Approving stops the parked deadline mattering — that is
+what lets the person who clicks at the last moment keep their approval — so an approved login
+gets a second window of its own, the same five minutes, measured from the decision. Walk away
+after approving and come back an hour later and the client is told `mitid_timeout` rather than
+handed an hour-old code. Unrecorded: no capture ever approved a login and then left it.
+
+**A `response_mode` nothing supports is answered two ways.** Approving such a request lands on
+StubID's error page, because there is no mode to answer in; aborting it still redirects to the
+client with a query. Nothing validates the parameter on the way in and no recording says what
+the broker does with one, so this is an asymmetry that is written down rather than resolved.
+
+**What is still missing.** Nothing returns the browser without a browser: an approval made
+through the control API is collected when the browser next asks for the page, and a caller with
+no browser at all gets a decided session and no code, which is what queueing an outcome is for.
 
 ## The OCES3 certificate chain
 

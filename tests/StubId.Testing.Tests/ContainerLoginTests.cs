@@ -13,10 +13,9 @@ namespace StubId.Testing.Tests;
 /// script stays: it checks the published image before .NET is installed in CI, and this checks the
 /// module a .NET suite would actually reach for.
 /// <para>
-/// The outcome is queued rather than approved after the fact, and that is not a shortcut. A login
-/// that parks cannot be resumed - approving it settles its state but produces no authorization code
-/// for the caller waiting on the redirect - so queueing is how a suite drives a login it means to
-/// complete.
+/// The outcome is queued rather than approved after the fact. A parked login can be resumed now,
+/// so this is a preference rather than the only way: queueing is one request instead of three and
+/// needs no page to drive, which is what a suite without a browser wants.
 /// </para>
 /// </remarks>
 [Trait("Category", "Container")]

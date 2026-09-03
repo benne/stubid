@@ -19,6 +19,11 @@ Status of the first emulated surface, Signaturgruppen Broker ("Nets eID Broker")
 | M11 | Documentation site and generated broker reference | not started |
 | M12 | v1.0 | not started |
 
+A parked login can be resumed since 2026-09-03: approving on StubID's own page returns the
+browser to the client with a code, and so does a decision made through the control API once the
+browser comes back for it. Until then a parked login was a dead end, and every guide told readers
+to queue an outcome rather than click through.
+
 Deferred past 1.0 on purpose: hosted multi-tenant service and its accounts, CIBA, PAdES
 document wrapping, the Idura profile, and NemLog-in / OIOSAML.
 

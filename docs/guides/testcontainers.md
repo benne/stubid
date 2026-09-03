@@ -142,9 +142,10 @@ Queue the outcome before driving the application. A queued decision is consumed 
 matching login, so the login is decided before anything could have waited on it — which is what
 makes a suite fast and what makes an aborted login reproducible.
 
-Approving a login after it has parked settles its state, but it does not produce an authorization
-code for the browser waiting on the redirect. A login that parks cannot be resumed. Queue the
-outcome, or leave automatic approval on.
+Approving a parked login on `/op/Login` does return the browser to the client with a code, so a
+browser test can click through. A test without a browser has nothing to click, so queue the
+outcome or leave automatic approval on: the decision is then made before anything could have
+waited on it.
 
 ## Which image
 

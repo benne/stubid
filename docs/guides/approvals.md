@@ -138,6 +138,14 @@ heading of its own. A person being asked to approve something is entitled to see
 the broker puts that text on its own page too. Nothing else the request carried is shown —
 not the client's name, not even its `client_id`.
 
+Approving returns the browser to the application, with a code, the way an automatically
+approved login does. It has five minutes to come and collect it — the same timeout a login
+waiting to be decided gets, measured from the decision instead — after which the client is
+told `mitid_timeout` rather than handed a stale code. Aborting returns it with
+`error=access_denied&error_description=mitid_user_aborted`. A decision made through the
+control API while someone is sitting on that page is collected the same way, when the
+browser next asks for it.
+
 It submits to the same store the control API writes to, so a manual click and an API
 call are the same code path, not two implementations that agree until one of them
 changes.
