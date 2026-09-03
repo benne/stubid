@@ -155,6 +155,7 @@ public class RedactionParsingTests
 /// reached a fixture twice in this project's history; this is the rehearsal for the third
 /// way in.
 /// </remarks>
+[Collection(ProcessEnvironment.Name)]
 public class StagingWriteTests
 {
     // Excluded by the credential guard's own negative lookahead, and useless besides.
@@ -345,30 +346,7 @@ public class StagingWriteTests
     /// The environment wins over capture.local.json, so this behaves the same on a machine
     /// with real credentials and on one with none, which is what CI is.
     /// </summary>
-    private static T WithCredentials<T>(Func<T> act)
-    {
-        (string Name, string Value)[] settings =
-        [
-            ("STUBID_NEB_PP_CLIENT_ID", "00000000-0000-0000-0000-000000000000"),
-            ("STUBID_NEB_PP_CLIENT_SECRET", Password),
-        ];
-
-        var previous = settings.Select(s => Environment.GetEnvironmentVariable(s.Name)).ToArray();
-        foreach (var (name, value) in settings)
-        {
-            Environment.SetEnvironmentVariable(name, value);
-        }
-
-        try
-        {
-            return act();
-        }
-        finally
-        {
-            for (var i = 0; i < settings.Length; i++)
-            {
-                Environment.SetEnvironmentVariable(settings[i].Name, previous[i]);
-            }
-        }
-    }
+    private static T WithCredentials<T>(Func<T> act) => ProcessEnvironment.With(act,
+        ("STUBID_NEB_PP_CLIENT_ID", "00000000-0000-0000-0000-000000000000"),
+        ("STUBID_NEB_PP_CLIENT_SECRET", Password));
 }

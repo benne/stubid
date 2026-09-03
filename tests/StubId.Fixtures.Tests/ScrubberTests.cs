@@ -6,6 +6,7 @@ namespace StubId.Fixtures.Tests;
 /// The guards protect the repository, so they get tested against what they are meant to
 /// catch. A check that has never been seen to fail is not yet a check.
 /// </summary>
+[Collection(ProcessEnvironment.Name)]
 public class ScrubberTests
 {
     [Theory]
@@ -77,23 +78,18 @@ public class ScrubberTests
         // The broker echoes the client_id back in the login redirect, so recording with a
         // private client would publish it unless responses are scrubbed too. Both the plain
         // and the percent-encoded form appear in practice.
-        var original = Environment.GetEnvironmentVariable("STUBID_NEB_PP_CLIENT_ID");
-        Environment.SetEnvironmentVariable("STUBID_NEB_PP_CLIENT_ID", "a-private-client/id");
+        ProcessEnvironment.With(
+            () =>
+            {
+                Assert.Equal(
+                    "client_id={{NEB_PP_CLIENT_ID}}",
+                    Scrubber.Scrub("client_id=a-private-client/id"));
 
-        try
-        {
-            Assert.Equal(
-                "client_id={{NEB_PP_CLIENT_ID}}",
-                Scrubber.Scrub("client_id=a-private-client/id"));
-
-            Assert.Equal(
-                "ReturnUrl=%2Fop%3Fclient_id%3D{{NEB_PP_CLIENT_ID}}",
-                Scrubber.Scrub("ReturnUrl=%2Fop%3Fclient_id%3Da-private-client%2Fid"));
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable("STUBID_NEB_PP_CLIENT_ID", original);
-        }
+                Assert.Equal(
+                    "ReturnUrl=%2Fop%3Fclient_id%3D{{NEB_PP_CLIENT_ID}}",
+                    Scrubber.Scrub("ReturnUrl=%2Fop%3Fclient_id%3Da-private-client%2Fid"));
+            },
+            ("STUBID_NEB_PP_CLIENT_ID", "a-private-client/id"));
     }
 
     [Fact]

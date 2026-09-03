@@ -13,6 +13,7 @@ namespace StubId.Fixtures.Tests;
 /// What the broker accepts was measured, not assumed - docs/research/signed-requests.md - and
 /// these are the parts of that measurement the code has to keep true.
 /// </remarks>
+[Collection(ProcessEnvironment.Name)]
 public class RequestObjectTests
 {
     // Excluded by the credential guard's own negative lookahead, and useless besides.
@@ -193,26 +194,8 @@ public class RequestObjectTests
         ("STUBID_NEB_PP_CLIENT_ID", "00000000-0000-0000-0000-000000000000"),
         ("STUBID_NEB_PP_CLIENT_SECRET", Password));
 
-    private static T With<T>(Func<T> act, params (string Name, string Value)[] settings)
-    {
-        var previous = settings.Select(s => Environment.GetEnvironmentVariable(s.Name)).ToArray();
-        foreach (var (name, value) in settings)
-        {
-            Environment.SetEnvironmentVariable(name, value);
-        }
-
-        try
-        {
-            return act();
-        }
-        finally
-        {
-            for (var i = 0; i < settings.Length; i++)
-            {
-                Environment.SetEnvironmentVariable(settings[i].Name, previous[i]);
-            }
-        }
-    }
+    private static T With<T>(Func<T> act, params (string Name, string Value)[] settings) =>
+        ProcessEnvironment.With(act, settings);
 
     private static Dictionary<string, string> Query(string url) => new Uri(url).Query
         .TrimStart('?')
