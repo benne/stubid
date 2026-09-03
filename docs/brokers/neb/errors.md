@@ -52,7 +52,7 @@ No `error_description`, no `error_uri`, nothing else. Which code you get:
 | Unusable or already-redeemed code | `invalid_grant` | CAP-015 |
 | A grant the client may not use | `unauthorized_client` | CAP-016 |
 | PAR without client authentication | `invalid_client` | CAP-019 |
-| A `request` object that cannot be read (PAR) | `invalid_request_object` | measured, not recorded |
+| A `request` object that cannot be read (PAR) | `invalid_request_object` | CAP-046 |
 
 Every one carries `Cache-Control: no-store, no-cache, max-age=0`.
 
@@ -63,11 +63,17 @@ PAR rather than authorize:
 {"error":"invalid_request_object","error_description":"Invalid JWT request"}
 ```
 
-The authorize endpoint answers the same object with a 302 to `/op/Error?errorId=…` and says
-nothing, so every failure there looks the same. A flipped signature byte, a random key and a
-missing `exp` claim each earn the body above — the last of those being why a probe that omits
-`exp` fails its own negative control and reads as "signed requests do not work here". Measured
-on two clients and two runs rather than recorded, because no capture step sends a broken object:
+400, and unlike every other row here it carries an `error_description`. That is why the PAR
+endpoint is the one to debug a signed request against: the authorize endpoint answers the same
+object with a 302 to `/op/Error?errorId=…` and says nothing, so every failure there looks the
+same.
+
+CAP-046 sends a `request` parameter that is not a JWS at all, which is the case a client is most
+likely to produce. Three further causes earn the identical answer and are measured rather than
+recorded — a flipped signature byte, a random key, and a missing `exp` claim, the last being why
+a probe that omits `exp` fails its own negative control and reads as "signed requests do not work
+here". They stay a measurement because recording one means committing a request object signed
+HS256 with the client secret, and such a token is a known-plaintext HMAC tag over that secret:
 [what the broker does with a signed request object](../../research/signed-requests.md).
 
 StubID checks that the object can be read and not who signed it, so it answers this for a

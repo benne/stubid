@@ -1,0 +1,11 @@
+{
+  "id": "CAP-046",
+  "description": "Pushed authorisation request whose request parameter is not a JWT",
+  "settles": "How PAR refuses a request object it cannot read, and with which status. The refusal\u0027s body was measured on 2026-09-01 and written down in docs/research/signed-requests.md, but never recorded, and that measurement did not note the status - so StubID\u0027s own 400 is an inference from RFC 9126 and from CAP-019. It also settles a value the measurement never sent: every probe there was a real JWS that failed validation, where this is not a JWS at all, which is the case StubID\u0027s tests actually drive. Authenticated, because CAP-019 shows an unauthenticated push is refused for that first and never reaches the object.",
+  "disposition": "Unclassified",
+  "status": 400,
+  "contentType": "application/json; charset=UTF-8",
+  "byteLength": 76,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}
