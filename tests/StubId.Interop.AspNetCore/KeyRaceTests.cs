@@ -49,7 +49,11 @@ public class KeyRaceTests
                 try
                 {
                     using var keys = new Keys(configuration);
-                    rings[i] = string.Join(',', keys.Ring.Keys.Select(k => k.Kid));
+
+                    // The OCSP responder is persisted beside the ring and is not in it, so it
+                    // races the same way and would agree or disagree separately.
+                    rings[i] = string.Join(',',
+                        keys.Ring.Keys.Select(k => k.Kid).Append(keys.OcspResponder.Thumbprint));
                 }
                 catch (Exception error)
                 {
@@ -65,7 +69,8 @@ public class KeyRaceTests
 
             // Nothing left half-written, and nothing deleted out from under another start.
             Assert.DoesNotContain(Directory.EnumerateFiles(directory), f => f.EndsWith(".tmp", StringComparison.Ordinal));
-            Assert.Equal(3, Directory.EnumerateFiles(directory, "*.pfx").Count());
+            // Three in the ring the JWKS publishes, and the OCSP responder beside them.
+            Assert.Equal(4, Directory.EnumerateFiles(directory, "*.pfx").Count());
         }
         finally
         {

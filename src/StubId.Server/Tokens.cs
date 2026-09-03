@@ -34,6 +34,18 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
     public const int SessionLifetimeSeconds = 16200;
 
     /// <summary>
+    /// Six years, and the same count on all three recordings. What a signed transaction is for
+    /// is being evidence later, so it outlives the id_token beside it by a factor of six
+    /// hundred thousand and the access token by seventeen thousand.
+    /// </summary>
+    /// <remarks>
+    /// Taken as a constant rather than as <c>AddYears(6)</c>. The three recordings fall inside
+    /// one week, so they span the same leap days and cannot tell the two apart; the seconds are
+    /// what was observed.
+    /// </remarks>
+    public const int TransactionTokenLifetimeSeconds = 189_388_800;
+
+    /// <summary>
     /// The id_token, in the recorded member order.
     /// </summary>
     /// <remarks>
@@ -237,6 +249,190 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
             JsonClaim.String("transaction_id", code.TransactionId),
             JsonClaim.String("aud", code.Request.ClientId),
         ], keys.TokenSigning, type: "at+jwt");
+    }
+
+    /// <summary>
+    /// The transaction token, in the recorded member order. Returned when the request asked
+    /// for the <c>transaction_token</c> scope, and signed with a different key from the other
+    /// three tokens of the same response.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The claim set is close to the userinfo token's and the types are not. <c>amr</c> is a
+    /// bare string here and an array in the other three tokens of the same response;
+    /// <c>auth_time</c> is a string beside numeric <c>nbf</c>, <c>iat</c> and <c>exp</c>;
+    /// <c>loa</c>, <c>ial</c>, <c>aal</c> come in that order rather than the id_token's
+    /// <c>loa</c>, <c>aal</c>, <c>ial</c>; and the four lifetime and audience claims move from
+    /// the front of the token to the end.
+    /// </para>
+    /// <para>
+    /// <c>auth_time</c> is the authentication, not the issue: CAP-021 carries
+    /// <c>"1788129601"</c> beside an <c>iat</c> of <c>1788129602</c>. The other two recordings
+    /// were issued in the same second as the login and hide it.
+    /// </para>
+    /// </remarks>
+    [Fidelity(FidelityTier.Exact, FidelityProvenance.VerifiedLive,
+        Evidence = "fixtures/neb/pp-session/CAP-021/token/transaction_token.payload.json, "
+                   + "fixtures/neb/pp-session/CAP-022/token/transaction_token.payload.json")]
+    public string TransactionToken(string issuer, IssuedCode code, string organisation)
+    {
+        var now = clock.GetUtcNow();
+        var citizen = code.Citizen;
+        var scopes = code.Request.Scope.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var level = Nsis(citizen.Loa);
+
+        List<JsonClaim> claims =
+        [
+            JsonClaim.String("mitid.transaction_id", code.IdpTransactionId),
+            JsonClaim.String("mitid.uuid", citizen.Uuid),
+            JsonClaim.String("mitid.age",
+                citizen.Age(now).ToString(System.Globalization.CultureInfo.InvariantCulture)),
+            JsonClaim.String("mitid.date_of_birth", citizen.DateOfBirth),
+            JsonClaim.String("mitid.has_cpr", "true"),
+            JsonClaim.String("mitid.identity_name", citizen.Name),
+
+            // A bare string. Every other token in the same response sends an array.
+            JsonClaim.String("amr", citizen.Amr),
+            JsonClaim.String("loa", level),
+            JsonClaim.String("ial", level),
+            JsonClaim.String("aal", level),
+            JsonClaim.String("identity_type", "private"),
+            JsonClaim.String("idp_identity_id", citizen.Uuid),
+            JsonClaim.String("idp", "mitid"),
+        ];
+
+        if (scopes.Contains("ssn"))
+        {
+            claims.Add(JsonClaim.String("dk.cpr", citizen.Cpr));
+        }
+
+        if (scopes.Contains("nemid.pid"))
+        {
+            claims.AddRange(
+            [
+                JsonClaim.String("nemid.pid", citizen.Pid),
+                JsonClaim.String("nemid.pid_status", "success"),
+            ]);
+        }
+
+        claims.Add(JsonClaim.String("acr", level));
+
+        if (scopes.Any(s => s.StartsWith("ssn.details", StringComparison.Ordinal)))
+        {
+            claims.Add(JsonClaim.String("ssn.details.status", "unable_to_lookup"));
+        }
+
+        claims.AddRange(
+        [
+            JsonClaim.String("auth_time", code.AuthenticatedAt.ToUnixTimeSeconds()
+                .ToString(System.Globalization.CultureInfo.InvariantCulture)),
+            JsonClaim.String("sub", Subject(organisation, citizen)),
+            JsonClaim.String("transaction_id", code.TransactionId),
+
+            // Where the vendor documents recipient_info, which is not sent.
+            JsonClaim.String("redirect_uri", code.Request.RedirectUri),
+        ]);
+
+        // Every recording carried one. A request without a nonce is unobserved here, and
+        // omitting the claim is the same choice the id_token makes.
+        if (code.Request.Nonce is not null)
+        {
+            claims.Add(JsonClaim.String("nonce", code.Request.Nonce));
+        }
+
+        claims.AddRange(
+        [
+            JsonClaim.String("requested_scope", code.Request.Scope),
+            JsonClaim.String("mitid.psd2", "false"),
+            JsonClaim.String("mitid.geo_ip_distance_km", "8396"),
+        ]);
+
+        if (scopes.Contains("ssn"))
+        {
+            claims.AddRange(
+            [
+                JsonClaim.String("mitid.cpr_consent_text", CprConsentText),
+                JsonClaim.String("mitid.cpr_consent_header", CprConsentHeader),
+            ]);
+        }
+
+        claims.AddRange(
+        [
+            TransactionActions(scopes),
+            JsonClaim.String("transaction_client_ip", code.ClientIp),
+            JsonClaim.Number("nbf", now.ToUnixTimeSeconds()),
+            JsonClaim.Number("exp", now.AddSeconds(TransactionTokenLifetimeSeconds).ToUnixTimeSeconds()),
+            JsonClaim.Number("iat", now.ToUnixTimeSeconds()),
+            JsonClaim.String("iss", issuer),
+            JsonClaim.String("aud", code.Request.ClientId),
+        ]);
+
+        return _writer.Sign(claims, keys.TransactionSigning);
+    }
+
+    /// <summary>
+    /// The OCSP response that travels beside the transaction token, saying <c>good</c> about
+    /// the certificate that signed it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Standard base64, padded, where every other encoded value in the same response is
+    /// base64url — and signed with ECDSA on P-256 where the token beside it is RS256.
+    /// </para>
+    /// <para>
+    /// The pair is never split. All nine recorded token bodies carry both members or neither,
+    /// so a response with a transaction token and nothing beside it is a shape the broker has
+    /// never sent.
+    /// </para>
+    /// <para>
+    /// One difference from the recordings, and it is deliberate: the broker serves an answer it
+    /// already had — CAP-031's <c>producedAt</c> is three and a half minutes before the
+    /// recording that carries it — where this mints one per response. Caching an answer to
+    /// reproduce the staleness would make a stub's output depend on how long it had been
+    /// running, which is the opposite of what a test wants.
+    /// </para>
+    /// </remarks>
+    [Fidelity(FidelityTier.Shape, FidelityProvenance.Divergent,
+        Evidence = "fixtures/neb/pp-session/CAP-021/token/response.raw, "
+                   + "fixtures/neb/pp-session/CAP-022/token/response.raw, "
+                   + "fixtures/neb/pp-session/CAP-031/token/response.raw",
+        Reason = "docs/brokers/neb/divergences.md#the-oces3-certificate-chain")]
+    public string TransactionTokenOcspResponse() =>
+        Convert.ToBase64String(OcspWriter.Good(
+            keys.TransactionSigning.Certificate, keys.OcspResponder, clock.GetUtcNow()));
+
+    /// <summary>
+    /// What the login did, besides authenticate. A bare string when there is one action and an
+    /// array when there is more than one, which is the broker's own inconsistency rather than
+    /// a choice made here.
+    /// </summary>
+    /// <remarks>
+    /// <c>mitid.login</c> is recorded on all three. The second entry is inferred: CAP-021 asked
+    /// for <c>ssn</c> and got <c>mitid.cpr_match</c> beside it, and scope is the only thing the
+    /// token endpoint knows — StubID's CPR match happens at its own endpoint, after this token
+    /// would have been issued. So the rule is the one already applied to <c>dk.cpr</c> and the
+    /// consent pair, and it is a reading of one recording rather than a recorded rule.
+    /// </remarks>
+    [Fidelity(FidelityTier.Exact, FidelityProvenance.Assumed,
+        Evidence = "fixtures/neb/pp-session/CAP-021/token/transaction_token.payload.json, "
+                   + "fixtures/neb/pp-session/CAP-022/token/transaction_token.payload.json",
+        AwaitingCapture = "The string-or-array form is recorded; deriving mitid.cpr_match from "
+                          + "the ssn scope is not. A login asking for ssn that does not match a "
+                          + "CPR, or a CPR match without the scope, would settle it. CAP-021 did "
+                          + "both at once, so it cannot say which of the two put the action in "
+                          + "the token.")]
+    private static JsonClaim TransactionActions(string[] scopes)
+    {
+        List<string> actions = ["mitid.login"];
+
+        if (scopes.Contains("ssn"))
+        {
+            actions.Add("mitid.cpr_match");
+        }
+
+        return actions.Count == 1
+            ? JsonClaim.String("transaction_actions", actions[0])
+            : JsonClaim.Strings("transaction_actions", [.. actions]);
     }
 
     /// <summary>

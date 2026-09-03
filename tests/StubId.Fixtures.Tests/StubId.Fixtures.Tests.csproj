@@ -13,6 +13,9 @@
 
   <ItemGroup>
     <ProjectReference Include="../../tools/StubId.CaptureHarness/StubId.CaptureHarness.csproj" />
+    <!-- The OCSP writer, so the response StubID emits can be read back through the decoder
+         that reads the broker's. Neither half is much use without the other. -->
+    <ProjectReference Include="../../src/StubId.Wire/StubId.Wire.csproj" />
   </ItemGroup>
 
 </Project>

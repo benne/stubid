@@ -24,13 +24,19 @@ public sealed record AuthorizationRequest(
 /// The identity provider's, which differs from it. Both are sent, and the userinfo response
 /// reports the second under mitid.transaction_id.
 /// </param>
+/// <param name="ClientIp">
+/// Who authorized, which the transaction token reports as transaction_client_ip. Taken where
+/// the browser arrives rather than where the token is collected: the token endpoint is called
+/// by the application's back end, and its address is not the one that signed anything.
+/// </param>
 public sealed record IssuedCode(
     AuthorizationRequest Request,
     Citizen Citizen,
     DateTimeOffset AuthenticatedAt,
     string SessionId,
     string TransactionId,
-    string IdpTransactionId);
+    string IdpTransactionId,
+    string ClientIp);
 
 /// <summary>An access token, the identity behind it, and the client that obtained it.</summary>
 /// <remarks>
@@ -155,14 +161,16 @@ public sealed record Client(string ClientId, string[] ResponseTypes, string Orga
         return _pushed.TryRemove(reference, out var request) ? request : null;
     }
 
-    public string IssueCode(AuthorizationRequest request, Citizen citizen, DateTimeOffset now)
+    public string IssueCode(
+        AuthorizationRequest request, Citizen citizen, DateTimeOffset now, string clientIp)
     {
         var code = Base64Url.Encode(RandomNumberGenerator.GetBytes(32));
         _codes[code] = new IssuedCode(
             request, citizen, now,
             SessionId: Guid.NewGuid().ToString(),
             TransactionId: Guid.NewGuid().ToString(),
-            IdpTransactionId: Guid.NewGuid().ToString());
+            IdpTransactionId: Guid.NewGuid().ToString(),
+            ClientIp: clientIp);
         return code;
     }
 

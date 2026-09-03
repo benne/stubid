@@ -17,8 +17,10 @@ namespace StubId.Fixtures.Tests;
 /// obviously right: a numeric auth_time, an array of actions, one spelling per claim.
 /// </para>
 /// <para>
-/// These assert the recordings, not the server. StubID issues no transaction token yet; see
-/// docs/brokers/neb/divergences.md. They exist so that the facts survive to whoever does.
+/// These assert the recordings, not the server. What StubID emits is asserted against them by
+/// <c>TransactionTokenTests</c> in the interop suite, which drives a real login and compares
+/// member names, order and JSON types. Keeping the two apart is the point: if both read the
+/// same file, a fixture that drifted would take the server's assertions with it.
 /// </para>
 /// </remarks>
 public class TransactionTokenContractTests

@@ -19,6 +19,12 @@
     <!-- The shipped client, driven against the in-memory server. Every assertion here is one
          the containerised suite does not have to make a second time, on a slower machine. -->
     <ProjectReference Include="../../src/StubId.Client/StubId.Client.csproj" />
+    <!-- The OCSP reader, so the response StubID emits is checked by the same decoder that reads
+         the broker's rather than by a second one written to agree with the writer.
+         Aliased: the harness is an executable, and its top-level Program would otherwise be
+         ambiguous with the server's in every WebApplicationFactory<Program> in this project. -->
+    <ProjectReference Include="../../tools/StubId.CaptureHarness/StubId.CaptureHarness.csproj"
+                      Aliases="harness" />
   </ItemGroup>
 
 </Project>

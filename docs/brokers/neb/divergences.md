@@ -65,25 +65,29 @@ Each is marked in the fidelity ledger with the provenance it actually has, so
 
 ## Transaction signing
 
-StubID issues no transaction token. Its token response carries `id_token`, `access_token`,
-`expires_in`, `token_type`, `scope` and `userinfo_token` and stops there: no
-`transaction_token`, and no `transaction_token_ocsp_resp` beside it. `idp_params` is checked
-for being a JSON object and its contents are never read, so `transaction_text` and
-`reference_text` are accepted and discarded.
+<a id="transaction-signing"></a>
 
-**Why.** Not because anything is unknown. What the broker sends is recorded three times over —
-CAP-021, CAP-022 and CAP-031 — and written up in [what the tokens carry](claims.md). Until the
-feature is built, issuing part of a transaction token would be worse than issuing none: a
-client that gets one and finds a member missing has been told something false about a token
-whose whole purpose is to be evidence.
+StubID issues a transaction token when the request asks for the `transaction_token` scope, with
+a `transaction_token_ocsp_resp` beside it. The pair is never split, because no recorded body
+splits it.
 
-**What this costs.** A test that drives a signing flow has nothing to assert against. There is
-no partial credit on offer here.
+What is not there yet is the text. `idp_params` is still checked for being a JSON object and
+its contents are still never read, so `transaction_text` and `reference_text` are accepted and
+discarded — which means the token carries neither `mitid.reference_text` nor the six members
+that carry a transaction text under both spellings. The `request` parameter is unimplemented
+too, and it is in the table above.
 
-The `request` parameter is the other half of the same gap. The broker limits the
-transaction-text flow to signed requests, and StubID does not implement request objects, so an
-application exercising that flow against the stub cannot send what the real broker requires.
-That one is in the table above; this one is its own section because nothing advertises it.
+**Why the token came first.** Because the recordings put it there. The transaction token is
+gated on the scope rather than on a signed request: CAP-021 and CAP-022 are plain unsigned
+authorize URLs with no `request` parameter, and both came back with one. Only the transaction
+text needs a signed request, so the token could be built and checked against two recordings
+before any of the request-object work existed.
+
+**What this costs.** A test that drives a signing flow gets a well-formed transaction token
+whose text members are absent — so a client reading `transaction_text` finds nothing, where
+against pre-production it would find the text it sent. That is a smaller gap than issuing no
+token at all, and unlike the members themselves it is visible: the claim is missing rather than
+wrong.
 
 An earlier version of this file said the text claims needed a `signtext_api` scope that only
 the broker's staff could grant. That name has no source: not in the vendor documentation, not
@@ -124,29 +128,55 @@ than behind a simulated authenticator, because that is where the broker puts it:
 
 ## The OCES3 certificate chain
 
+<a id="the-oces3-certificate-chain"></a>
+
 The broker signs its transaction token with a certificate issued by a Danish state CA and
-returns an OCSP response alongside it. StubID issues neither, per the section above, so this
-says what the divergence will be rather than what it is today. It is written down now because
-building the feature is not what removes the constraint.
+returns an OCSP response alongside it. StubID now returns one too, and this is what is
+different about it.
+
+The shape is reproduced, and it was not guessed. The three recorded responses are decoded and
+asserted by `OcspResponseContractTests`, they agree on all of it, and StubID writes the same
+structure: a successful basic response holding exactly one answer, `good`, whose CertID names
+the transaction-signing certificate by the SHA-1 of its issuer's name and its serial number;
+signed ECDSA-with-SHA-256 by a responder whose own certificate travels inside the response,
+with enhanced key usage OCSP signing and nothing else and carrying `id-pkix-ocsp-nocheck`; no
+nonce and no response-level extensions at all; and one non-critical archive-cutoff extension on
+the answer.
+
+Four things differ. The first three cannot be closed by writing more code; the fourth is a
+choice:
+
+**The responder is self-signed.** The broker's is a *delegated* responder issued by the same
+state CA as the certificate it answers about. StubID has no CA — every certificate it makes is
+self-signed with `CA=false`, and .NET refuses such a certificate as an issuer — so two relations
+that hold on every recording do not hold here: the responder was not issued by the
+certificate's own CA, and the CertID's `issuerKeyHash` is not an Authority Key Identifier,
+because a self-signed certificate made here carries none. `OcspWriterTests` asserts both
+absences, so nobody reads the recordings and expects them.
+
+**`producedAt` is now.** The broker serves an answer it already had — CAP-031's is three and a
+half minutes before the response carrying it — where StubID mints one per response. Caching to
+reproduce the staleness would make the output depend on how long the instance had been running,
+which is the opposite of what a test wants.
+
+**The archive cutoff is StubID's own beginning.** The recorded cutoff is a fixed 2021 date, the
+same on recordings taken days apart, because it says how far back the CA keeps answers. StubID
+uses the moment its own signing certificate began, since nothing before that can be asked about.
+
+**`nextUpdate` is a day out, not five years.** This one is reproducible and deliberately is not.
+The recorded responder sets `nextUpdate` one second before its own certificate expires, so with
+StubID's five-year responder the answer would claim to be good until 2031 and a client that
+caches it would never ask again. A day is the conventional interval and keeps the exchange
+observable. One line — `responder.NotAfter.AddSeconds(-1)` — would match the recording exactly
+if a test ever needs it to.
 
 A client that resolves a signing key by `kid` from the published key set — which is what the
 broker's own verification guide tells you to do — works against both, and CAP-031 is the first
 capture where that path ran end to end against the broker: every token verified under the key
 its `kid` resolved to in the key set as it stood that day. A client that validates the
-certificate *chain*, or the OCSP response, works against pre-production and fails here. There
-is no fix for that; it is disclosed rather than papered over.
-
-What StubID would have to produce is no longer a guess. The three recorded responses are
-decoded and asserted by `OcspResponseContractTests`, and they agree on all of it: a successful
-basic response holding exactly one answer, `good`, whose CertID names the transaction-signing
-certificate by the SHA-1 of its issuer's name and its serial number; signed ECDSA-with-SHA-256
-by a delegated responder — enhanced key usage OCSP signing and nothing else, carrying
-`id-pkix-ocsp-nocheck` — whose own certificate travels inside the response and was issued by
-the same state CA; no nonce and no response-level extensions at all; and one non-critical
-archive-cutoff extension on the answer. `producedAt` is minutes *before* the response that
-carries it, because the broker serves an answer it already had rather than asking for a fresh
-one, so a stub minting `producedAt` at the moment of the token would diverge on the one field
-that is easiest to get wrong by being helpful.
+certificate *chain*, or that checks the OCSP response against a trusted issuer, works against
+pre-production and fails here. There is no fix for that; it is disclosed rather than papered
+over.
 
 ## What is not reproduced
 
