@@ -28,13 +28,17 @@ public sealed class Keys : IDisposable
             Load(path, "token-signing", KeyUse.Signing),
             Load(path, "request-decryption", KeyUse.Encryption),
         ]);
+
+        OcspResponder = LoadCertificate(path, "ocsp-responder", (from, to) =>
+            CertificateFactory.CreateOcspResponder("StubID ocsp-responder", from, to));
     }
 
     /// <summary>
     /// Two signing keys and one for decryption, matching the recorded key set. The first is
     /// the broker's transaction-signing key, published alongside the ordinary token signing
-    /// key rather than hidden - so StubID publishes its equivalent, and signs nothing with it
-    /// until it issues the token that key is for. See docs/brokers/neb/divergences.md.
+    /// key rather than hidden, and it signs the transaction token - the one token in the
+    /// response that does not use <see cref="TokenSigning"/>. See
+    /// docs/brokers/neb/divergences.md.
     /// </summary>
     public KeyRing Ring { get; }
 
@@ -42,7 +46,23 @@ public sealed class Keys : IDisposable
 
     public SigningKey TokenSigning => Ring.Keys[1];
 
-    private static SigningKey Load(string directory, string name, KeyUse use)
+    /// <summary>
+    /// The elliptic-curve certificate that signs the OCSP response beside a transaction token.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately not in <see cref="Ring"/>. The ring is what JWKS publishes, and an OCSP
+    /// responder is not a JWKS key: a client finds it inside the response it signed, which is
+    /// the only place it belongs. It is kept beside the others so it survives a restart for the
+    /// same reason they do.
+    /// </remarks>
+    public X509Certificate2 OcspResponder { get; }
+
+    private static SigningKey Load(string directory, string name, KeyUse use) =>
+        new(LoadCertificate(directory, name, (from, to) =>
+            CertificateFactory.Create($"StubID {name}", from, to)), use);
+
+    private static X509Certificate2 LoadCertificate(
+        string directory, string name, Func<DateTimeOffset, DateTimeOffset, X509Certificate2> create)
     {
         var file = Path.Combine(directory, $"{name}.pfx");
 
@@ -51,7 +71,7 @@ public sealed class Keys : IDisposable
             // From the clock rather than a literal: a fixed date eventually generates a
             // certificate that is already expired.
             var notBefore = TimeProvider.System.GetUtcNow().AddDays(-1);
-            using var created = CertificateFactory.Create($"StubID {name}", notBefore, notBefore.AddYears(5));
+            using var created = create(notBefore, notBefore.AddYears(5));
 
             // Written through a temporary file and moved into place, so nothing sharing a key
             // directory can read a half-written one or fight over the same handle. Whoever
@@ -77,12 +97,14 @@ public sealed class Keys : IDisposable
             }
         }
 
-        return new SigningKey(
-            X509CertificateLoader.LoadPkcs12(
-                File.ReadAllBytes(file), Password,
-                X509KeyStorageFlags.Exportable | X509KeyStorageFlags.EphemeralKeySet),
-            use);
+        return X509CertificateLoader.LoadPkcs12(
+            File.ReadAllBytes(file), Password,
+            X509KeyStorageFlags.Exportable | X509KeyStorageFlags.EphemeralKeySet);
     }
 
-    public void Dispose() => Ring.Dispose();
+    public void Dispose()
+    {
+        Ring.Dispose();
+        OcspResponder.Dispose();
+    }
 }

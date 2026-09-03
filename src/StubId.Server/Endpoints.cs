@@ -145,7 +145,7 @@ public static class Endpoints
             var citizen = citizens.ById(session.CitizenId!)
                 ?? throw new InvalidOperationException($"No citizen {session.CitizenId}.");
 
-            var issued = state.IssueCode(request, citizen, clock.GetUtcNow());
+            var issued = state.IssueCode(request, citizen, clock.GetUtcNow(), ClientIp(http));
             session.TryRedeem();
             var wants = request.ResponseType.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             var organisation = state.OrganisationOf(request.ClientId);
@@ -255,7 +255,7 @@ public static class Endpoints
 
             // Member order as recorded, and at_hash covers the access token, so the id_token
             // is composed after it exists.
-            return Json(JsonSerializer.Serialize(new Dictionary<string, object>
+            var body = new Dictionary<string, object>
             {
                 ["id_token"] = tokens.IdToken(
                     Issuer(http), issued, accessToken, state.OrganisationOf(clientId!)),
@@ -265,7 +265,18 @@ public static class Endpoints
                 ["scope"] = issued.Request.Scope,
                 ["userinfo_token"] = tokens.UserInfoToken(
                     Issuer(http), issued, state.OrganisationOf(clientId!)),
-            }));
+            };
+
+            // Last, and both or neither: no recorded body carries one without the other.
+            if (issued.Request.Scope.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Contains("transaction_token"))
+            {
+                body["transaction_token"] = tokens.TransactionToken(
+                    Issuer(http), issued, state.OrganisationOf(clientId!));
+                body["transaction_token_ocsp_resp"] = tokens.TransactionTokenOcspResponse();
+            }
+
+            return Json(JsonSerializer.Serialize(body));
         });
 
         Map("op/connect/userinfo", ["GET", "POST"], RouteRole.UserInfo, (HttpContext http, BrokerState state, Tokens tokens) =>
@@ -589,6 +600,31 @@ public static class Endpoints
 
         return http.Request.Query.ToDictionary(q => q.Key, q => q.Value.ToString(), StringComparer.Ordinal);
     }
+
+    /// <summary>
+    /// Where the browser authorizing came from, for the transaction token's
+    /// <c>transaction_client_ip</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Unmapped first. Every listener StubID ships is dual-stack — the image sets
+    /// <c>ASPNETCORE_URLS=http://+:8080</c> — so an IPv4 client arrives as an IPv4-mapped IPv6
+    /// address and renders as <c>::ffff:10.5.0.2</c>. All three recordings carry a dotted quad,
+    /// and a client that parses this claim as IPv4 fails outright on the mapped form.
+    /// </para>
+    /// <para>
+    /// The in-memory test host populates no remote address at all, so this is null on the path
+    /// nearly every test in this repository drives. Loopback is the honest answer for a request
+    /// that never crossed a network, and it is written the same way a real one now is.
+    /// </para>
+    /// </remarks>
+    private static string ClientIp(HttpContext http) =>
+        http.Connection.RemoteIpAddress switch
+        {
+            null => "127.0.0.1",
+            { IsIPv4MappedToIPv6: true } mapped => mapped.MapToIPv4().ToString(),
+            var address => address.ToString(),
+        };
 
     private static AuthorizationRequest Parse(IDictionary<string, string> p) => new(
         ClientId: Value(p, "client_id"),
