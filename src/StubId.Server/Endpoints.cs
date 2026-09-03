@@ -626,6 +626,15 @@ public static class Endpoints
             var address => address.ToString(),
         };
 
+    /// <summary>
+    /// Narrows a request to what is carried past the endpoint that received it.
+    /// </summary>
+    /// <remarks>
+    /// idp_params is decoded here rather than where the session is created, and the placement is
+    /// load-bearing. The PAR handler calls this and returns without reaching the session at all,
+    /// so a push would otherwise arrive at the token endpoint with its parameters already thrown
+    /// away - and nothing downstream of a push has anything but this record to read.
+    /// </remarks>
     private static AuthorizationRequest Parse(IDictionary<string, string> p) => new(
         ClientId: Value(p, "client_id"),
         RedirectUri: Value(p, "redirect_uri"),
@@ -635,7 +644,9 @@ public static class Endpoints
         State: Optional(p, "state"),
         Nonce: Optional(p, "nonce"),
         CodeChallenge: Optional(p, "code_challenge"),
-        CodeChallengeMethod: Optional(p, "code_challenge_method"));
+        CodeChallengeMethod: Optional(p, "code_challenge_method"),
+        MitIdParameters: RequestGrammar.IdentityProviderParameters(
+            p.AsReadOnly(), "mitid"));
 
     private static string Value(IDictionary<string, string> p, string key) =>
         p.TryGetValue(key, out var value) ? value : "";

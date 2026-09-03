@@ -71,11 +71,16 @@ StubID issues a transaction token when the request asks for the `transaction_tok
 a `transaction_token_ocsp_resp` beside it. The pair is never split, because no recorded body
 splits it.
 
-What is not there yet is the text. `idp_params` is still checked for being a JSON object and
-its contents are still never read, so `transaction_text` and `reference_text` are accepted and
-discarded — which means the token carries neither `mitid.reference_text` nor the six members
-that carry a transaction text under both spellings. The `request` parameter is unimplemented
-too, and it is in the table above.
+`idp_params` is read as far as `reference_text`, which reaches the transaction token and the
+userinfo response the way CAP-022 recorded. What is not there yet is the *transaction* text: the
+six members carrying it under both spellings are absent, and the `request` parameter they were
+recorded arriving through is unimplemented. That one is in the table above.
+
+Whether the broker would take a transaction text *without* a signed request is unmeasured. The
+claim that it takes one only inside a request object comes from vendor prose deleted in June
+2025, and no probe ever sent one unsigned — while CAP-022 shows unsigned `idp_params` being
+accepted in a plain query. So the order here is what the recordings could reach, not a
+constraint anyone demonstrated.
 
 **Why the token came first.** Because the recordings put it there. The transaction token is
 gated on the scope rather than on a signed request: CAP-021 and CAP-022 are plain unsigned
@@ -84,10 +89,10 @@ text needs a signed request, so the token could be built and checked against two
 before any of the request-object work existed.
 
 **What this costs.** A test that drives a signing flow gets a well-formed transaction token
-whose text members are absent — so a client reading `transaction_text` finds nothing, where
-against pre-production it would find the text it sent. That is a smaller gap than issuing no
-token at all, and unlike the members themselves it is visible: the claim is missing rather than
-wrong.
+whose transaction-text members are absent — so a client reading `transaction_text` finds nothing,
+where against pre-production it would find the text it sent. That is a smaller gap than issuing
+no token at all, and unlike the members themselves it is visible: the claim is missing rather
+than wrong. A `reference_text` flow is complete.
 
 An earlier version of this file said the text claims needed a `signtext_api` scope that only
 the broker's staff could grant. That name has no source: not in the vendor documentation, not
@@ -117,13 +122,12 @@ the page rather than on a test suite, because driving `/op/Login` does not compl
 here in any case: deciding a parked session renders a page instead of redirecting
 ([driving a browser](../../guides/browsers.md)).
 
-Building transaction signing does not on its own remove this. `idp_params` reaches the
-decision ladder as the raw string it arrived as, and the one function that would decode it,
-`RequestGrammar.IdentityProviderParameters`, has no callers anywhere. `AuthSession` keeps the
-raw query rather than the parsed parameters, and that query carries the parameter only on a
-GET — on a POST it is empty, and on the pushed-request path it holds the client id and the
-request reference. Whoever closes those gaps should put the text on StubID's own page rather
-than behind a simulated authenticator, because that is where the broker puts it:
+Building transaction signing does not on its own remove this. `idp_params` is decoded now, but
+it is decoded into the request rather than into the session: `AuthSession` keeps the raw query,
+and that query carries the parameter only on a GET — on a POST it is empty, and on the
+pushed-request path it holds the client id and the request reference. So the page has nothing to
+render even though the token does. Whoever closes that should put the text on StubID's own page
+rather than behind a simulated authenticator, because that is where the broker puts it:
 [what the screens showed](../../research/transaction-screens.md).
 
 ## The OCES3 certificate chain

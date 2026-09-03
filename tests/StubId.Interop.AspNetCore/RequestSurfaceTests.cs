@@ -209,6 +209,71 @@ public class RequestSurfaceTests
         Assert.DoesNotContain("/op/Error", response.Headers.Location!.ToString(), StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Values that parse as JSON and are not an object, plus two that parse and cannot be read.
+    /// </summary>
+    /// <remarks>
+    /// CAP-040 recorded <c>idp_params</c> that is not JSON at all being refused with the broker's
+    /// own error page. These are the neighbouring class, and they were what turned that refusal
+    /// into an empty 500 the first time this parameter was read: <c>TryGetProperty</c> throws
+    /// rather than answering false when the root is not an object, an unpaired surrogate escape
+    /// parses and throws when the string is materialised, and a repeated member throws when the
+    /// section is collected. None of them is a JsonException, so none was caught.
+    /// </remarks>
+    public static TheoryData<string> IdpParamsThatIsNotAnObject() =>
+    [
+        "null",
+        "true",
+        "123",
+        "\"a string\"",
+        "[1,2]",
+        """[{"mitid":{"reference_text":"U3R1YklE"}}]""",
+        """{"mitid":{"reference_text":"\ud800"}}""",
+        """{"mitid":{"reference_text":"a","reference_text":"b"}}""",
+    ];
+
+    [Theory]
+    [MemberData(nameof(IdpParamsThatIsNotAnObject))]
+    public async Task An_idp_params_that_is_not_a_usable_object_is_answered_not_crashed(string raw)
+    {
+        // Whatever the answer is, it is an answer. An empty 500 is the one thing the broker never
+        // sends, and it is what a client sees as "my callback never fired" with nothing to go on.
+        await using var factory = Instance(automatic: false);
+        using var client = factory.CreateClient(
+            new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        using var response = await client.GetAsync(
+            $"/op/connect/authorize?client_id={CodeClient}&response_type=code" +
+            $"&redirect_uri={Uri.EscapeDataString(RedirectUri)}&scope=openid%20mitid" +
+            $"&state=s&nonce=n&idp_values=mitid&idp_params={Uri.EscapeDataString(raw)}", Ct);
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+    }
+
+    [Theory]
+    [MemberData(nameof(IdpParamsThatIsNotAnObject))]
+    public async Task A_pushed_idp_params_that_is_not_a_usable_object_is_answered_not_crashed(
+        string raw)
+    {
+        // The same values through the push, which parses the form with the same reader and has
+        // no error page to fall back to.
+        await using var factory = Instance(automatic: false);
+        using var client = factory.CreateClient(
+            new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        using var response = await client.PostAsync("/op/connect/par", new FormUrlEncodedContent(
+        [
+            new KeyValuePair<string, string>("client_id", CodeClient),
+            new KeyValuePair<string, string>("client_secret", "any"),
+            new KeyValuePair<string, string>("response_type", "code"),
+            new KeyValuePair<string, string>("redirect_uri", RedirectUri),
+            new KeyValuePair<string, string>("scope", "openid mitid"),
+            new KeyValuePair<string, string>("idp_params", raw),
+        ]), Ct);
+
+        Assert.NotEqual(HttpStatusCode.InternalServerError, response.StatusCode);
+    }
+
     [Fact]
     public async Task A_malformed_value_inside_idp_params_is_carried_rather_than_refused()
     {

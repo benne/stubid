@@ -131,7 +131,8 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
     /// <c>mitid.geo_ip_distance_km</c> — are always present.
     /// </remarks>
     [Fidelity(FidelityTier.Exact, FidelityProvenance.VerifiedLive,
-        Evidence = "fixtures/neb/pp-session/CAP-021/userinfo/response.raw")]
+        Evidence = "fixtures/neb/pp-session/CAP-021/userinfo/response.raw, "
+                   + "fixtures/neb/pp-session/CAP-022/userinfo/response.raw")]
     public IReadOnlyList<JsonClaim> UserInfo(string organisation, IssuedAccessToken token)
     {
         var now = clock.GetUtcNow();
@@ -182,11 +183,17 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
             claims.Add(JsonClaim.String("ssn.details.status", "unable_to_lookup"));
         }
 
-        claims.AddRange(
-        [
-            JsonClaim.String("mitid.psd2", "false"),
-            JsonClaim.String("mitid.geo_ip_distance_km", "8396"),
-        ]);
+        claims.Add(JsonClaim.String("mitid.psd2", "false"));
+
+        // Whole, with no type and no digest beside it - which is the opposite of what this
+        // endpoint does with a transaction text, where the digest comes over and the text does
+        // not. Same slot here as in the transaction token.
+        if (token.ReferenceText is { } reference)
+        {
+            claims.Add(JsonClaim.String("mitid.reference_text", reference));
+        }
+
+        claims.Add(JsonClaim.String("mitid.geo_ip_distance_km", "8396"));
 
         if (scopes.Contains("ssn"))
         {
@@ -344,8 +351,17 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
         [
             JsonClaim.String("requested_scope", code.Request.Scope),
             JsonClaim.String("mitid.psd2", "false"),
-            JsonClaim.String("mitid.geo_ip_distance_km", "8396"),
         ]);
+
+        // One slot earlier than the transaction text, which lands after geo_ip_distance_km.
+        // Nothing sent both, so the order between them is unobserved; this is the slot CAP-022
+        // recorded for a reference text on its own.
+        if (code.Request.ReferenceText is { } reference)
+        {
+            claims.Add(JsonClaim.String("mitid.reference_text", reference));
+        }
+
+        claims.Add(JsonClaim.String("mitid.geo_ip_distance_km", "8396"));
 
         if (scopes.Contains("ssn"))
         {

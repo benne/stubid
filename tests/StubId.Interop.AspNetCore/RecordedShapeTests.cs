@@ -49,12 +49,16 @@ public class RecordedShapeTests : IClassFixture<WebApplicationFactory<Program>>
         return Shape(document.RootElement);
     }
 
-    private async Task<JsonDocument> SignIn(string scope)
+    private async Task<JsonDocument> SignIn(string scope, string? identityProviderParameters = null)
     {
+        var extra = identityProviderParameters is null
+            ? ""
+            : $"&idp_values=mitid&idp_params={Uri.EscapeDataString(identityProviderParameters)}";
+
         var authorize = await _client.GetAsync(
             $"/op/connect/authorize?client_id={CodeClient}&response_type=code" +
             $"&redirect_uri={Uri.EscapeDataString(RedirectUri)}&scope={Uri.EscapeDataString(scope)}" +
-            $"&state=s&nonce=n", Ct);
+            $"&state=s&nonce=n{extra}", Ct);
 
         var code = System.Web.HttpUtility
             .ParseQueryString(authorize.Headers.Location!.ToString().Split('?')[1])["code"]!;
@@ -110,6 +114,59 @@ public class RecordedShapeTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Equal(
             RecordedShape("CAP-020", "userinfo", "response.raw"),
             Shape(claims.RootElement));
+    }
+
+    [Fact]
+    public async Task Userinfo_returns_a_reference_text_whole_in_the_recorded_slot()
+    {
+        // CAP-022 sent a MitID reference text in idp_params and got it back here undecoded,
+        // between mitid.psd2 and mitid.geo_ip_distance_km, with no type and no digest beside it.
+        // That is the opposite of what this endpoint does with a transaction text, where the
+        // digest comes over and the text does not - so the slot and the wholeness are both the
+        // contract rather than an accident of one recording.
+        using var response = await SignIn(
+            "openid mitid transaction_token",
+            """{"mitid":{"reference_text":"U3R1YklEIHJlZmVyZW5jZSB0ZXh0"}}""");
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/op/connect/userinfo");
+        request.Headers.Authorization = new AuthenticationHeaderValue(
+            "Bearer", response.RootElement.GetProperty("access_token").GetString());
+
+        using var userinfo = await _client.SendAsync(request, Ct);
+        using var claims = JsonDocument.Parse(await userinfo.Content.ReadAsStringAsync(Ct));
+
+        Assert.Equal(
+            RecordedShape("CAP-022", "userinfo", "response.raw"),
+            Shape(claims.RootElement));
+
+        // The value travels as it was sent. The broker does not decode it and neither does this.
+        Assert.Equal(
+            "U3R1YklEIHJlZmVyZW5jZSB0ZXh0",
+            claims.RootElement.GetProperty("mitid.reference_text").GetString());
+    }
+
+    [Fact]
+    public async Task Userinfo_carries_no_reference_text_when_none_was_sent()
+    {
+        // CAP-020 sent no idp_params at all; CAP-024 sent one carrying a mitid section with a
+        // loa_value and no reference_text. Neither userinfo response has the member, so it is
+        // conditional on the reference text rather than on idp_params being there.
+        using var response = await SignIn("openid mitid");
+
+        // The second half of that, driven: a mitid section with something else in it.
+        using var other = await SignIn("openid mitid", """{"mitid":{"loa_value":"low"}}""");
+
+        foreach (var body in new[] { response, other })
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, "/op/connect/userinfo");
+            request.Headers.Authorization = new AuthenticationHeaderValue(
+                "Bearer", body.RootElement.GetProperty("access_token").GetString());
+
+            using var userinfo = await _client.SendAsync(request, Ct);
+            using var claims = JsonDocument.Parse(await userinfo.Content.ReadAsStringAsync(Ct));
+
+            Assert.False(claims.RootElement.TryGetProperty("mitid.reference_text", out _));
+        }
     }
 
     [Fact]

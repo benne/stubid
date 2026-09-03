@@ -12,16 +12,15 @@ namespace StubId.Interop.AspNetCore;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This is the first test in the repository that compares StubID's <em>output</em> against a
-/// recording rather than reading the recording alone. Everything under
-/// <c>tests/StubId.Fixtures.Tests</c> asserts what the broker did; this asserts that StubID
-/// does the same thing, which is a different claim and the one the project is actually for.
+/// The same comparison <c>RecordedShapeTests</c> makes of the id_token, the userinfo response
+/// and the token body: names, order and JSON types against a recording, since the values are the
+/// recorded identity's and cannot match. Separate from that class because a transaction token
+/// needs the scope, the broker's own parameters and a second key to exist at all, and because
+/// what it asserts grows one recording at a time.
 /// </para>
 /// <para>
-/// Member order is part of the contract - <c>docs/brokers/neb/claims.md</c> opens by saying so -
-/// and nothing in the suite asserted the order of any token before this. Values differ, because
-/// StubID's citizen is not the broker's test identity and its keys are its own. Names, order
-/// and JSON types do not.
+/// The query comes out of the recording rather than being retyped, so a case here cannot claim
+/// to reproduce a sitting it no longer resembles.
 /// </para>
 /// </remarks>
 public class TransactionTokenTests : IClassFixture<WebApplicationFactory<Program>>
@@ -30,23 +29,17 @@ public class TransactionTokenTests : IClassFixture<WebApplicationFactory<Program
     private const string RedirectUri = "http://localhost:5099/callback";
 
     /// <summary>
-    /// The scope each recording asked with, so the conditional members are decided by the same
-    /// input rather than by a list written here.
+    /// Every recording StubID can be driven to reproduce. A row is added as each becomes
+    /// reachable, and no member is ever filtered out of the comparison.
     /// </summary>
     /// <remarks>
-    /// CAP-022 arrives with the <c>idp_params</c> reader: its token carries
-    /// <c>mitid.reference_text</c>, which needs a parameter nothing reads yet. CAP-031 arrives
-    /// with the transaction text. Each is a row added to this theory, never a member filtered
-    /// out of the comparison.
+    /// CAP-031 is the one still missing, and it is missing for a reason a row could not paper
+    /// over: its recorded URL carries the request object as a placeholder, because a compact JWS
+    /// must not reach a fixture. Reproducing it needs the <c>request</c> parameter and the
+    /// transaction text, which are the next two changes.
     /// </remarks>
-    public static TheoryData<string, string> EveryRecordingStubIdCanReproduce() => new()
-    {
-        {
-            "CAP-021",
-            "openid mitid ssn nemid.pid ssn.details_name ssn.details_address userinfo_token "
-            + "transaction_token"
-        },
-    };
+    public static TheoryData<string> EveryRecordingStubIdCanReproduce() =>
+        ["CAP-021", "CAP-022"];
 
     private readonly HttpClient _client;
 
@@ -61,9 +54,9 @@ public class TransactionTokenTests : IClassFixture<WebApplicationFactory<Program
 
     [Theory]
     [MemberData(nameof(EveryRecordingStubIdCanReproduce))]
-    public async Task The_members_come_in_the_recorded_order(string caseId, string scope)
+    public async Task The_members_come_in_the_recorded_order(string caseId)
     {
-        var emitted = Members(await TransactionToken(scope));
+        var emitted = Members(await TransactionTokenFor(caseId));
         var recorded = Members(Recorded(caseId));
 
         // One assertion over the whole sequence, so a missing member and a reordered one both
@@ -73,9 +66,9 @@ public class TransactionTokenTests : IClassFixture<WebApplicationFactory<Program
 
     [Theory]
     [MemberData(nameof(EveryRecordingStubIdCanReproduce))]
-    public async Task Every_member_has_the_recorded_JSON_type(string caseId, string scope)
+    public async Task Every_member_has_the_recorded_JSON_type(string caseId)
     {
-        var emitted = await TransactionToken(scope);
+        var emitted = await TransactionTokenFor(caseId);
         var recorded = Recorded(caseId);
 
         // The traps this catches, each of which produces a token that validates: amr as an
@@ -92,9 +85,9 @@ public class TransactionTokenTests : IClassFixture<WebApplicationFactory<Program
 
     [Theory]
     [MemberData(nameof(EveryRecordingStubIdCanReproduce))]
-    public async Task The_lifetime_is_the_recorded_six_years(string caseId, string scope)
+    public async Task The_lifetime_is_the_recorded_six_years(string caseId)
     {
-        var emitted = await TransactionToken(scope);
+        var emitted = await TransactionTokenFor(caseId);
         var recorded = Recorded(caseId);
 
         Assert.Equal(
@@ -127,9 +120,10 @@ public class TransactionTokenTests : IClassFixture<WebApplicationFactory<Program
     /// The scope CAP-022 and CAP-031 were both taken with, and the members neither carries.
     /// </summary>
     /// <remarks>
-    /// CAP-021 is the only theory row above, and its scope turns every conditional branch on -
-    /// so on its own it cannot tell a rule that emits these when the scope asks from one that
-    /// emits them always. Two recordings settle the negative, and this is where they say so.
+    /// CAP-021's scope turns every conditional branch on, so on its own it cannot tell a rule
+    /// that emits these when the scope asks from one that emits them always. CAP-022 closes half
+    /// of that as a theory row; this closes the rest, member by member, so a failure names the
+    /// one that leaked rather than printing two sequences to compare by eye.
     /// </remarks>
     public static TheoryData<string> NoRecordingCarriesTheseAtTheMinimalScope() =>
     [
@@ -167,6 +161,55 @@ public class TransactionTokenTests : IClassFixture<WebApplicationFactory<Program
         Assert.Equal(
             ["mitid.login", "mitid.cpr_match"],
             withCpr.GetProperty("transaction_actions").EnumerateArray().Select(a => a.GetString()));
+    }
+
+    [Fact]
+    public async Task A_pushed_reference_text_survives_the_push()
+    {
+        // The reason the extraction lives in Parse rather than beside the session. The PAR
+        // handler parses its form and returns without ever reaching the code that creates a
+        // session, so a push is the path where a parameter read anywhere later is already gone -
+        // and the redirect that redeems the reference carries client_id and request_uri and
+        // nothing else, so there is no second chance to read it off the query.
+        using var pushed = await _client.PostAsync("/op/connect/par", new FormUrlEncodedContent(
+        [
+            new("client_id", CodeClient),
+            new("client_secret", "any"),
+            new("response_type", "code"),
+            new("redirect_uri", RedirectUri),
+            new("scope", "openid mitid transaction_token"),
+            new("nonce", "n"),
+            new("idp_values", "mitid"),
+            new("idp_params", """{"mitid":{"reference_text":"U3R1YklEIHJlZmVyZW5jZSB0ZXh0"}}"""),
+        ]), Ct);
+
+        Assert.Equal(HttpStatusCode.Created, pushed.StatusCode);
+
+        using var reference = JsonDocument.Parse(await pushed.Content.ReadAsStringAsync(Ct));
+        var requestUri = reference.RootElement.GetProperty("request_uri").GetString()!;
+
+        using var authorize = await _client.GetAsync(
+            $"/op/connect/authorize?client_id={CodeClient}"
+            + $"&request_uri={Uri.EscapeDataString(requestUri)}", Ct);
+
+        var code = System.Web.HttpUtility.ParseQueryString(
+            authorize.Headers.Location!.ToString().Split('?')[1])["code"]!;
+
+        using var token = await _client.PostAsync("/op/connect/token", new FormUrlEncodedContent(
+        [
+            new("grant_type", "authorization_code"),
+            new("code", code),
+            new("redirect_uri", RedirectUri),
+            new("client_id", CodeClient),
+            new("client_secret", "any"),
+        ]), Ct);
+
+        using var body = JsonDocument.Parse(await token.Content.ReadAsStringAsync(Ct));
+        var payload = Payload(body.RootElement.GetProperty("transaction_token").GetString()!);
+
+        Assert.Equal(
+            "U3R1YklEIHJlZmVyZW5jZSB0ZXh0",
+            payload.GetProperty("mitid.reference_text").GetString());
     }
 
     [Fact]
@@ -219,18 +262,35 @@ public class TransactionTokenTests : IClassFixture<WebApplicationFactory<Program
             "The OCSP response does not name the certificate that signed the transaction token.");
     }
 
+    /// <summary>
+    /// Drives a login with the parameters a recording actually sent, and returns the token
+    /// response.
+    /// </summary>
+    /// <remarks>
+    /// The scope and the broker's own parameters are read out of the recorded URL rather than
+    /// retyped here. A scope copied into a test drifts from the recording it claims to reproduce
+    /// and nothing notices; read from the fixture, the two cannot disagree.
+    /// </remarks>
+    private Task<JsonElement> TokenFor(string caseId) => Token(RecordedQuery(caseId));
+
     /// <summary>Drives a full login and returns the parsed token response.</summary>
-    private async Task<JsonElement> Token(string scope)
+    private async Task<JsonElement> Token(string scope) =>
+        await Token(new Dictionary<string, string>(StringComparer.Ordinal) { ["scope"] = scope });
+
+    private async Task<JsonElement> Token(IReadOnlyDictionary<string, string> recorded)
     {
         var verifier = Base64Url.Encode(
             System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
         var challenge = Base64Url.Encode(System.Security.Cryptography.SHA256.HashData(
             System.Text.Encoding.ASCII.GetBytes(verifier)));
 
+        var query = string.Join('&', recorded.Select(
+            p => $"{Uri.EscapeDataString(p.Key)}={Uri.EscapeDataString(p.Value)}"));
+
         using var authorize = await _client.GetAsync(
             $"/op/connect/authorize?client_id={CodeClient}&response_type=code"
             + $"&redirect_uri={Uri.EscapeDataString(RedirectUri)}"
-            + $"&scope={Uri.EscapeDataString(scope)}"
+            + $"&{query}"
             + $"&state=abc&nonce=n-0S6_WzA2Mj&code_challenge={challenge}"
             + "&code_challenge_method=S256", Ct);
 
@@ -257,6 +317,9 @@ public class TransactionTokenTests : IClassFixture<WebApplicationFactory<Program
     private async Task<JsonElement> TransactionToken(string scope) =>
         Payload((await Token(scope)).GetProperty("transaction_token").GetString()!);
 
+    private async Task<JsonElement> TransactionTokenFor(string caseId) =>
+        Payload((await TokenFor(caseId)).GetProperty("transaction_token").GetString()!);
+
     /// <summary>The claims of a compact JWS, without verifying it.</summary>
     private static JsonElement Payload(string compact) =>
         JsonDocument.Parse(Base64Url.Decode(compact.Split('.')[1])).RootElement.Clone();
@@ -276,6 +339,24 @@ public class TransactionTokenTests : IClassFixture<WebApplicationFactory<Program
 
     private static IEnumerable<string> Members(JsonElement payload) =>
         payload.EnumerateObject().Select(m => m.Name);
+
+    /// <summary>
+    /// What the sitting sent, taken from the recorded authorize URL: the scope and the broker's
+    /// own parameters. The client, redirect and PKCE are StubID's, since the recorded ones name
+    /// a client StubID does not have and a challenge whose verifier was never written down.
+    /// </summary>
+    private static IReadOnlyDictionary<string, string> RecordedQuery(string caseId)
+    {
+        using var meta = JsonDocument.Parse(File.ReadAllText(Path.Combine(
+            RepositoryRoot(), "fixtures", "neb", "pp-session", caseId, "callback", "meta.json")));
+
+        var url = meta.RootElement.GetProperty("request").GetProperty("url").GetString()!;
+        var query = System.Web.HttpUtility.ParseQueryString(url.Split('?')[1]);
+
+        return new[] { "scope", "idp_values", "idp_params", "prompt" }
+            .Where(key => query[key] is { Length: > 0 })
+            .ToDictionary(key => key, key => query[key]!, StringComparer.Ordinal);
+    }
 
     private static JsonElement Recorded(string caseId) =>
         JsonDocument.Parse(File.ReadAllText(Path.Combine(
