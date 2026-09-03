@@ -244,7 +244,10 @@ public sealed class BrokerState
     public string OrganisationOf(string clientId) =>
         Clients.TryGetValue(clientId, out var client) ? client.Organisation : clientId;
 
-    private readonly ConcurrentDictionary<string, AuthorizationRequest> _pushed = new(StringComparer.Ordinal);
+    /// <summary>A pushed request and the moment it stops being redeemable.</summary>
+    private sealed record PushedRequest(AuthorizationRequest Request, DateTimeOffset Expires);
+
+    private readonly ConcurrentDictionary<string, PushedRequest> _pushed = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, IssuedCode> _codes = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, IssuedAccessToken> _accessTokens = new(StringComparer.Ordinal);
 
@@ -267,17 +270,70 @@ public sealed record Client(string ClientId, string[] ResponseTypes, string Orga
     public bool IsKnownClient(string? clientId) =>
         clientId is not null && Clients.ContainsKey(clientId);
 
-    public string PushRequest(AuthorizationRequest request)
+    /// <summary>
+    /// How long a pushed request may be left unredeemed. Measured rather than chosen: the
+    /// broker answers a good push with <c>expires_in: 600</c>
+    /// (docs/research/signed-requests.md).
+    /// </summary>
+    /// <remarks>
+    /// The same constant the PAR endpoint advertises, so the number a client is told and the
+    /// number it is held to cannot drift apart. They were separate until this was enforced, and
+    /// the advertised one was the only one that existed.
+    /// </remarks>
+    public const int PushedRequestLifetimeSeconds = 600;
+
+    /// <summary>
+    /// Pushes a request and returns the reference that redeems it, once, within ten minutes.
+    /// </summary>
+    /// <remarks>
+    /// Expiry is checked when a reference is redeemed rather than swept by a timer, which is the
+    /// rule sessions already follow: it stays honest under a controllable clock, so a test moves
+    /// time and sees the effect on its next request with nothing to wait for. The one sweep is
+    /// here, over entries whose time has already passed, so a push nobody ever redeems is not a
+    /// leak for the life of the instance.
+    /// </remarks>
+    /// <remarks>
+    /// Nothing asserts that sweep directly, and nothing can from outside: a stale reference is
+    /// refused on its own merits whether or not anything removed it first. It is here for the
+    /// memory rather than for the answer.
+    /// </remarks>
+    [Fidelity(FidelityTier.Exact, FidelityProvenance.VerifiedLive,
+        Evidence = "docs/research/signed-requests.md")]
+    [Fidelity(FidelityTier.Exact, FidelityProvenance.Assumed,
+        AwaitingCapture = "That the lifetime is 600 seconds is measured; that the broker enforces "
+                          + "it is not. Reaching that needs a push left for ten minutes and then "
+                          + "redeemed, which no capture step waits for. RFC 9126 2.2 says a "
+                          + "request_uri expires, and the authorize endpoint already answered "
+                          + "'Unknown or expired request_uri' for a reference it could not find.")]
+    public string PushRequest(AuthorizationRequest request, DateTimeOffset now)
     {
         var reference = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-        _pushed[reference] = request;
+        _pushed[reference] = new PushedRequest(request, now.AddSeconds(PushedRequestLifetimeSeconds));
+
+        foreach (var (stale, pushed) in _pushed)
+        {
+            if (now >= pushed.Expires)
+            {
+                _pushed.TryRemove(stale, out _);
+            }
+        }
+
         return $"urn:ietf:params:oauth:request_uri:{reference}";
     }
 
-    public AuthorizationRequest? RedeemPushedRequest(string requestUri)
+    /// <summary>
+    /// Spends a reference. Null when it is unknown, already spent, or out of time - which the
+    /// authorize endpoint answers with one error for all three, as it always has.
+    /// </summary>
+    public AuthorizationRequest? RedeemPushedRequest(string requestUri, DateTimeOffset now)
     {
         var reference = requestUri.Split(':').LastOrDefault() ?? "";
-        return _pushed.TryRemove(reference, out var request) ? request : null;
+
+        // Removed either way. A reference past its time is spent by being tried, so a second
+        // attempt cannot tell a stale one from a used one - and neither can the client.
+        return _pushed.TryRemove(reference, out var pushed) && now < pushed.Expires
+            ? pushed.Request
+            : null;
     }
 
     public string IssueCode(

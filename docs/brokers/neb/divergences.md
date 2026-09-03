@@ -65,6 +65,13 @@ Two decisions the recordings could not settle, taken here rather than left to be
 An empty `request=` is treated as no object at all, which is what every other optional parameter
 here does with an empty value. Unmeasured: no probe sent one.
 
+**A pushed request really does expire.** PAR answers with `expires_in: 600`, which is measured,
+and StubID holds a reference to it: past that, redeeming one earns the same error page an unknown
+reference always did. That the broker *enforces* its own number is not measured — reaching it
+needs a push left for ten minutes and then redeemed, which no capture step waits for — so the
+lifetime is a recording and its enforcement is RFC 9126 §2.2 plus the assumption that an
+advertised expiry means something.
+
 **Where the refusal came from.** CAP-046, which pushes a `request` parameter that is not a JWS
 at all and records the 400 and the bytes that come back. That case also settled the status,
 which until it was taken was an inference from RFC 9126 and from CAP-019's other refusal.

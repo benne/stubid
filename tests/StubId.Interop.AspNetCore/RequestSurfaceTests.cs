@@ -56,6 +56,110 @@ public class RequestSurfaceTests
         return await client.SendAsync(request, Ct);
     }
 
+    /// <summary>An instance whose clock a test can move, for the two lifetimes worth reaching.</summary>
+    private static WebApplicationFactory<Program> WithAClock() =>
+        new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
+        {
+            b.UseSetting("StubId:PublicBaseUrl", "http://localhost");
+            b.UseSetting("StubId:ControllableClock", "true");
+        });
+
+    private static async Task<string> Push(HttpClient client)
+    {
+        using var pushed = await client.PostAsync("/op/connect/par", new FormUrlEncodedContent(
+        [
+            new KeyValuePair<string, string>("client_id", CodeClient),
+            new KeyValuePair<string, string>("client_secret", "any"),
+            new KeyValuePair<string, string>("response_type", "code"),
+            new KeyValuePair<string, string>("redirect_uri", RedirectUri),
+            new KeyValuePair<string, string>("scope", "openid mitid"),
+            new KeyValuePair<string, string>("state", "s"),
+        ]), Ct);
+
+        Assert.Equal(HttpStatusCode.Created, pushed.StatusCode);
+
+        using var body = JsonDocument.Parse(await pushed.Content.ReadAsStringAsync(Ct));
+
+        // The number the client is told, which is also the one it is held to.
+        Assert.Equal(600, body.RootElement.GetProperty("expires_in").GetInt32());
+
+        return body.RootElement.GetProperty("request_uri").GetString()!;
+    }
+
+    private static Task<HttpResponseMessage> Redeem(HttpClient client, string requestUri) =>
+        client.GetAsync(
+            $"/op/connect/authorize?client_id={CodeClient}"
+            + $"&request_uri={Uri.EscapeDataString(requestUri)}", Ct);
+
+    [Fact]
+    public async Task A_pushed_request_is_redeemable_until_the_expiry_it_was_promised()
+    {
+        // Nine minutes in, the reference still works: the lifetime is enforced at the moment it
+        // says and not a moment earlier.
+        await using var factory = WithAClock();
+        using var client = factory.CreateClient(
+            new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var requestUri = await Push(client);
+
+        using var advanced = await client.PostAsJsonAsync(
+            "/_stubid/v1/time/advance", new { seconds = 540 }, Ct);
+
+        using var redeemed = await Redeem(client, requestUri);
+
+        Assert.StartsWith(RedirectUri, redeemed.Headers.Location!.ToString(), StringComparison.Ordinal);
+        Assert.Contains("code=", redeemed.Headers.Location!.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_pushed_request_left_past_its_expiry_is_refused()
+    {
+        // The endpoint advertised expires_in: 600 from the day it was written and nothing
+        // enforced it, so a reference worked for the life of the instance. The refusal is the
+        // broker's own error page rather than anything the client sees, which is what an
+        // unusable request_uri has always earned here.
+        await using var factory = WithAClock();
+        using var client = factory.CreateClient(
+            new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var requestUri = await Push(client);
+
+        using var advanced = await client.PostAsJsonAsync(
+            "/_stubid/v1/time/advance", new { seconds = 601 }, Ct);
+
+        using var redeemed = await Redeem(client, requestUri);
+
+        Assert.Equal(HttpStatusCode.Redirect, redeemed.StatusCode);
+        Assert.Contains("/op/Error", redeemed.Headers.Location!.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_stale_reference_is_refused_even_once_other_pushes_have_happened()
+    {
+        // Deliberately not a test of the sweep. Pushing drops entries whose time has passed, so
+        // an abandoned push is not held for the life of the instance - but that is invisible
+        // from outside, because a stale reference is refused on its own merits whether or not
+        // anything swept it. What this pins is that the sweeping does not take the wrong one:
+        // the fresh reference still works afterwards.
+        await using var factory = WithAClock();
+        using var client = factory.CreateClient(
+            new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var abandoned = await Push(client);
+
+        using var advanced = await client.PostAsJsonAsync(
+            "/_stubid/v1/time/advance", new { seconds = 601 }, Ct);
+
+        // A second push, which is what does the sweeping.
+        var fresh = await Push(client);
+
+        using var stale = await Redeem(client, abandoned);
+        Assert.Contains("/op/Error", stale.Headers.Location!.ToString(), StringComparison.Ordinal);
+
+        using var usable = await Redeem(client, fresh);
+        Assert.StartsWith(RedirectUri, usable.Headers.Location!.ToString(), StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task A_personal_number_is_matched_without_ever_being_disclosed()
     {

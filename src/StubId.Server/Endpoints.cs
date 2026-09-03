@@ -38,7 +38,8 @@ public static class Endpoints
         Map("op/.well-known/openid-configuration/jwks", ["GET"], RouteRole.Jwks, (HttpContext http, Keys keys) =>
             Json(keys.Ring.ToJwks()));
 
-        Map("op/connect/par", ["POST"], RouteRole.Par, async (HttpContext http, BrokerState state) =>
+        Map("op/connect/par", ["POST"], RouteRole.Par, async (
+            HttpContext http, BrokerState state, TimeProvider clock) =>
         {
             var form = await http.Request.ReadFormAsync();
             var (parClientId, parSecret) = ClientCredentials(http, form);
@@ -60,11 +61,16 @@ public static class Endpoints
                 return OAuthError(http, RequestObject.Fault, RequestObject.FaultDescription);
             }
 
-            var requestUri = state.PushRequest(Parse(parameters));
+            var requestUri = state.PushRequest(Parse(parameters), clock.GetUtcNow());
 
-            // 201, and the reference expires in ten minutes.
+            // 201, and the reference really does expire in ten minutes: the number advertised
+            // here is the one the store holds it to.
             http.Response.StatusCode = (int)HttpStatusCode.Created;
-            return Json(JsonSerializer.Serialize(new { request_uri = requestUri, expires_in = 600 }));
+            return Json(JsonSerializer.Serialize(new
+            {
+                request_uri = requestUri,
+                expires_in = BrokerState.PushedRequestLifetimeSeconds,
+            }));
         });
 
         Map("op/connect/authorize", ["GET", "POST"], RouteRole.Authorize, async (
@@ -78,7 +84,7 @@ public static class Endpoints
             AuthorizationRequest? request = null;
             if (parameters.TryGetValue("request_uri", out var requestUri))
             {
-                request = state.RedeemPushedRequest(requestUri);
+                request = state.RedeemPushedRequest(requestUri, clock.GetUtcNow());
                 if (request is null)
                 {
                     return ErrorPage(http, protection, "invalid_request", "Unknown or expired request_uri.");
