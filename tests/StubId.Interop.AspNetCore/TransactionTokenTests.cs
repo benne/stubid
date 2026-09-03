@@ -34,9 +34,10 @@ public class TransactionTokenTests : IClassFixture<WebApplicationFactory<Program
     /// </summary>
     /// <remarks>
     /// CAP-031 is the one still missing, and it is missing for a reason a row could not paper
-    /// over: its recorded URL carries the request object as a placeholder, because a compact JWS
-    /// must not reach a fixture. Reproducing it needs the <c>request</c> parameter and the
-    /// transaction text, which are the next two changes.
+    /// over: its transaction token carries six transaction-text members that StubID does not
+    /// emit, so a row for it could only pass by leaving members out of the comparison. The
+    /// signed request it arrived in is driven by <c>SignedRequestTests</c> instead, which is
+    /// as far as the recording can be reproduced today.
     /// </remarks>
     public static TheoryData<string> EveryRecordingStubIdCanReproduce() =>
         ["CAP-021", "CAP-022"];
