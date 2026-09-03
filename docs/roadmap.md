@@ -14,7 +14,7 @@ Status of the first emulated surface, Signaturgruppen Broker ("Nets eID Broker")
 | M6 | Full request surface, error fidelity, logout | done |
 | M7 | Control API, test modules, TLS trust, quickstarts | control API, both test modules, TLS, certificate trust and the browser matrix done; the remaining quickstarts not started |
 | M8 | Admin interface | not started |
-| M9 | Transaction signing | the transaction token and its OCSP response done; the text, `idp_params` and request objects not started |
+| M9 | Transaction signing | the transaction token, its OCSP response and the reference text done; the transaction text and request objects not started |
 | M10 | Release engineering | not started |
 | M11 | Documentation site and generated broker reference | not started |
 | M12 | v1.0 | not started |

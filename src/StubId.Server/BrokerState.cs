@@ -7,6 +7,23 @@ using StubId.Wire;
 namespace StubId.Server;
 
 /// <summary>A parked authorization request, whether it arrived by PAR or by redirect.</summary>
+/// <param name="MitIdParameters">
+/// The <c>mitid</c> section of idp_params, decoded but not inspected. It rides here rather than
+/// on the session because the claims it feeds are written at the token endpoint, which can reach
+/// an AuthorizationRequest and cannot reach a session: a pushed request never passes the place
+/// sessions are created, and the identifiers on either side are unrelated.
+/// <para>
+/// The mitid section alone. Every recording that carries idp_params carries it under that key,
+/// and a login through mitid_erhverv produces private-identity claims anyway - what a business
+/// identity would put here is unobserved and is its own milestone.
+/// </para>
+/// <para>
+/// A reference type on a record, which makes this record's generated equality compare it by
+/// reference: two requests built from identical queries are no longer equal. Nothing compares
+/// AuthorizationRequest today - it is stored as a dictionary value and never as a key - so this
+/// costs nothing, but a future Distinct or Contains over these would quietly stop working.
+/// </para>
+/// </param>
 public sealed record AuthorizationRequest(
     string ClientId,
     string RedirectUri,
@@ -16,7 +33,20 @@ public sealed record AuthorizationRequest(
     string? State,
     string? Nonce,
     string? CodeChallenge,
-    string? CodeChallengeMethod);
+    string? CodeChallengeMethod,
+    IReadOnlyDictionary<string, string>? MitIdParameters = null)
+{
+    /// <summary>
+    /// The MitID-native text shown while the user approves, base64 as the client sent it.
+    /// </summary>
+    /// <remarks>
+    /// Distinct from a transaction text: this one is MitID's own, is limited to 130 characters,
+    /// and is what the MitID app displays. The broker echoes it whole to the transaction token
+    /// and to the userinfo endpoint, with no type and no digest beside it.
+    /// </remarks>
+    public string? ReferenceText =>
+        MitIdParameters?.GetValueOrDefault("reference_text") is { Length: > 0 } text ? text : null;
+}
 
 /// <summary>An issued authorization code and everything the token endpoint needs to redeem it.</summary>
 /// <param name="TransactionId">The broker's own identifier for the exchange.</param>
@@ -43,13 +73,19 @@ public sealed record IssuedCode(
 /// The client matters: the subject is scoped to the receiving organisation, so userinfo has
 /// to answer with the same subject the id_token carried, and that depends on who is asking.
 /// </remarks>
+/// <param name="ReferenceText">
+/// Carried separately because this record holds no AuthorizationRequest, and the userinfo
+/// endpoint answers from an access token alone. The recorded userinfo response returns a
+/// reference text whole, in the same slot the transaction token puts it.
+/// </param>
 public sealed record IssuedAccessToken(
     string ClientId,
     Citizen Citizen,
     string Scope,
     string SessionId,
     string IdpTransactionId,
-    DateTimeOffset AuthenticatedAt);
+    DateTimeOffset AuthenticatedAt,
+    string? ReferenceText = null);
 
 /// <summary>
 /// Everything the slice remembers. In memory, single tenant, deliberately small.
@@ -189,7 +225,8 @@ public sealed record Client(string ClientId, string[] ResponseTypes, string Orga
         var token = Base64Url.Encode(RandomNumberGenerator.GetBytes(32));
         _accessTokens[token] = new IssuedAccessToken(
             code.Request.ClientId, code.Citizen, code.Request.Scope,
-            code.SessionId, code.IdpTransactionId, code.AuthenticatedAt);
+            code.SessionId, code.IdpTransactionId, code.AuthenticatedAt,
+            code.Request.ReferenceText);
         return token;
     }
 

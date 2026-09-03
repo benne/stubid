@@ -74,8 +74,24 @@ public static class RequestGrammar
     /// <c>uuid_hint</c> being accepted here and failing later, inside the MitID flow, which is
     /// why the broker publishes an error code for it at all.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Decoded but not inspected is the whole rule. A value this does not recognise is carried
+    /// through and handed on, because that is what CAP-010 records the broker doing - refusing
+    /// one up front would fail a request the broker accepts.
+    /// </para>
+    /// <para>
+    /// What is recorded is that a well-formed object with a nonsense value inside it is accepted
+    /// (CAP-010) and that idp_params which is not JSON is refused (CAP-040). Everything between
+    /// those - a root that parses and is not an object, a name repeated inside the section, a
+    /// string that parses and cannot be materialised - is unrecorded, and this answers with
+    /// nothing rather than throwing. That is StubID's choice, and the reason for it is that the
+    /// alternative is an empty 500, which is the one answer the broker never gives.
+    /// </para>
+    /// </remarks>
     [Fidelity(FidelityTier.Exact, FidelityProvenance.VerifiedLive,
-        Evidence = "fixtures/neb/pp/CAP-010/response.head")]
+        Evidence = "fixtures/neb/pp/CAP-010/response.head, "
+                   + "fixtures/neb/pp-session/CAP-022/callback/meta.json")]
     public static IReadOnlyDictionary<string, string> IdentityProviderParameters(
         IReadOnlyDictionary<string, string> parameters, string idp)
     {
@@ -84,20 +100,43 @@ public static class RequestGrammar
             return new Dictionary<string, string>(StringComparer.Ordinal);
         }
 
+        var found = new Dictionary<string, string>(StringComparer.Ordinal);
+
         try
         {
             using var document = JsonDocument.Parse(raw);
 
-            return document.RootElement.TryGetProperty(idp, out var section)
-                   && section.ValueKind == JsonValueKind.Object
-                ? section.EnumerateObject().ToDictionary(
-                    m => m.Name,
-                    m => m.Value.ValueKind == JsonValueKind.String ? m.Value.GetString()! : m.Value.ToString(),
-                    StringComparer.Ordinal)
-                : new Dictionary<string, string>(StringComparer.Ordinal);
+            // The root kind is checked rather than assumed. TryGetProperty does not answer false
+            // for a root that is not an object - it throws - so idp_params carrying null, a
+            // number, a string or an array would escape as an unhandled exception, and the
+            // request would answer 500 where the broker answers its error page.
+            if (document.RootElement.ValueKind != JsonValueKind.Object
+                || !document.RootElement.TryGetProperty(idp, out var section)
+                || section.ValueKind != JsonValueKind.Object)
+            {
+                return found;
+            }
+
+            foreach (var member in section.EnumerateObject())
+            {
+                // Assigned rather than added. JSON allows a name to repeat and JsonDocument keeps
+                // both, where ToDictionary throws on the second - so a section with one member
+                // written twice would take down the endpoint. The last wins, which is what most
+                // JSON readers do; nothing recorded says what the broker does with a repeat.
+                found[member.Name] = member.Value.ValueKind == JsonValueKind.String
+                    ? member.Value.GetString()!
+                    : member.Value.ToString();
+            }
+
+            return found;
         }
-        catch (JsonException)
+        catch (Exception e) when (e is JsonException or InvalidOperationException)
         {
+            // JsonException is malformed JSON. InvalidOperationException is a value that parsed
+            // and cannot be read - an unpaired UTF-16 surrogate escape is accepted by the parser
+            // and throws only when the string is materialised. Both mean the same thing here:
+            // nothing usable, carried through rather than refused, exactly as an unreadable value
+            // is on every other path.
             return new Dictionary<string, string>(StringComparer.Ordinal);
         }
     }

@@ -41,6 +41,14 @@ are not. A `uuid_hint` that is not a UUID is carried through and fails later ins
 flow — which is why the broker publishes an error code for it at all, and why StubID must not
 reject it up front.
 
+StubID reads the `mitid` section and carries it with the request. What it does with the contents
+is one member so far: `reference_text` reaches the transaction token and the userinfo response,
+whole and undecoded, exactly as CAP-022 recorded. The rest is carried and unread, which is the
+same thing the broker does with a `uuid_hint` it will reject three steps later.
+
+The `mitid` section alone. A login through `mitid_erhverv` produces private-identity claims
+anyway, and what a business identity would put here is unobserved.
+
 ## simulation
 
 Space-delimited sub-values inside one parameter:
@@ -72,3 +80,5 @@ broker needs a client with single sign-on and a session already open.
 ## The parameters that are stored and nothing else
 
 `language` and `login_hint` are accepted and kept with the request. Nothing reads them yet.
+
+`simulation` is read. So is the `mitid` section of `idp_params`, as far as `reference_text`.
