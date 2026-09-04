@@ -38,6 +38,7 @@ public class EmulatorHeaderTests(WebApplicationFactory<Program> factory)
         { "/op/connect/userinfo", "a challenge, answered without a route being run" },
         { "/op/Login?session=nothing-parked-here", "a page rendered for a human" },
         { "/op/Error?errorId=nonsense", "the error page" },
+        { "/_stubid/admin", "StubID's own page, which is not the broker's either" },
     };
 
     [Theory]

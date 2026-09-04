@@ -105,6 +105,25 @@ public class ControlClientTests(WebApplicationFactory<Program> factory)
         Assert.Equal(SessionState.Failed, outcome.State);
     }
 
+    /// <summary>
+    /// Reading the clock is a question an ordinary instance can answer.
+    /// </summary>
+    /// <remarks>
+    /// Advancing could not stand in for this. Advancing by nothing still needs a controllable
+    /// clock, so until there was a read there was no way to ask an ordinary instance what time it
+    /// thought it was - which is where every argument about a timeout starts.
+    /// </remarks>
+    [Fact]
+    public async Task The_client_reads_a_clock_it_is_not_allowed_to_move()
+    {
+        using var stub = Connect();
+
+        var clock = await stub.Time.ReadAsync(Ct);
+
+        Assert.False(clock.Controllable);
+        Assert.NotEqual(default, clock.Now);
+    }
+
     [Fact]
     public async Task Moving_time_on_an_instance_with_a_fixed_clock_says_which_setting_to_change()
     {

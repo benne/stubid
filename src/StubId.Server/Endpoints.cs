@@ -825,10 +825,7 @@ public static class Endpoints
 
     private static string Issuer(HttpContext http) => $"{BaseUrl(http)}/op";
 
-    /// <summary>
-    /// The charset is part of what the recordings carry, and the uppercase spelling is the
-    /// broker's. Passing the literal keeps it; the encoding overload would lowercase it.
-    /// </summary>
+    /// <summary>The shell the broker's own pages are rendered into.</summary>
     private static string Page(string title, string body) => $$"""
         <!DOCTYPE html>
         <html lang="en"><head><meta charset="utf-8"><title>{{WebUtility.HtmlEncode(title)}}</title>
@@ -843,6 +840,10 @@ public static class Endpoints
     /// </summary>
     private static IResult Json(string body) => new CachelessJson(body);
 
+    /// <remarks>
+    /// The charset is part of what the recordings carry, and the uppercase spelling is the
+    /// broker's. Passing the literal keeps it; the encoding overload would lowercase it.
+    /// </remarks>
     private sealed class CachelessJson(string body) : IResult
     {
         public Task ExecuteAsync(HttpContext http)
@@ -878,7 +879,7 @@ public static class Endpoints
     /// </remarks>
     [Fidelity(FidelityTier.Shape, FidelityProvenance.Divergent,
         Reason = "docs/brokers/neb/divergences.md#the-login-page")]
-    private static string TransactionTextPanel(AuthSession session)
+    internal static string TransactionTextPanel(AuthSession session)
     {
         if (session.TransactionText is null)
         {

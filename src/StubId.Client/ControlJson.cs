@@ -16,6 +16,7 @@ namespace StubId.Client;
 [JsonSerializable(typeof(StubIdSession))]
 [JsonSerializable(typeof(IReadOnlyList<StubIdSession>))]
 [JsonSerializable(typeof(SessionExplanation))]
+[JsonSerializable(typeof(StubIdClock))]
 [JsonSerializable(typeof(CreateCitizenBody))]
 [JsonSerializable(typeof(ApproveBody))]
 [JsonSerializable(typeof(RejectBody))]

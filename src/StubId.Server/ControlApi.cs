@@ -25,11 +25,7 @@ public static class ControlApi
 
         // Sessions
         api.MapGet("/sessions", (SessionStore sessions, string? state, string? clientId) =>
-            Results.Json(sessions.All
-                .Where(s => state is null || s.State.ToString().Equals(state, StringComparison.OrdinalIgnoreCase))
-                .Where(s => clientId is null || s.ClientId == clientId)
-                .OrderByDescending(s => s.CreatedAt)
-                .Select(Describe)));
+            Results.Json(sessions.Matching(state, clientId).Select(Describe)));
 
         api.MapGet("/sessions/{id}", (SessionStore sessions, string id) =>
             sessions.Find(id) is { } session ? Results.Json(Describe(session)) : Results.NotFound());
@@ -55,35 +51,36 @@ public static class ControlApi
         api.MapPost("/sessions/{id}/approve", (
             SessionStore sessions, Citizens citizens, string id, ApproveRequest? body) =>
         {
-            var citizen = body?.CitizenId is { } named ? citizens.ById(named) : citizens.Default;
+            var outcome = Approvals.Approve(sessions, citizens, id, body?.CitizenId, "the control API");
 
-            if (citizen is null)
+            return outcome.Result switch
             {
-                return Results.BadRequest(new { error = "no such citizen" });
-            }
-
-            // The citizen's own rule applies here too. "Sign in as this person" has to mean
-            // the same thing whether a test said it or someone clicked it.
-            return sessions.Decide(id, citizen.Outcome(), "the control API")
-                ? Results.Json(new
+                ApprovalResult.NoSuchCitizen => Results.BadRequest(new { error = "no such citizen" }),
+                ApprovalResult.Decided => Results.Json(new
                 {
                     decided = true,
-                    citizen = citizen.Id,
-                    state = sessions.Find(id)?.State.ToString(),
-                })
+                    citizen = outcome.CitizenId,
+                    state = outcome.Session?.State.ToString(),
+                }),
 
                 // 409 rather than an error: the caller lost a race, and what it needs is the
                 // outcome that actually happened.
-                : Conflict(sessions, id);
+                ApprovalResult.AlreadyDecided => Conflict(outcome.Session!),
+                _ => Results.NotFound(),
+            };
         });
 
         api.MapPost("/sessions/{id}/reject", (SessionStore sessions, string id, RejectRequest? body) =>
-            sessions.Decide(
-                id,
-                Decision.Refused(body?.ErrorCode ?? "mitid_user_aborted", body?.Error ?? "access_denied"),
-                "the control API")
-                ? Results.Json(new { decided = true })
-                : Conflict(sessions, id));
+        {
+            var outcome = Approvals.Reject(sessions, id, body?.ErrorCode, body?.Error, "the control API");
+
+            return outcome.Result switch
+            {
+                ApprovalResult.Decided => Results.Json(new { decided = true }),
+                ApprovalResult.AlreadyDecided => Conflict(outcome.Session!),
+                _ => Results.NotFound(),
+            };
+        });
 
         // Behaviour
         api.MapPost("/behaviours/enqueue", (EnqueuedDecisions queue, EnqueueRequest body) =>
@@ -119,6 +116,15 @@ public static class ControlApi
 
         // Time. Only where the clock is controllable, which is how a five-minute timeout is
         // exercised in milliseconds rather than waited out.
+        // Nothing reported the clock, and every argument about a timeout starts by asking what the
+        // instance thinks the time is. It also lets a page say how long a login has left without
+        // keeping a clock of its own and disagreeing.
+        api.MapGet("/time", (TimeProvider clock) => Results.Json(new
+        {
+            now = clock.GetUtcNow(),
+            controllable = clock is FakeTimeProvider,
+        }));
+
         api.MapPost("/time/advance", (TimeProvider clock, AdvanceRequest body) =>
         {
             if (clock is not FakeTimeProvider controllable)
@@ -231,16 +237,19 @@ public static class ControlApi
                     statusCode: StatusCodes.Status503ServiceUnavailable));
     }
 
-    private static IResult Conflict(SessionStore sessions, string id) =>
-        sessions.Find(id) is { } session
-            ? Results.Json(new
-            {
-                decided = false,
-                detail = "something already decided this login",
-                outcome = Describe(session),
-            }, statusCode: StatusCodes.Status409Conflict)
-            : Results.NotFound();
+    private static IResult Conflict(AuthSession session) => Results.Json(new
+    {
+        decided = false,
+        detail = "something already decided this login",
+        outcome = Describe(session),
+    }, statusCode: StatusCodes.Status409Conflict);
 
+    /// <remarks>
+    /// The transaction text is deliberately absent. <see cref="AuthSession.TransactionText" />
+    /// says why: keeping the decoded string on a long-lived session would put a client-controlled
+    /// string into everything that describes one, and the decode costs nothing to repeat where it
+    /// is rendered.
+    /// </remarks>
     private static object Describe(AuthSession session) => new
     {
         session.Id,
@@ -248,9 +257,16 @@ public static class ControlApi
         state = session.State.ToString(),
         session.CitizenId,
         session.ErrorCode,
+
+        // The other half of the pair a refusal sends. Refuse() puts ErrorCode in
+        // error_description and this in error, and only one of them was readable.
+        oauthError = session.OAuthError,
         session.CreatedAt,
         session.Deadline,
         session.DecidedAt,
+
+        // The token the transition is guarded by, so a caller can tell one read from the next.
+        session.Version,
     };
 
     public sealed record ApproveRequest(string? CitizenId);
