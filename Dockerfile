@@ -35,5 +35,21 @@ ENV ASPNETCORE_URLS=http://+:8080
 # 8443 answers only when StubId__Tls is set; the image serves plain HTTP by default.
 EXPOSE 8080 8443
 
+# Here rather than only in the workflow, so an image built from a clone carries them too.
+#
+# source is the load-bearing one: a registry links a package to its repository by this label,
+# and that link is what makes the package page show where the image came from. The rest are
+# what a reader of `docker inspect` needs to find the project without already knowing it.
+#
+# No version label. It is per-build, so the release workflow supplies it from the version
+# property; a value written here would be a second place to forget.
+LABEL org.opencontainers.image.title="StubID" \
+      org.opencontainers.image.description="A stand-in for the test environments of the Danish MitID identity brokers, for running a login and signing integration in automated tests." \
+      org.opencontainers.image.url="https://github.com/benne/stubid" \
+      org.opencontainers.image.documentation="https://github.com/benne/stubid/blob/master/docs/guides/testcontainers.md" \
+      org.opencontainers.image.source="https://github.com/benne/stubid" \
+      org.opencontainers.image.licenses="Apache-2.0" \
+      org.opencontainers.image.vendor="StubID contributors"
+
 # Already non-root in the chiselled image.
 ENTRYPOINT ["dotnet", "StubId.Server.dll"]
