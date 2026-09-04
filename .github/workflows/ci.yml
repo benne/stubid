@@ -104,10 +104,11 @@ jobs:
           fi
 
   # The three client stacks a Danish team actually uses. The .NET handler runs in-process with
-  # the unit tests; these two run against the published image, and they check things .NET
-  # forgives - openid-client compares the discovered issuer with the configured authority
-  # character for character, and Spring derives candidate metadata locations from a
-  # path-bearing issuer and asserts the issuer it finds.
+  # the unit tests; these two run against the image this job builds from the commit under test,
+  # which is the point - a stack proved against an older published image proves nothing about
+  # the change. They check what .NET forgives: openid-client compares the discovered issuer
+  # with the configured authority character for character, and Spring derives candidate
+  # metadata locations from a path-bearing issuer and asserts the issuer it finds.
   interop:
     runs-on: ubuntu-latest
     steps:

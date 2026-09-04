@@ -1,9 +1,18 @@
 #!/usr/bin/env bash
-# Verifies the published image the way an adopter meets it: a real login through the
-# container, and a restart that a client's cached metadata survives.
+# Verifies a StubID image the way an adopter meets it: a real login through the container,
+# and a restart that a client's cached metadata survives. Works on an image built from this
+# repository and on one pulled from a registry; it does not care which, and saying "the
+# published image" here was never true of what it was handed.
 set -euo pipefail
 
-IMAGE="${1:-stubid:test}"
+# Named rather than defaulted. The old default was stubid:test, an image nothing in this
+# repository builds, so forgetting the argument failed on a missing image rather than saying so.
+if [ $# -lt 1 ]; then
+  echo "usage: $(basename "$0") <image>    e.g. $(basename "$0") stubid:ci" >&2
+  exit 2
+fi
+
+IMAGE="$1"
 PORT="${PORT:-18080}"
 NAME="stubid-verify-$$"
 VOLUME="stubid-verify-keys-$$"
@@ -36,6 +45,14 @@ kids() {
   [ -n "$out" ] || { echo "the key set was empty"; exit 1; }
   echo "$out"
 }
+
+# A registry links a package to its repository by this label, and that link is what makes the
+# package page name its source. It costs one docker inspect to know it survived the build.
+docker image inspect "$IMAGE" >/dev/null 2>&1 || docker pull "$IMAGE"
+origin=$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.source"}}' "$IMAGE")
+[ "$origin" = "https://github.com/benne/stubid" ] || {
+  echo "the image does not name this repository as its source: '${origin}'"; exit 1; }
+echo "the image names its source repository: ${origin}"
 
 start
 echo "container is up"
