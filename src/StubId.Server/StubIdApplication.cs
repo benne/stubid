@@ -1,5 +1,6 @@
 using StubId.Abstractions;
 using StubId.Profiles;
+using StubId.Server.Admin;
 using StubId.Server.Sessions;
 
 namespace StubId.Server;
@@ -115,6 +116,11 @@ public static class StubIdApplication
         });
 
         app.MapControlApi();
+
+        // StubID's own pages, beside its own API and behind the same prefix. Registered here
+        // rather than declared as profile routes: they are not the broker's surface, and the
+        // collision scan below has nothing to say about them.
+        app.MapAdminUi();
 
         // The broker's own routes come from the profile, not from a fixed table. Loading them runs the
         // collision scan, which refuses to start rather than throwing on every request later.

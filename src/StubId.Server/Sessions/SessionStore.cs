@@ -33,6 +33,21 @@ public sealed class SessionStore(TimeProvider clock, Ladder ladder)
         }
     }
 
+    /// <summary>The logins a filter names, newest first.</summary>
+    /// <remarks>
+    /// The control API and the admin pages answer to the same two filters, and held a copy of this
+    /// each until the second one existed. Reading the list runs the expiry sweep, which is what
+    /// makes an open page keep its own table honest.
+    /// </remarks>
+    public IReadOnlyList<AuthSession> Matching(string? state, string? clientId) =>
+    [
+        .. All
+            .Where(s => state is null
+                || s.State.ToString().Equals(state, StringComparison.OrdinalIgnoreCase))
+            .Where(s => clientId is null || s.ClientId == clientId)
+            .OrderByDescending(s => s.CreatedAt),
+    ];
+
     public AuthSession Park(AuthorizationRequest request, SessionContext context)
     {
         var now = clock.GetUtcNow();

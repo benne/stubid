@@ -214,6 +214,21 @@ public sealed class ClockApi(HttpClient http)
     /// Throws unless the instance was started with a controllable clock; the exception carries
     /// StubID's own instruction for which setting to change.
     /// </remarks>
+    /// <summary>
+    /// What the instance thinks the time is, and whether it can be moved.
+    /// </summary>
+    /// <remarks>
+    /// Reads rather than moves, which <see cref="AdvanceAsync" /> could not do: advancing by
+    /// nothing still needs a controllable clock, so there was no way to ask the question of an
+    /// ordinary instance at all.
+    /// </remarks>
+    public async Task<StubIdClock> ReadAsync(CancellationToken ct = default)
+    {
+        using var response = await http.GetAsync("/_stubid/v1/time", ct);
+
+        return await Control.ReadAsync(response, ControlJson.Default.StubIdClock, ct);
+    }
+
     public async Task<DateTimeOffset> AdvanceAsync(TimeSpan by, CancellationToken ct = default)
     {
         using var response = await http.PostAsJsonAsync(

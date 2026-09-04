@@ -13,6 +13,14 @@ public enum SessionState
 }
 
 /// <summary>One login, as the control API describes it.</summary>
+/// <param name="OauthError">
+/// The other half of what a refusal sends. The broker puts its own code in
+/// <c>error_description</c> and this in <c>error</c>, and a client that logged only one of them
+/// was throwing away the half that says which kind of failure it was.
+/// </param>
+/// <param name="Version">
+/// Moves once per decision, so two reads of the same login can be told apart.
+/// </param>
 public sealed record StubIdSession(
     string Id,
     string ClientId,
@@ -21,7 +29,12 @@ public sealed record StubIdSession(
     string? ErrorCode,
     DateTimeOffset CreatedAt,
     DateTimeOffset Deadline,
-    DateTimeOffset? DecidedAt);
+    DateTimeOffset? DecidedAt,
+    string? OauthError = null,
+    int Version = 0);
+
+/// <summary>What the instance's clock reads, and whether a test may move it.</summary>
+public sealed record StubIdClock(DateTimeOffset Now, bool Controllable);
 
 /// <summary>One tier of the resolution ladder, as it was applied or skipped.</summary>
 /// <param name="Tier">Null for the step that had no tier of its own.</param>
