@@ -172,8 +172,9 @@ package and is written back the way you typed it.
 
 Measured in this repository's own CI, against the image it has just built: the container is ready
 in about three seconds, and creating a citizen and driving a login through to a token takes about
-fifty milliseconds. The first run on a machine with no image builds one, which is a minute or so
-and happens once.
+fifty milliseconds. The first run on a machine that has not pulled the image pays for the pull,
+which is 53 MB compressed and happens once; the module does not build one, and cannot, because
+building would need this repository's Dockerfile in your working tree.
 
 Reuse (`WithReuse(true)`) keeps an instance between runs; it needs
 `testcontainers.reuse.enable=true` in `~/.testcontainers.properties`. Call `ResetAsync()` between

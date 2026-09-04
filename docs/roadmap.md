@@ -15,9 +15,15 @@ Status of the first emulated surface, Signaturgruppen Broker ("Nets eID Broker")
 | M7 | Control API, test modules, TLS trust, quickstarts | control API, both test modules, TLS, certificate trust and the browser matrix done; the remaining quickstarts not started |
 | M8 | Admin interface | not started |
 | M9 | Transaction signing | done |
-| M10 | Release engineering | not started |
+| M10 | Release engineering | done |
 | M11 | Documentation site and generated broker reference | not started |
 | M12 | v1.0 | not started |
+
+Released since 2026-09-04. `StubId.Testing`, `StubId.InProcess` and `StubId.Client` are on
+nuget.org, and `ghcr.io/benne/stubid` is on GHCR for linux/amd64 and linux/arm64, carrying a
+provenance attestation. Versions are dates rather than semantic versions, for the reason
+[the release notes](releases/2026.09.1.md) give. Before this the guides told readers to pull an
+image that did not exist and named packages with no way to obtain them.
 
 A parked login can be resumed since 2026-09-03: approving on StubID's own page returns the
 browser to the client with a code, and so does a decision made through the control API once the
