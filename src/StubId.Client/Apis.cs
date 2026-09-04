@@ -19,8 +19,9 @@ public sealed class CitizenApi(HttpClient http)
     /// Creates one, with a generated personal number that cannot belong to anybody.
     /// </summary>
     /// <remarks>
-    /// The created citizen comes from the response body rather than from the Location header the
-    /// server sends, which points at a route that does not exist.
+    /// The created citizen comes from the response body rather than from the Location header,
+    /// which saves a round trip. The header names <see cref="FindAsync" />'s route, which it did
+    /// not until that route was written.
     /// </remarks>
     public async Task<StubIdCitizen> CreateAsync(CitizenSpec spec, CancellationToken ct = default)
     {
@@ -38,6 +39,39 @@ public sealed class CitizenApi(HttpClient http)
             "/_stubid/v1/citizens", body, ControlJson.Default.CreateCitizenBody, ct);
 
         return await Control.ReadAsync(response, ControlJson.Default.StubIdCitizen, ct);
+    }
+
+    /// <summary>One person, or null if there is nobody by that name.</summary>
+    public async Task<StubIdCitizen?> FindAsync(string id, CancellationToken ct = default)
+    {
+        using var response = await http.GetAsync($"/_stubid/v1/citizens/{Uri.EscapeDataString(id)}", ct);
+
+        return response.StatusCode == HttpStatusCode.NotFound
+            ? null
+            : await Control.ReadAsync(response, ControlJson.Default.StubIdCitizen, ct);
+    }
+
+    /// <summary>
+    /// Changes what signing in as this person does. Null puts them back to approving.
+    /// </summary>
+    /// <remarks>
+    /// The rule is the only field that changes after creation, and deliberately: the personal
+    /// number is derived from the date of birth, so moving one without the other would produce
+    /// somebody whose number disagrees with their age. Returns null if there is nobody by that
+    /// name.
+    /// </remarks>
+    public async Task<StubIdCitizen?> SetRuleAsync(
+        string id, string? rule, CancellationToken ct = default)
+    {
+        using var response = await http.PatchAsJsonAsync(
+            $"/_stubid/v1/citizens/{Uri.EscapeDataString(id)}",
+            new SetRuleBody(rule),
+            ControlJson.Default.SetRuleBody,
+            ct);
+
+        return response.StatusCode == HttpStatusCode.NotFound
+            ? null
+            : await Control.ReadAsync(response, ControlJson.Default.StubIdCitizen, ct);
     }
 
     /// <summary>Removes one. False when there was nobody by that name.</summary>
@@ -199,6 +233,30 @@ public sealed class BehaviourApi(HttpClient http)
                 decision.Approve, decision.ClientId, decision.CitizenId, decision.ErrorCode, decision.Error),
             ControlJson.Default.EnqueueBody,
             ct);
+
+        await Control.EnsureAsync(response, ct);
+    }
+
+    /// <summary>
+    /// What is still queued, in the order it will be taken. Reading does not consume it.
+    /// </summary>
+    /// <remarks>
+    /// A decision queued by one test and spent by the next is the failure this tier otherwise
+    /// prevents, and it used to be invisible: the queue could be written and cleared and never
+    /// read. This is what a suite asserts on when an outcome arrives that nobody asked for.
+    /// </remarks>
+    public async Task<IReadOnlyList<QueuedDecision>> ListAsync(CancellationToken ct = default)
+    {
+        using var response = await http.GetAsync("/_stubid/v1/behaviours", ct);
+        var body = await Control.ReadAsync(response, ControlJson.Default.QueuedBody, ct);
+
+        return body.Queued;
+    }
+
+    /// <summary>Drops everything still queued.</summary>
+    public async Task ClearAsync(CancellationToken ct = default)
+    {
+        using var response = await http.DeleteAsync("/_stubid/v1/behaviours", ct);
 
         await Control.EnsureAsync(response, ct);
     }

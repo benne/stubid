@@ -106,6 +106,118 @@ public class ControlClientTests(WebApplicationFactory<Program> factory)
     }
 
     /// <summary>
+    /// The route the create response has been pointing at since it was written.
+    /// </summary>
+    /// <remarks>
+    /// <c>POST /citizens</c> answered 201 with a Location header naming a route that did not
+    /// exist, and the client carried a comment apologising for it. Both are fixed together, which
+    /// is the only way that apology gets to be deleted honestly.
+    /// </remarks>
+    [Fact]
+    public async Task A_created_citizen_can_be_read_back_from_the_route_that_was_promised()
+    {
+        using var stub = Connect();
+
+        var created = await stub.Citizens.CreateAsync(
+            new CitizenSpec { Name = "Sofie Lund", DateOfBirth = new DateOnly(1991, 6, 12) }, Ct);
+
+        var read = await stub.Citizens.FindAsync(created.Id, Ct);
+
+        Assert.NotNull(read);
+        Assert.Equal(created.Id, read.Id);
+        Assert.Equal(created.Cpr, read.Cpr);
+
+        Assert.Null(await stub.Citizens.FindAsync("nobody-by-that-name", Ct));
+    }
+
+    /// <summary>
+    /// Changing a rule changes what approving that person means, and clearing it puts them back.
+    /// </summary>
+    /// <remarks>
+    /// Asserted through a login rather than by reading the field back, because the field is not
+    /// the point: the rule is what approving as somebody does, and a test that only checked the
+    /// value would pass against a server that stored it and never consulted it.
+    /// </remarks>
+    [Fact]
+    public async Task A_rule_can_be_set_and_cleared_while_the_instance_runs()
+    {
+        using var stub = Manual();
+
+        var citizen = await stub.Citizens.CreateAsync(
+            new CitizenSpec { Name = "Jonas Riis", DateOfBirth = new DateOnly(1988, 2, 2) }, Ct);
+
+        Assert.Null(citizen.Rule);
+
+        var refusing = await stub.Citizens.SetRuleAsync(citizen.Id, "mitid_user_aborted", Ct);
+
+        Assert.Equal("mitid_user_aborted", refusing?.Rule);
+
+        var refused = await stub.Sessions.ApproveAsync(await Park(stub), citizen.Id, Ct);
+
+        Assert.Equal(SessionState.Failed, refused.State);
+
+        var restored = await stub.Citizens.SetRuleAsync(citizen.Id, null, Ct);
+
+        Assert.Null(restored?.Rule);
+
+        var approved = await stub.Sessions.ApproveAsync(await Park(stub), citizen.Id, Ct);
+
+        Assert.Equal(SessionState.Approved, approved.State);
+
+        Assert.Null(await stub.Citizens.SetRuleAsync("nobody-by-that-name", "anything", Ct));
+    }
+
+    /// <summary>
+    /// The queue can be read, and reading it does not spend it.
+    /// </summary>
+    /// <remarks>
+    /// The second half is the one that matters. A read that dequeued would turn the tool for
+    /// diagnosing a stray decision into the thing that consumes it, and the failure would look
+    /// exactly like the one somebody opened the page to investigate.
+    /// </remarks>
+    [Fact]
+    public async Task The_queue_can_be_read_without_being_spent()
+    {
+        using var stub = Manual();
+
+        await stub.Behaviour.EnqueueAsync(Decision.Refused("mitid_timeout"), Ct);
+
+        var first = await stub.Behaviour.ListAsync(Ct);
+        var second = await stub.Behaviour.ListAsync(Ct);
+
+        Assert.Equal(first.Count, second.Count);
+
+        var queued = Assert.Single(first);
+
+        Assert.Equal("*", queued.ClientId);
+        Assert.Equal(1, queued.Position);
+        Assert.False(queued.Approve);
+        Assert.Equal("mitid_timeout", queued.ErrorCode);
+
+        // And it is still there to be taken, which two reads could not prove on their own.
+        var session = await stub.Sessions.FindAsync(await Drive(stub), Ct);
+
+        Assert.Equal(SessionState.Failed, session?.State);
+        Assert.Empty(await stub.Behaviour.ListAsync(Ct));
+    }
+
+    [Fact]
+    public async Task Clearing_the_queue_leaves_nothing_for_the_next_login()
+    {
+        using var stub = Manual();
+
+        await stub.Behaviour.EnqueueAsync(Decision.Refused("mitid_timeout"), Ct);
+        await stub.Behaviour.ClearAsync(Ct);
+
+        Assert.Empty(await stub.Behaviour.ListAsync(Ct));
+
+        // Nothing decided it, so it waits, which is what this instance does with an undecided one.
+        var session = await stub.Sessions.FindAsync(await Drive(stub), Ct);
+
+        Assert.Equal(SessionState.AwaitingApproval, session?.State);
+    }
+
+    /// <summary>
     /// Reading the clock is a question an ordinary instance can answer.
     /// </summary>
     /// <remarks>
@@ -223,6 +335,33 @@ public class ControlClientTests(WebApplicationFactory<Program> factory)
             Ct);
 
         var sessions = await stub.Sessions.ListAsync(SessionState.AwaitingApproval, ct: Ct);
+
+        return sessions[0].Id;
+    }
+
+    /// <summary>
+    /// Starts a login and returns it whatever became of it.
+    /// </summary>
+    /// <remarks>
+    /// Distinct from <see cref="Park" />, which waits for one that is still undecided. A queued
+    /// decision resolves a login before the authorize response is written, so there is nothing
+    /// awaiting approval to find - which is the whole point of the tier.
+    /// </remarks>
+    private async Task<string> Drive(StubIdClient stub)
+    {
+        using var browser = _manual.CreateClient(
+            new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        using var response = await browser.GetAsync(
+            "/op/connect/authorize"
+            + $"?client_id={CodeClient}"
+            + "&response_type=code"
+            + "&redirect_uri=http://localhost:5099/callback"
+            + "&scope=openid%20mitid&state=s&nonce=n",
+            Ct);
+
+        // Newest first, which is the order the control API lists them in.
+        var sessions = await stub.Sessions.ListAsync(ct: Ct);
 
         return sessions[0].Id;
     }

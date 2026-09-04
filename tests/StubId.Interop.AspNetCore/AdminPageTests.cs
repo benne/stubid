@@ -377,6 +377,162 @@ public class AdminPageTests
         Assert.Equal(HttpStatusCode.NotFound, page.StatusCode);
     }
 
+    private static FormUrlEncodedContent Form(params (string Field, string Value)[] fields) =>
+        new(fields.Select(f => new KeyValuePair<string, string>(f.Field, f.Value)));
+
+    /// <summary>Somebody added, given a rule, and removed, all from the page.</summary>
+    [Fact]
+    public async Task People_can_be_added_ruled_and_removed_from_the_page()
+    {
+        using var stub = Parking();
+        var http = Browser(stub);
+
+        using var added = await http.PostAsync(
+            $"{Admin}/citizens",
+            Form(("name", "Mette Sofie Holm"), ("dateOfBirth", "1978-11-04"), ("id", "mette")),
+            Ct);
+
+        Assert.Equal(HttpStatusCode.SeeOther, added.StatusCode);
+
+        using var listed = await http.GetAsync($"{Admin}/citizens", Ct);
+        var page = await listed.Content.ReadAsStringAsync(Ct);
+
+        Assert.Contains("Mette Sofie Holm", page, StringComparison.Ordinal);
+
+        using var ruled = await http.PostAsync(
+            $"{Admin}/citizens/mette/rule", Form(("rule", "mitid_user_aborted")), Ct);
+
+        Assert.Equal(HttpStatusCode.SeeOther, ruled.StatusCode);
+
+        using var described = await http.GetAsync("/_stubid/v1/citizens/mette", Ct);
+        using var citizen = JsonDocument.Parse(await described.Content.ReadAsStringAsync(Ct));
+
+        Assert.Equal("mitid_user_aborted", citizen.RootElement.GetProperty("rule").GetString());
+
+        // An empty box is how a rule is taken off again.
+        using var cleared = await http.PostAsync(
+            $"{Admin}/citizens/mette/rule", Form(("rule", "")), Ct);
+
+        Assert.Equal(HttpStatusCode.SeeOther, cleared.StatusCode);
+
+        using var again = await http.GetAsync("/_stubid/v1/citizens/mette", Ct);
+        using var restored = JsonDocument.Parse(await again.Content.ReadAsStringAsync(Ct));
+
+        Assert.Equal(JsonValueKind.Null, restored.RootElement.GetProperty("rule").ValueKind);
+
+        // A form cannot send DELETE, so removing is a POST to a path that says so.
+        using var removed = await http.PostAsync($"{Admin}/citizens/mette/delete", null, Ct);
+
+        Assert.Equal(HttpStatusCode.SeeOther, removed.StatusCode);
+
+        using var gone = await http.GetAsync("/_stubid/v1/citizens/mette", Ct);
+
+        Assert.Equal(HttpStatusCode.NotFound, gone.StatusCode);
+    }
+
+    /// <summary>
+    /// A field the page cannot use is refused with a sentence, not a stack trace.
+    /// </summary>
+    /// <remarks>
+    /// The date goes through the same parse the control API does, and that one throws on bad
+    /// input and answers 500. A person typing into a form will get it wrong, so on this side it
+    /// is a message and the form again.
+    /// </remarks>
+    [Theory]
+    [InlineData("", "1985-03-29", "name")]
+    [InlineData("Nobody", "the fourth of never", "date")]
+    public async Task A_field_the_page_cannot_use_is_refused_with_a_sentence(
+        string name, string born, string problem)
+    {
+        using var stub = Parking();
+        var http = Browser(stub);
+
+        using var attempted = await http.PostAsync(
+            $"{Admin}/citizens", Form(("name", name), ("dateOfBirth", born)), Ct);
+
+        Assert.Equal(HttpStatusCode.SeeOther, attempted.StatusCode);
+
+        var back = attempted.Headers.Location!.ToString();
+
+        Assert.EndsWith($"?problem={problem}", back, StringComparison.Ordinal);
+
+        using var page = await http.GetAsync(back, Ct);
+        var html = await page.Content.ReadAsStringAsync(Ct);
+
+        Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+        Assert.Contains("<strong>", html, StringComparison.Ordinal);
+
+        // And nobody was invented out of what it could not read.
+        using var everybody = await http.GetAsync("/_stubid/v1/citizens", Ct);
+        using var people = JsonDocument.Parse(await everybody.Content.ReadAsStringAsync(Ct));
+
+        Assert.Equal(1, people.RootElement.GetArrayLength());
+    }
+
+    /// <summary>The queue, which nothing could look at before.</summary>
+    [Fact]
+    public async Task The_queue_can_be_seen_and_cleared_from_the_page()
+    {
+        using var stub = Parking();
+        var http = Browser(stub);
+
+        using var queued = await http.PostAsync(
+            $"{Admin}/behaviour",
+            Form(("outcome", "refuse"), ("errorCode", "mitid_timeout")),
+            Ct);
+
+        Assert.Equal(HttpStatusCode.SeeOther, queued.StatusCode);
+
+        using var page = await http.GetAsync($"{Admin}/behaviour", Ct);
+        var html = await page.Content.ReadAsStringAsync(Ct);
+
+        Assert.Contains("mitid_timeout", html, StringComparison.Ordinal);
+        Assert.Contains("any client", html, StringComparison.Ordinal);
+
+        // Reading the page must not have spent it, or the page would be the thing that broke the
+        // login somebody opened it to explain.
+        using var still = await http.GetAsync("/_stubid/v1/behaviours", Ct);
+        using var backlog = JsonDocument.Parse(await still.Content.ReadAsStringAsync(Ct));
+
+        Assert.Equal(1, backlog.RootElement.GetProperty("queued").GetArrayLength());
+
+        using var emptied = await http.PostAsync($"{Admin}/behaviour/clear", null, Ct);
+
+        Assert.Equal(HttpStatusCode.SeeOther, emptied.StatusCode);
+
+        using var after = await http.GetAsync("/_stubid/v1/behaviours", Ct);
+        using var nothing = JsonDocument.Parse(await after.Content.ReadAsStringAsync(Ct));
+
+        Assert.Equal(0, nothing.RootElement.GetProperty("queued").GetArrayLength());
+    }
+
+    /// <summary>
+    /// The navigation marks the section the reader is in, and only that one.
+    /// </summary>
+    /// <remarks>
+    /// Every admin path begins with the logins one, so a first-match rule marks that tab
+    /// everywhere and the navigation stops telling anyone anything.
+    /// </remarks>
+    [Theory]
+    [InlineData("/_stubid/admin", "Logins")]
+    [InlineData("/_stubid/admin/citizens", "People")]
+    [InlineData("/_stubid/admin/behaviour", "Queue")]
+    public async Task The_navigation_marks_one_section(string path, string section)
+    {
+        using var stub = Parking();
+        var http = Browser(stub);
+
+        using var page = await http.GetAsync(path, Ct);
+        var html = await page.Content.ReadAsStringAsync(Ct);
+
+        var marked = System.Text.RegularExpressions.Regex
+            .Matches(html, """<a href="[^"]+" aria-current="page">([^<]+)</a>""")
+            .Select(match => match.Groups[1].Value)
+            .ToList();
+
+        Assert.Equal([section], marked);
+    }
+
     /// <summary>The clock, which nothing reported before.</summary>
     [Fact]
     public async Task The_instance_reports_its_clock()

@@ -34,6 +34,22 @@ public sealed class EnqueuedDecisions : ISessionDecider
     /// </summary>
     public void Clear() => _queues.Clear();
 
+    /// <summary>What is still queued, per client, in the order it will be taken.</summary>
+    /// <remarks>
+    /// This tier was write-only until something wanted to show it, which left the most common
+    /// cause of a baffling outcome - a decision queued by one test and spent by the next - as the
+    /// one thing nobody could look at. Enumerating the queue takes a snapshot rather than
+    /// dequeuing, so asking what is in it cannot itself spend a decision.
+    /// </remarks>
+    public IReadOnlyList<(string ClientId, IReadOnlyList<Decision> Queued)> Snapshot() =>
+    [
+        .. _queues
+            .Select(queue => (
+                ClientId: queue.Key, Queued: (IReadOnlyList<Decision>)queue.Value.ToArray()))
+            .Where(queue => queue.Queued.Count > 0)
+            .OrderBy(queue => queue.ClientId, StringComparer.Ordinal),
+    ];
+
     public Decision? Decide(SessionContext context, out string reason)
     {
         foreach (var key in new[] { context.ClientId, "*" })
