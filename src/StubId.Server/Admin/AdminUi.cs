@@ -1,4 +1,5 @@
 using System.Globalization;
+using Microsoft.Extensions.Time.Testing;
 using StubId.Server.Sessions;
 using StubId.Wire;
 
@@ -58,6 +59,12 @@ internal static class AdminUi
         app.MapGet($"{Root}/behaviour", (
             HttpContext http, EnqueuedDecisions queue, Citizens citizens, string? problem) =>
             Layout.Page(http, "Queued decisions", Behaviours(queue, citizens, problem)));
+
+        app.MapGet($"{Root}/emulated", (
+            HttpContext http, IServiceProvider services, BrokerState state, Keys keys,
+            PublicBaseUrl address, TimeProvider clock, ProfileEndpointDataSource routes) =>
+            Layout.Page(http, "What this build emulates", Emulated(
+                services.GetService<ServerCertificate>(), state, keys, address, clock, routes)));
 
         // The form is read rather than bound. Binding IFormCollection attaches anti-forgery
         // metadata to the endpoint, and the framework then refuses to serve it without
@@ -503,6 +510,154 @@ internal static class AdminUi
             </form>
             """);
     }
+
+    /// <summary>
+    /// What this build is, generated rather than written.
+    /// </summary>
+    /// <remarks>
+    /// Every table here is read from something the instance is actually running: the routes from
+    /// the ones the profile loaded, the ledger from the attributes on the code that emits each
+    /// answer, the clients from the state that refuses a fourth. A page maintained beside those
+    /// would be right on the day it was written and wrong afterwards, and nothing would say when.
+    /// </remarks>
+    private static Html Emulated(
+        ServerCertificate? tls,
+        BrokerState state,
+        Keys keys,
+        PublicBaseUrl address,
+        TimeProvider clock,
+        ProfileEndpointDataSource routes)
+    {
+        // Value, not the throwing accessor: an instance that has not been told its address
+        // answers 503 to everything that needs one, and this page is where somebody goes to find
+        // out why.
+        var told = address.Value;
+
+        var instance = H($"""
+            <table>
+            {Row("Answers as", told)}
+            {Row("Clock", $"{Moment(clock.GetUtcNow())} UTC")}
+            {Row("Clock can be moved", clock is FakeTimeProvider ? "yes" : "no")}
+            {Row("TLS", tls is null ? "off - plain HTTP only" : tls.Certificate.Subject)}
+            {Row("Certificate expires", tls is null ? null : Day(tls.Certificate.NotAfter))}
+            </table>
+            {When(told is null, H($"""
+                <p><strong>This instance has not been told its own address.</strong> Everything
+                that needs an issuer answers 503 until something sets one, which is what a test
+                module does after Docker has published the port.</p>
+                """))}
+            """);
+
+        var signing = H($"""
+            <table>
+            <tr><th>Key</th><th>For</th></tr>
+            {Join(keys.Ring.Keys.Select(key => H($"""
+                <tr><td><code>{key.Kid}</code></td><td>{key.UseValue}</td></tr>
+                """)))}
+            </table>
+            """);
+
+        var clients = H($"""
+            <table>
+            <tr><th>Client</th><th>Asks for</th><th>Organisation</th></tr>
+            {Join(state.Clients.Values
+                .OrderBy(client => client.ClientId, StringComparer.Ordinal)
+                .Select(client => H($"""
+                    <tr>
+                    <td><code>{client.ClientId}</code></td>
+                    <td><code>{string.Join(", ", client.ResponseTypes)}</code></td>
+                    <td class="dim">{client.Organisation}</td>
+                    </tr>
+                    """)))}
+            </table>
+            """);
+
+        var table = H($"""
+            <table>
+            <tr><th>Path</th><th>Methods</th><th>Role</th></tr>
+            {Join(routes.Endpoints
+                .OfType<RouteEndpoint>()
+                .Select(endpoint => (
+                    Pattern: endpoint.RoutePattern.RawText ?? "",
+                    Methods: endpoint.Metadata.GetMetadata<HttpMethodMetadata>()?.HttpMethods ?? [],
+                    Role: endpoint.Metadata.GetMetadata<RouteRules>()?.Role.Name))
+                .OrderBy(route => route.Pattern, StringComparer.Ordinal)
+                .Select(route => H($"""
+                    <tr>
+                    <td><code>{route.Pattern}</code></td>
+                    <td class="dim">{string.Join(", ", route.Methods)}</td>
+                    <td>{route.Role}</td>
+                    </tr>
+                    """)))}
+            </table>
+            """);
+
+        return H($"""
+            <h2>This instance</h2>
+            {instance}
+
+            <h2>Signing keys</h2>
+            {signing}
+
+            <h2>Clients it publishes</h2>
+            <p class="dim">Three, fixed, and it refuses any other client id outright. The secret is
+            not checked.</p>
+            {clients}
+
+            <h2>Routes it answers on</h2>
+            {table}
+
+            <h2>Where it is not the real thing</h2>
+            {Ledger()}
+            """);
+    }
+
+    /// <summary>
+    /// The fidelity ledger, read from the attributes rather than from a list of them.
+    /// </summary>
+    /// <remarks>
+    /// Ordered so the entries somebody needs to know about come first: what is not emulated at
+    /// all, then what diverges on purpose, then what rests on documentation, and only then what a
+    /// recording confirmed. A count is never written down here, because the day it stops matching
+    /// is the day nobody notices.
+    /// </remarks>
+    private static Html Ledger()
+    {
+        var entries = FidelityLedger.Read(typeof(Tokens).Assembly, typeof(JwsWriter).Assembly);
+
+        return H($"""
+            <table>
+            <tr><th>What</th><th>How close</th><th>On what evidence</th><th>Because</th></tr>
+            {Join(entries
+                .OrderBy(entry => Weight(entry.Provenance))
+                .ThenBy(entry => entry.Subject, StringComparer.Ordinal)
+                .Select(entry => H($"""
+                    <tr>
+                    <td><code>{entry.Subject}</code></td>
+                    <td>{entry.Tier}, {entry.Provenance}</td>
+                    <td class="dim">{entry.Evidence ?? "-"}</td>
+                    <td class="dim">{entry.Reason ?? "-"}</td>
+                    </tr>
+                    """)))}
+            </table>
+            """);
+    }
+
+    // What a reader needs to know about first, which is the opposite of alphabetical.
+    private static int Weight(string provenance) => provenance switch
+    {
+        "NotEmulated" => 0,
+        "Divergent" => 1,
+        "DocsConflict" => 2,
+        "Assumed" => 3,
+        "DocsConfirmed" => 4,
+        _ => 5,
+    };
+
+    private static Html When(bool shown, Html markup) => shown ? markup : Html.Empty;
+
+    private static string Day(DateTime when) =>
+        when.ToUniversalTime().ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
     // Codes rather than messages, so nothing a caller typed is reflected back into a page.
     private static Html Note(string? problem) => problem switch

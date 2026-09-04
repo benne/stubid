@@ -76,6 +76,38 @@ public sealed class StubIdClient : IDisposable
         return body?.Entries ?? [];
     }
 
+    /// <summary>
+    /// The clients this broker publishes, which cannot be added to.
+    /// </summary>
+    /// <remarks>
+    /// Read rather than written down: a suite that pins one of these in a constant has pinned a
+    /// GUID it found by grepping, and finding out it moved is a failure at the authorize hop
+    /// rather than here.
+    /// </remarks>
+    public async Task<IReadOnlyList<RegisteredClient>> ClientsAsync(CancellationToken ct = default)
+    {
+        using var response = await Http.GetAsync("/_stubid/v1/clients", ct);
+        var body = await Control.ReadAsync(response, ControlJson.Default.ClientsBody, ct);
+
+        return body.Clients;
+    }
+
+    /// <summary>
+    /// Every route this build answers on, read from the ones it actually loaded.
+    /// </summary>
+    /// <remarks>
+    /// The profile declares them and the engine builds them, so this is what the instance will
+    /// really match rather than a list maintained beside it. A route a profile stopped declaring
+    /// stops appearing here, which a hand-written table would not.
+    /// </remarks>
+    public async Task<IReadOnlyList<EmulatedRoute>> RoutesAsync(CancellationToken ct = default)
+    {
+        using var response = await Http.GetAsync("/_stubid/v1/routes", ct);
+        var body = await Control.ReadAsync(response, ControlJson.Default.RoutesBody, ct);
+
+        return body.Routes;
+    }
+
     /// <summary>The process answers.</summary>
     /// <remarks>Never throws: this is a poll predicate, and one that throws is unusable.</remarks>
     public Task<bool> IsLiveAsync(CancellationToken ct = default) =>

@@ -23,6 +23,38 @@ public static class ControlApi
             entries = FidelityLedger.Read(typeof(Tokens).Assembly, typeof(JwsWriter).Assembly),
         }));
 
+        // The three clients this broker publishes, which a reader currently finds by grepping the
+        // source for a GUID. They are the emulated surface rather than state: read-only, and no
+        // route registers a fourth, because the real broker's are fixed too.
+        api.MapGet("/clients", (BrokerState state) => Results.Json(new
+        {
+            clients = state.Clients.Values
+                .OrderBy(client => client.ClientId, StringComparer.Ordinal)
+                .Select(client => new
+                {
+                    client.ClientId,
+                    client.ResponseTypes,
+                    client.Organisation,
+                }),
+        }));
+
+        // What this build answers on, read from the routes it actually loaded rather than from a
+        // list somebody maintains beside them. A profile that stopped declaring a route stops
+        // showing one here, which a hand-written table would not.
+        api.MapGet("/routes", (ProfileEndpointDataSource routes) => Results.Json(new
+        {
+            routes = routes.Endpoints
+                .OfType<RouteEndpoint>()
+                .Select(endpoint => new
+                {
+                    pattern = endpoint.RoutePattern.RawText,
+                    methods = endpoint.Metadata.GetMetadata<HttpMethodMetadata>()?.HttpMethods
+                        ?? (IReadOnlyList<string>)[],
+                    role = endpoint.Metadata.GetMetadata<RouteRules>()?.Role.Name,
+                })
+                .OrderBy(route => route.pattern, StringComparer.Ordinal),
+        }));
+
         // Sessions
         api.MapGet("/sessions", (SessionStore sessions, string? state, string? clientId) =>
             Results.Json(sessions.Matching(state, clientId).Select(Describe)));

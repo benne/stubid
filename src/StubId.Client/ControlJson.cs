@@ -18,6 +18,8 @@ namespace StubId.Client;
 [JsonSerializable(typeof(SessionExplanation))]
 [JsonSerializable(typeof(StubIdClock))]
 [JsonSerializable(typeof(QueuedBody))]
+[JsonSerializable(typeof(ClientsBody))]
+[JsonSerializable(typeof(RoutesBody))]
 [JsonSerializable(typeof(SetRuleBody))]
 [JsonSerializable(typeof(CreateCitizenBody))]
 [JsonSerializable(typeof(ApproveBody))]
@@ -64,5 +66,9 @@ internal sealed record NowBody(DateTimeOffset Now);
 internal sealed record SetRuleBody(string? Rule);
 
 internal sealed record QueuedBody(IReadOnlyList<QueuedDecision> Queued);
+
+internal sealed record ClientsBody(IReadOnlyList<RegisteredClient> Clients);
+
+internal sealed record RoutesBody(IReadOnlyList<EmulatedRoute> Routes);
 
 internal sealed record EntriesBody(IReadOnlyList<FidelityEntry> Entries);

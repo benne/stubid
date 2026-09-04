@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.AspNetCore.Mvc.Testing;
 using StubId.Client;
 
@@ -215,6 +216,49 @@ public class ControlClientTests(WebApplicationFactory<Program> factory)
         var session = await stub.Sessions.FindAsync(await Drive(stub), Ct);
 
         Assert.Equal(SessionState.AwaitingApproval, session?.State);
+    }
+
+    /// <summary>The three clients, which a reader otherwise finds by grepping for a GUID.</summary>
+    [Fact]
+    public async Task The_client_reads_the_clients_it_is_allowed_to_use()
+    {
+        using var stub = Connect();
+
+        var clients = await stub.ClientsAsync(Ct);
+
+        Assert.Equal(3, clients.Count);
+        Assert.Contains(clients, client => client.ClientId == CodeClient);
+        Assert.All(clients, client => Assert.NotEmpty(client.ResponseTypes));
+        Assert.All(clients, client => Assert.Equal("published-test-clients", client.Organisation));
+    }
+
+    /// <summary>
+    /// The routes it reports are the routes it answers on.
+    /// </summary>
+    /// <remarks>
+    /// The point of reading them from the loaded endpoints rather than from a list is that the
+    /// list cannot go stale. Proving that means taking one of the reported paths and fetching it:
+    /// a table nobody dials is a table that can quietly describe a build that no longer exists.
+    /// </remarks>
+    [Fact]
+    public async Task The_routes_it_reports_are_the_routes_it_answers_on()
+    {
+        using var stub = Connect();
+
+        var routes = await stub.RoutesAsync(Ct);
+        var discovery = Assert.Single(routes, route => route.Role == "discovery");
+
+        Assert.Contains("GET", discovery.Methods);
+
+        using var browser = _automatic.CreateClient();
+        using var answered = await browser.GetAsync(discovery.Pattern, Ct);
+
+        Assert.Equal(HttpStatusCode.OK, answered.StatusCode);
+
+        // And the roles are the engine's own vocabulary, so a caller can find a route without
+        // knowing the path the broker chose for it.
+        Assert.Contains(routes, route => route.Role == "token");
+        Assert.Contains(routes, route => route.Role?.StartsWith("extra:", StringComparison.Ordinal) == true);
     }
 
     /// <summary>
