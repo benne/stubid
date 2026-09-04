@@ -28,7 +28,21 @@ internal static class AdminUi
         app.MapGet(Root, (
             HttpContext http, SessionStore sessions, TimeProvider clock,
             string? state, string? clientId) =>
-            Layout.Page(http, "Logins", Logins(sessions, clock, state, clientId)));
+            Layout.Page(http, "Logins", Logins(http, sessions, clock, state, clientId)));
+
+        // The rows on their own, which is what the page's own script asks for every couple of
+        // seconds. A fragment rather than JSON: the table is rendered in one place, by the code
+        // that already knows how to shorten an id and count down two different deadlines, and a
+        // second renderer in JavaScript would be a second set of those rules to keep agreeing.
+        app.MapGet($"{Root}/rows", (
+            HttpContext http, SessionStore sessions, TimeProvider clock,
+            string? state, string? clientId) =>
+        {
+            http.Response.Headers.CacheControl = "no-store";
+
+            return Results.Text(
+                Rows(sessions, clock, state, clientId).Value, "text/html; charset=utf-8");
+        });
 
         app.MapGet($"{Root}/sessions/{{id}}", (
             HttpContext http, SessionStore sessions, Citizens citizens, TimeProvider clock,
@@ -88,7 +102,50 @@ internal static class AdminUi
         return Results.Empty;
     }
 
+    /// <summary>
+    /// The page: the rows, and the small script that keeps them current.
+    /// </summary>
+    /// <remarks>
+    /// Everything here works with no JavaScript at all - the table is rendered by the server and
+    /// the Refresh link reloads it. The script only replaces the refreshing a person would
+    /// otherwise do by hand, which is why it can fail silently: an instance that has gone away
+    /// leaves the last table on screen and the next tick tries again.
+    /// </remarks>
     private static Html Logins(
+        HttpContext http, SessionStore sessions, TimeProvider clock,
+        string? state, string? clientId) => H($"""
+        <p class="dim">
+        <a href="{http.Request.Path + http.Request.QueryString}">Refresh</a>
+        <span id="live" hidden>- updating every two seconds</span>
+        </p>
+        <div id="logins">{Rows(sessions, clock, state, clientId)}</div>
+        <script>{new Html(Live)}</script>
+        """);
+
+    private const string Live = """
+
+        (function () {
+          var board = document.getElementById('logins');
+          var last = null;
+
+          document.getElementById('live').hidden = false;
+
+          setInterval(function () {
+            fetch('/_stubid/admin/rows' + location.search)
+              .then(function (answer) { return answer.ok ? answer.text() : null; })
+              .then(function (rows) {
+                if (rows !== null && rows !== last) {
+                  last = rows;
+                  board.innerHTML = rows;
+                }
+              })
+              .catch(function () { /* the instance went away; the next tick tries again */ });
+          }, 2000);
+        })();
+
+        """;
+
+    private static Html Rows(
         SessionStore sessions, TimeProvider clock, string? state, string? clientId)
     {
         // The same filter the control API answers to, and the same method: two copies of it would
@@ -97,12 +154,18 @@ internal static class AdminUi
 
         if (matching.Count == 0)
         {
-            return H($"""
-                <p class="empty">No logins yet. Start one from your application and it appears here.</p>
-                <p class="dim">A login parks and waits for a decision only when the instance was
-                started with <code>StubId__ApproveAutomatically=false</code>. Otherwise it is
-                decided before you can see it, and what you get here is the record.</p>
-                """);
+            // Told apart, because they call for different things. Nothing here at all means start
+            // a login; nothing matching means widen the filter, and saying "no logins yet" to
+            // somebody looking at an instance full of them is how a page loses their trust.
+            return sessions.Matching(null, null).Count > 0
+                ? H($"""<p class="empty">No login matches that filter.</p>""")
+                : H($"""
+                    <p class="empty">No logins yet. Start one from your application and it appears
+                    here.</p>
+                    <p class="dim">A login parks and waits for a decision only when the instance
+                    was started with <code>StubId__ApproveAutomatically=false</code>. Otherwise it
+                    is decided before you can see it, and what you get here is the record.</p>
+                    """);
         }
 
         return H($"""

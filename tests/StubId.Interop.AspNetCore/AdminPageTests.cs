@@ -280,6 +280,92 @@ public class AdminPageTests
         Assert.DoesNotContain("<button type=\"submit\">Approve</button>", html, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The rows are served on their own, which is what keeps the table current.
+    /// </summary>
+    /// <remarks>
+    /// A fragment rather than JSON, so the table has one renderer. Shortening an id and counting
+    /// down two different deadlines are rules the server already holds, and a second copy of them
+    /// in a browser would be a second thing to keep agreeing - with no test able to see it drift.
+    /// </remarks>
+    [Fact]
+    public async Task The_rows_are_served_on_their_own()
+    {
+        using var stub = Parking();
+        var http = Browser(stub);
+
+        var id = await Park(http);
+
+        using var rows = await http.GetAsync($"{Admin}/rows", Ct);
+        var fragment = await rows.Content.ReadAsStringAsync(Ct);
+
+        Assert.Equal(HttpStatusCode.OK, rows.StatusCode);
+        Assert.Equal("text/html; charset=utf-8", rows.Content.Headers.ContentType?.ToString());
+        Assert.Equal("no-store", rows.Headers.CacheControl?.ToString());
+
+        // The rows and nothing round them: this is swapped into a page that already has a head,
+        // a navigation and a heading of its own.
+        Assert.Contains(id, fragment, StringComparison.Ordinal);
+        Assert.StartsWith("<table>", fragment, StringComparison.Ordinal);
+        Assert.DoesNotContain("<html", fragment, StringComparison.Ordinal);
+        Assert.DoesNotContain("<nav>", fragment, StringComparison.Ordinal);
+    }
+
+    /// <summary>The page carries the table before any script has run.</summary>
+    /// <remarks>
+    /// The script replaces the refreshing somebody would otherwise do by hand, and nothing else.
+    /// With no JavaScript the table is still there, the Refresh link still reloads it, and the
+    /// line claiming it updates on its own stays hidden - which is the only honest arrangement,
+    /// because that line would be a lie in a browser that never ran the script.
+    /// </remarks>
+    [Fact]
+    public async Task The_page_works_before_its_script_does()
+    {
+        using var stub = Parking();
+        var http = Browser(stub);
+
+        var id = await Park(http);
+
+        using var page = await http.GetAsync($"{Admin}?state=AwaitingApproval", Ct);
+        var html = await page.Content.ReadAsStringAsync(Ct);
+
+        Assert.Contains(id, html, StringComparison.Ordinal);
+        Assert.Contains("""<div id="logins">""", html, StringComparison.Ordinal);
+
+        // Reloading by hand keeps whatever the reader was looking at.
+        Assert.Contains(
+            """<a href="/_stubid/admin?state=AwaitingApproval">Refresh</a>""",
+            html,
+            StringComparison.Ordinal);
+
+        // Hidden until the script reveals it, because a browser that never ran the script would
+        // otherwise be told the table updates on its own when it does not.
+        Assert.Contains("""<span id="live" hidden>""", html, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A filter that matches nothing says so, rather than claiming the instance is empty.
+    /// </summary>
+    /// <remarks>
+    /// The two call for different things - start a login, or widen the filter - and telling
+    /// somebody staring at an instance full of logins that there are none is how a page stops
+    /// being believed.
+    /// </remarks>
+    [Fact]
+    public async Task A_filter_that_matches_nothing_does_not_claim_the_instance_is_empty()
+    {
+        using var stub = Parking();
+        var http = Browser(stub);
+
+        await Park(http);
+
+        using var page = await http.GetAsync($"{Admin}?state=Redeemed", Ct);
+        var html = await page.Content.ReadAsStringAsync(Ct);
+
+        Assert.Contains("No login matches that filter", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("No logins yet", html, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task A_login_that_is_not_here_is_not_found()
     {

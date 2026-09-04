@@ -157,6 +157,18 @@ uniquely worth writing.
 
 The callback then arrives as a `POST`, so read `request.postData()` rather than the URL.
 
+## So does the admin page
+
+StubID's own admin page keeps its table current with a small script that asks the instance for the
+rows every couple of seconds. Everything else about that page is asserted in memory against a test
+server, in milliseconds and on both operating systems; that the script runs at all, reaches the
+instance and puts what comes back on the page is not assertable anywhere without a browser.
+
+The suite opens the page, leaves a mark on the window object, drives an ordinary sign-in in another
+tab, and waits for a row to appear. Then it checks the mark is still there. A page that had
+reloaded would show the new row too, and would prove nothing about the script — which is the same
+reason the certificate checks refuse first and trust afterwards.
+
 ## What trusting it costs you locally
 
 `~/.pki/nssdb` is your own Chrome and Edge trust store, not a test fixture. What you add there,
