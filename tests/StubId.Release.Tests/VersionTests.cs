@@ -115,6 +115,52 @@ public class VersionTests
             + string.Join(Environment.NewLine, wrong));
     }
 
+    /// <summary>Every package the documentation tells a reader to install is one we publish.</summary>
+    /// <remarks>
+    /// The guides named three packages as things a reader uses and gave no way to obtain any of
+    /// them, so this is new ground rather than a regression guard. What it catches is a
+    /// mistyped identifier, a line naming the Idura spike, and a line surviving a release that
+    /// stopped shipping the package it names. It cannot catch a package that failed to reach
+    /// nuget.org - only consuming one from outside can, and nothing here does that yet.
+    /// </remarks>
+    [Fact]
+    public void Every_package_the_documentation_tells_a_reader_to_install_is_one_we_publish()
+    {
+        var install = new Regex(@"dotnet add package (StubId\.[A-Za-z.]+)");
+        List<string> wrong = [];
+        var found = 0;
+
+        foreach (var (relative, full) in Scanned())
+        {
+            if (!relative.StartsWith("docs/", StringComparison.Ordinal) && relative != "README.md")
+            {
+                continue;
+            }
+
+            foreach (Match match in install.Matches(File.ReadAllText(full)))
+            {
+                found++;
+                var id = match.Groups[1].Value;
+                var project = Path.Combine(Repository.Root, "src", id, $"{id}.csproj");
+
+                if (!File.Exists(project))
+                {
+                    wrong.Add($"{relative}: {id} is not a project under src/");
+                }
+                else if (File.ReadAllText(project).Contains("<IsPackable>false</IsPackable>",
+                             StringComparison.Ordinal))
+                {
+                    wrong.Add($"{relative}: {id} is not published");
+                }
+            }
+        }
+
+        Assert.True(wrong.Count == 0, string.Join(Environment.NewLine, wrong));
+
+        // A regex that quietly stopped matching would pass this test by finding nothing.
+        Assert.True(found > 0, "no install instruction was found in the documentation at all");
+    }
+
     /// <summary>
     /// What a reader could copy from, which is what has to be right.
     /// </summary>

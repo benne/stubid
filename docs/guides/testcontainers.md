@@ -5,6 +5,10 @@ inside the test process instead, with no container at all, and is [its own guide
 `StubId.Client` is the control API on its own, for a suite that already has an instance running
 somewhere.
 
+```
+dotnet add package StubId.Testing
+```
+
 ```csharp
 await using var stub = new StubIdBuilder()
     .WithControllableClock()
@@ -157,6 +161,12 @@ new StubIdBuilder("ghcr.io/benne/stubid:2026.09.1")
 
 Pin a version. Fidelity corrections change what StubID puts on the wire, and a suite asserting on
 those bytes is a suite a floating tag can break.
+
+The same release is spelled two ways, and both are correct. The container tag keeps its padding,
+because tags sort as text and `2026.09` precedes `2026.10` where `2026.9` would not. NuGet reads a
+version as numbers and drops the zero, so the package is `2026.9.1` — which is what a bare
+`dotnet add package` writes into a project file. Asking for `--version 2026.09.1` resolves the same
+package and is written back the way you typed it.
 
 ## What a test run costs
 

@@ -4,6 +4,10 @@
 There is no container, no port and no listener, so there is also nothing to install, nothing to
 wait for and nothing to clean up.
 
+```
+dotnet add package StubId.InProcess
+```
+
 ```csharp
 await using var stub = new StubIdHostBuilder().Build();
 await stub.StartAsync();

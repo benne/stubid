@@ -10,8 +10,7 @@ side. So does a real browser, in Chromium, Firefox and WebKit, which is the step
 makes impossible. Tests can create citizens,
 decide how each login resolves, and move the clock to force a timeout, and a .NET suite can drive
 all of that from code — against a container, or against an instance hosted inside the test process
-with no Docker at all. What is missing is the admin interface and published packages —
-nothing is on NuGet or GHCR yet. See [docs/roadmap.md](https://github.com/benne/stubid/blob/master/docs/roadmap.md).
+with no Docker at all. What is missing is the admin interface. See [docs/roadmap.md](https://github.com/benne/stubid/blob/master/docs/roadmap.md).
 
 ## The problem
 
