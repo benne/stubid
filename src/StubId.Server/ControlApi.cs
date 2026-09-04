@@ -182,6 +182,11 @@ public static class ControlApi
             return Results.NoContent();
         });
 
+        // What this instance has handed out, and never what it handed out. The value of a code or
+        // an access token is the credential itself, so nothing here reads one: an entry lines up
+        // against a login by its session id, which is public already.
+        api.MapGet("/issued", (BrokerState state) => Results.Json(new { issued = state.Issued() }));
+
         // Time.
         //
         // Reading it is always allowed, and every argument about a timeout starts by asking what
@@ -212,10 +217,18 @@ public static class ControlApi
 
         // Protocol state, not setup: sessions and anything still queued go, and the citizens
         // a suite created stay, so a fixture built once survives the reset between tests.
-        api.MapPost("/reset", (SessionStore sessions, EnqueuedDecisions queue) =>
+        api.MapPost("/reset", (
+            SessionStore sessions, EnqueuedDecisions queue, BrokerState state, CprMatch attempts) =>
         {
             sessions.Clear();
             queue.Clear();
+
+            // Added later than the two above, and it is a change rather than a completion: a
+            // reset used to leave codes, access tokens and pushed requests standing, so one taken
+            // before it could still be redeemed after. Nothing here is setup a suite builds once,
+            // which is the line this endpoint draws - and which is why the citizens still stay.
+            state.Forget();
+            attempts.Clear();
 
             return Results.NoContent();
         });

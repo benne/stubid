@@ -60,6 +60,9 @@ internal static class AdminUi
             HttpContext http, EnqueuedDecisions queue, Citizens citizens, string? problem) =>
             Layout.Page(http, "Queued decisions", Behaviours(queue, citizens, problem)));
 
+        app.MapGet($"{Root}/issued", (HttpContext http, BrokerState state) =>
+            Layout.Page(http, "What it has handed out", Issued(state)));
+
         app.MapGet($"{Root}/emulated", (
             HttpContext http, IServiceProvider services, BrokerState state, Keys keys,
             PublicBaseUrl address, TimeProvider clock, ProfileEndpointDataSource routes) =>
@@ -510,6 +513,55 @@ internal static class AdminUi
             </form>
             """);
     }
+
+    /// <summary>
+    /// The codes, tokens and pushed requests this instance has handed out.
+    /// </summary>
+    /// <remarks>
+    /// Never the values. A code and an access token are the keys of the dictionaries they live
+    /// in and both are credentials; printing one on an unauthenticated page would turn "see what
+    /// this instance issued" into "issue yourself a token as anybody", which is a worse problem
+    /// than the one this page helps with. The session id is what lines an entry up against a
+    /// login, and that is public already.
+    /// </remarks>
+    private static Html Issued(BrokerState state)
+    {
+        var issued = state.Issued();
+
+        if (issued.Count == 0)
+        {
+            return H($"""
+                <p class="empty">Nothing has been handed out yet.</p>
+                <p class="dim">A pushed request appears when a client pushes one, a code when a
+                login is collected, and an access token when a code is exchanged.</p>
+                """);
+        }
+
+        return H($"""
+            <p class="dim">What was handed out, and never what it was. A code and an access token
+            are credentials, so this page shows who got one and for which login rather than the
+            value itself.</p>
+            <table>
+            <tr><th>What</th><th>For</th><th>As</th><th>Login</th><th>When</th><th>Until</th>
+            <th>Scope</th></tr>
+            {Join(issued.Select(artefact => H($"""
+                <tr>
+                <td>{artefact.Kind}</td>
+                <td><code>{Short(artefact.ClientId)}</code></td>
+                <td>{artefact.CitizenId ?? "-"}</td>
+                <td>{Login(artefact.SessionId)}</td>
+                <td class="dim">{(artefact.AuthenticatedAt is { } at ? Moment(at) : "-")}</td>
+                <td class="dim">{(artefact.Expires is { } until ? Moment(until) : "-")}</td>
+                <td class="dim">{artefact.Scope ?? "-"}</td>
+                </tr>
+                """)))}
+            </table>
+            """);
+    }
+
+    private static Html Login(string? sessionId) => sessionId is null
+        ? H($"<span class=\"dim\">-</span>")
+        : H($"""<a href="{Root}/sessions/{Uri.EscapeDataString(sessionId)}"><code>{Short(sessionId)}</code></a>""");
 
     /// <summary>
     /// What this build is, generated rather than written.

@@ -251,6 +251,81 @@ public sealed class BrokerState
     private readonly ConcurrentDictionary<string, IssuedCode> _codes = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, IssuedAccessToken> _accessTokens = new(StringComparer.Ordinal);
 
+    /// <summary>
+    /// What has been handed out, newest first, with none of the values in it.
+    /// </summary>
+    /// <remarks>
+    /// These three dictionaries were unreadable from outside, which made "why did my client get a
+    /// token it should not have" a question only a debugger could answer. The keys are the
+    /// credentials, so nothing here reads one: see <see cref="IssuedArtefact" />.
+    /// </remarks>
+    public IReadOnlyList<IssuedArtefact> Issued() =>
+    [
+        .. _pushed.Values
+            .Select(pushed => new IssuedArtefact(
+                "pushed request",
+                pushed.Request.ClientId,
+                CitizenId: null,
+                SessionId: null,
+                AuthenticatedAt: null,
+                pushed.Expires,
+                pushed.Request.Scope))
+            .Concat(_codes.Values.Select(code => new IssuedArtefact(
+                "code",
+                code.Request.ClientId,
+                code.Citizen.Id,
+                code.SessionId,
+                code.AuthenticatedAt,
+                Expires: null,
+                code.Request.Scope)))
+            .Concat(_accessTokens.Values.Select(token => new IssuedArtefact(
+                "access token",
+                token.ClientId,
+                token.Citizen.Id,
+                token.SessionId,
+                token.AuthenticatedAt,
+                Expires: null,
+                token.Scope)))
+            .OrderByDescending(artefact => artefact.AuthenticatedAt ?? DateTimeOffset.MinValue)
+            .ThenBy(artefact => artefact.Kind, StringComparer.Ordinal),
+    ];
+
+    /// <summary>
+    /// Drops everything handed out so far.
+    /// </summary>
+    /// <remarks>
+    /// A reset used to clear the sessions and leave these standing, which meant a code from
+    /// before it could still be redeemed and the counts on a page survived the button that
+    /// claimed to clear them. Nothing here is setup a suite builds once - unlike the citizens,
+    /// which a reset keeps on purpose.
+    /// </remarks>
+    public void Forget()
+    {
+        _pushed.Clear();
+        _codes.Clear();
+        _accessTokens.Clear();
+    }
+
+/// <summary>
+/// One thing this instance has handed out, described without handing it out again.
+/// </summary>
+/// <remarks>
+/// The value is deliberately absent, and there is not even a prefix of it. A code and an access
+/// token are the keys of the dictionaries they live in, and both are credentials: a page that
+/// printed one would turn "see what this instance issued" into "issue yourself a token as
+/// anybody", on a surface that asks nobody who they are. What lines an entry up against a login
+/// is its session id, which is already public.
+/// </remarks>
+/// <param name="Kind">A pushed request, a code, or an access token.</param>
+public sealed record IssuedArtefact(
+    string Kind,
+    string ClientId,
+    string? CitizenId,
+    string? SessionId,
+    DateTimeOffset? AuthenticatedAt,
+    DateTimeOffset? Expires,
+    string? Scope);
+
 /// <summary>A registered client, and the organisation it belongs to.</summary>
 /// <param name="Organisation">
 /// What the subject is scoped to. Two clients of one organisation receive the same subject

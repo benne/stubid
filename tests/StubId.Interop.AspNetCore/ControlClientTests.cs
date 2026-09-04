@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using StubId.Client;
 
@@ -216,6 +217,126 @@ public class ControlClientTests(WebApplicationFactory<Program> factory)
         var session = await stub.Sessions.FindAsync(await Drive(stub), Ct);
 
         Assert.Equal(SessionState.AwaitingApproval, session?.State);
+    }
+
+    /// <summary>
+    /// What was handed out is reported, and what it was never is.
+    /// </summary>
+    /// <remarks>
+    /// The second half is the whole point and is asserted the only way that means anything: the
+    /// code is redeemed for real tokens, and then every string this surface returns is checked
+    /// against the actual code, the actual access token and the id_token. A page that leaked one
+    /// would turn "see what this instance issued" into "issue yourself a token as anybody" on a
+    /// surface that asks nobody who they are.
+    /// </remarks>
+    [Fact]
+    public async Task What_was_issued_is_reported_and_never_the_value_of_it()
+    {
+        using var stub = Connect();
+        using var browser = _automatic.CreateClient(
+            new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        using var authorized = await browser.GetAsync(
+            "/op/connect/authorize"
+            + $"?client_id={CodeClient}&response_type=code"
+            + "&redirect_uri=http://localhost:5099/callback&scope=openid%20mitid&state=s&nonce=n",
+            Ct);
+
+        var code = System.Web.HttpUtility
+            .ParseQueryString(authorized.Headers.Location!.Query)["code"]!;
+
+        // Before the exchange there is a code and nothing else.
+        var waiting = await stub.IssuedAsync(Ct);
+
+        Assert.Contains(waiting, artefact => artefact.Kind == "code");
+        Assert.DoesNotContain(waiting, artefact => artefact.Kind == "access token");
+
+        using var exchanged = await browser.PostAsync(
+            "/op/connect/token",
+            new FormUrlEncodedContent(
+            [
+                new KeyValuePair<string, string>("grant_type", "authorization_code"),
+                new KeyValuePair<string, string>("code", code),
+                new KeyValuePair<string, string>("redirect_uri", "http://localhost:5099/callback"),
+                new KeyValuePair<string, string>("client_id", CodeClient),
+                new KeyValuePair<string, string>("client_secret", "not-a-real-secret"),
+            ]),
+            Ct);
+
+        using var tokens = JsonDocument.Parse(await exchanged.Content.ReadAsStringAsync(Ct));
+
+        var accessToken = tokens.RootElement.GetProperty("access_token").GetString()!;
+        var idToken = tokens.RootElement.GetProperty("id_token").GetString()!;
+
+        var issued = await stub.IssuedAsync(Ct);
+
+        // And after it there is a token and no code: one login, one code, spent.
+        Assert.Contains(issued, artefact => artefact.Kind == "access token");
+        Assert.DoesNotContain(issued, artefact => artefact.Kind == "code");
+        Assert.All(issued, artefact => Assert.Equal(CodeClient, artefact.ClientId));
+
+        // A login it can be lined up against, which is what a value would otherwise be used for.
+        Assert.All(
+            issued.Where(artefact => artefact.Kind != "pushed request"),
+            artefact => Assert.False(string.IsNullOrEmpty(artefact.SessionId)));
+
+        var everything = string.Join(
+            "\u001f",
+            waiting.Concat(issued).SelectMany(artefact => new[]
+            {
+                artefact.Kind, artefact.ClientId, artefact.CitizenId, artefact.SessionId,
+                artefact.Scope, artefact.AuthenticatedAt?.ToString(), artefact.Expires?.ToString(),
+            }));
+
+        foreach (var secret in new[] { code, accessToken, idToken })
+        {
+            Assert.DoesNotContain(secret, everything, StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>
+    /// A reset drops what was issued, and a code taken before it cannot be used after.
+    /// </summary>
+    /// <remarks>
+    /// This is a change rather than a completion. A reset used to clear the sessions and leave
+    /// the codes standing, so an instance that said it was fresh would still redeem one taken
+    /// before the reset. Citizens still survive, which is the line this endpoint draws.
+    /// </remarks>
+    [Fact]
+    public async Task A_reset_drops_what_was_issued()
+    {
+        using var stub = Connect();
+        using var browser = _automatic.CreateClient(
+            new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        using var authorized = await browser.GetAsync(
+            "/op/connect/authorize"
+            + $"?client_id={CodeClient}&response_type=code"
+            + "&redirect_uri=http://localhost:5099/callback&scope=openid&state=s&nonce=n",
+            Ct);
+
+        var code = System.Web.HttpUtility
+            .ParseQueryString(authorized.Headers.Location!.Query)["code"]!;
+
+        Assert.NotEmpty(await stub.IssuedAsync(Ct));
+
+        await stub.ResetAsync(Ct);
+
+        Assert.Empty(await stub.IssuedAsync(Ct));
+
+        using var afterwards = await browser.PostAsync(
+            "/op/connect/token",
+            new FormUrlEncodedContent(
+            [
+                new KeyValuePair<string, string>("grant_type", "authorization_code"),
+                new KeyValuePair<string, string>("code", code),
+                new KeyValuePair<string, string>("redirect_uri", "http://localhost:5099/callback"),
+                new KeyValuePair<string, string>("client_id", CodeClient),
+                new KeyValuePair<string, string>("client_secret", "not-a-real-secret"),
+            ]),
+            Ct);
+
+        Assert.Equal(HttpStatusCode.BadRequest, afterwards.StatusCode);
     }
 
     /// <summary>The three clients, which a reader otherwise finds by grepping for a GUID.</summary>

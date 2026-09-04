@@ -146,8 +146,8 @@ The very first instance on a machine also generates three signing keys, which is
 and is why the startup test warms the directory itself before timing anything.
 
 Cheap enough that each test can build its own instance, which is what the tests here do. Call
-`ResetAsync()` between tests instead when you would rather share one: it clears the sessions and
-anything queued, and keeps the citizens.
+`ResetAsync()` between tests instead when you would rather share one: it clears the sessions,
+anything queued and everything issued, and keeps the citizens.
 
 ## Or the container instead
 

@@ -584,6 +584,66 @@ public class AdminPageTests
         Assert.Contains(kid, html, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The page shows what was handed out, and no page shows what it was.
+    /// </summary>
+    /// <remarks>
+    /// The same rule the control API is held to, asserted separately because the page is the
+    /// thing somebody actually opens. A value reaching the markup is the failure that matters:
+    /// this surface asks nobody who they are, so a printed access token is a token anybody who
+    /// can reach the port may use as the person it was issued to.
+    /// </remarks>
+    [Fact]
+    public async Task The_issued_page_shows_what_was_handed_out_and_never_the_value()
+    {
+        using var stub = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
+            b.UseSetting("StubId:PublicBaseUrl", "http://localhost"));
+
+        var http = Browser(stub);
+
+        using var authorized = await http.GetAsync(
+            "/op/connect/authorize"
+            + $"?client_id={CodeClient}&response_type=code"
+            + "&redirect_uri=http://localhost:5099/callback&scope=openid%20mitid&state=s&nonce=n",
+            Ct);
+
+        var code = System.Web.HttpUtility
+            .ParseQueryString(authorized.Headers.Location!.Query)["code"]!;
+
+        using var exchanged = await http.PostAsync(
+            "/op/connect/token",
+            new FormUrlEncodedContent(
+            [
+                new KeyValuePair<string, string>("grant_type", "authorization_code"),
+                new KeyValuePair<string, string>("code", code),
+                new KeyValuePair<string, string>("redirect_uri", "http://localhost:5099/callback"),
+                new KeyValuePair<string, string>("client_id", CodeClient),
+                new KeyValuePair<string, string>("client_secret", "not-a-real-secret"),
+            ]),
+            Ct);
+
+        using var tokens = JsonDocument.Parse(await exchanged.Content.ReadAsStringAsync(Ct));
+
+        using var page = await http.GetAsync($"{Admin}/issued", Ct);
+        var html = await page.Content.ReadAsStringAsync(Ct);
+
+        Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+        Assert.Contains("access token", html, StringComparison.Ordinal);
+
+        // It says which login it belongs to, which is what a value would otherwise be used for.
+        Assert.Contains($"{Admin}/sessions/", html, StringComparison.Ordinal);
+
+        foreach (var secret in new[]
+        {
+            code,
+            tokens.RootElement.GetProperty("access_token").GetString()!,
+            tokens.RootElement.GetProperty("id_token").GetString()!,
+        })
+        {
+            Assert.DoesNotContain(secret, html, StringComparison.Ordinal);
+        }
+    }
+
     /// <summary>The clock, which nothing reported before.</summary>
     [Fact]
     public async Task The_instance_reports_its_clock()

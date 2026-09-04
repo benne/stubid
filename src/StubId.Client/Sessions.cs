@@ -44,6 +44,23 @@ public sealed record QueuedDecision(
     string? ErrorCode,
     string? Error);
 
+/// <summary>
+/// One thing the instance has handed out, described without handing it out again.
+/// </summary>
+/// <remarks>
+/// There is no value here and no prefix of one. A code and an access token are credentials, and
+/// the surface that serves this asks nobody who they are. <see cref="SessionId" /> is what lines
+/// an entry up against a login.
+/// </remarks>
+public sealed record IssuedArtefact(
+    string Kind,
+    string ClientId,
+    string? CitizenId,
+    string? SessionId,
+    DateTimeOffset? AuthenticatedAt,
+    DateTimeOffset? Expires,
+    string? Scope);
+
 /// <summary>One of the clients this broker publishes.</summary>
 public sealed record RegisteredClient(
     string ClientId,

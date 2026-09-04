@@ -54,9 +54,14 @@ public sealed class StubIdClient : IDisposable
     public RuntimeApi Runtime { get; }
 
     /// <summary>
-    /// Clears the sessions and anything queued. Citizens survive, so a suite builds its people
-    /// once.
+    /// Clears the protocol state: the sessions, anything queued, and everything issued. Citizens
+    /// survive, so a suite builds its people once.
     /// </summary>
+    /// <remarks>
+    /// A code or an access token taken before a reset cannot be used after one. That was not
+    /// true until it was noticed that a reset left them standing, which made an instance less
+    /// fresh than it claimed to be.
+    /// </remarks>
     public async Task ResetAsync(CancellationToken ct = default)
     {
         using var response = await Http.PostAsync("/_stubid/v1/reset", content: null, ct);
@@ -74,6 +79,21 @@ public sealed class StubIdClient : IDisposable
         var body = await response.Content.ReadFromJsonAsync(ControlJson.Default.EntriesBody, ct);
 
         return body?.Entries ?? [];
+    }
+
+    /// <summary>
+    /// What this instance has handed out, and never what it handed out.
+    /// </summary>
+    /// <remarks>
+    /// For the suite asking why its client ended up with a token it did not expect. The values
+    /// are absent by design: they are credentials, and this API asks nobody who they are.
+    /// </remarks>
+    public async Task<IReadOnlyList<IssuedArtefact>> IssuedAsync(CancellationToken ct = default)
+    {
+        using var response = await Http.GetAsync("/_stubid/v1/issued", ct);
+        var body = await Control.ReadAsync(response, ControlJson.Default.IssuedBody, ct);
+
+        return body.Issued;
     }
 
     /// <summary>
