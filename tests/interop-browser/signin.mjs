@@ -9,9 +9,10 @@
 // that trust in place and requires the handshake to fail, which is what keeps the claim from
 // being vacuous.
 //
-// What the browser adds over the Node, Java and .NET stacks is two things they cannot do: it
-// makes the trust decision in its own TLS stack rather than the platform's, and it runs the
-// form_post page's auto-submit, which needs a JavaScript engine.
+// What the browser adds over the Node, Java and .NET stacks is three things they cannot do: it
+// makes the trust decision in its own TLS stack rather than the platform's, it runs the
+// form_post page's auto-submit, which needs a JavaScript engine, and it runs the admin page's
+// own script, which is what keeps that page current without anybody reloading it.
 import * as client from 'openid-client'
 import { chromium, firefox, webkit } from 'playwright'
 
@@ -236,6 +237,37 @@ try {
       }
 
       ok(`a queued refusal reached the browser as ${error}, ${description}`)
+    }
+
+    // The admin page keeps itself current, which is the one claim in this repository that
+    // genuinely needs a browser. Everything else about that page is asserted in memory against a
+    // test server; that its script runs, reaches the instance and patches the table cannot be.
+    {
+      const board = await context.newPage()
+      await board.goto(`${control}/_stubid/admin`, { waitUntil: 'domcontentloaded', timeout: 30000 })
+
+      // A mark on the window object. If the page reloaded instead of patching itself the mark is
+      // gone, and "the row appeared" would be true for a reason that proves nothing.
+      await board.evaluate(() => { window.stubidStayed = true })
+
+      const before = await board.locator('#logins tr').count()
+
+      // An ordinary sign-in, decided the way this instance decides everything. Watching a parked
+      // login would need StubId__ApproveAutomatically=false, and this instance is shared with the
+      // legs that need approval on.
+      await walk(context, authorizationUrl(config, await checks()))
+
+      await board.waitForFunction(
+        (was) => document.querySelectorAll('#logins tr').length > was,
+        before,
+        { timeout: 15000 })
+
+      if (await board.evaluate(() => window.stubidStayed) !== true) {
+        throw new Error('the admin page reloaded rather than updating itself')
+      }
+
+      ok('a login appeared on the admin page without the page being reloaded')
+      await board.close()
     }
 
     console.log(`${engine} signed in against StubID`)
