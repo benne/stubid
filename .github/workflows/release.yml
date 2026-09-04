@@ -1,0 +1,322 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  # How this workflow is reviewed. A release cannot be rehearsed by releasing, so the dispatch
+  # path runs everything up to the point where bytes leave the machine: the version checks, the
+  # whole of CI, and both image builds with push disabled.
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Build everything and publish nothing.
+        type: boolean
+        default: true
+
+# The floor. A called workflow cannot be granted more than its caller has, and each publishing
+# job below grants itself exactly what it needs and nothing else.
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/benne/stubid
+
+jobs:
+  # Everything that decides whether this is a release, before anything is built.
+  verify:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+      floating: ${{ steps.read.outputs.floating }}
+      publish: ${{ steps.read.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # The ancestry check below needs history, and a tag checkout has none by default.
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - id: read
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # The property is the source of truth in every case, including a dispatch run where
+          # there is no tag to read a version from. Evaluated rather than grepped out of the
+          # XML: a grep that silently stops matching fails open, and this decides what gets
+          # published under what name.
+          version=$(dotnet msbuild src/StubId.Testing/StubId.Testing.csproj \
+                      -getProperty:StubIdVersion -nologo | tr -d '[:space:]')
+          [ -n "$version" ] || { echo "::error::StubIdVersion evaluated to nothing"; exit 1; }
+
+          publish=false
+          if [ "${{ github.ref_type }}" = tag ]; then
+            tag="${GITHUB_REF_NAME#v}"
+            [ "$tag" = "$version" ] || {
+              echo "::error::tag ${GITHUB_REF_NAME} does not match StubIdVersion ${version}"
+              exit 1; }
+
+            # Without this a tag on any branch publishes, and a tag is the one thing here that
+            # does not go through review.
+            git fetch --no-tags origin master
+            git merge-base --is-ancestor HEAD origin/master || {
+              echo "::error::${GITHUB_REF_NAME} names a commit that is not on master"; exit 1; }
+
+            notes="docs/releases/${version}.md"
+            [ -f "$notes" ] || {
+              echo "::error::${notes} does not exist, and the GitHub release is written from it"
+              exit 1; }
+
+            [ "${{ inputs.dry_run }}" = true ] || publish=true
+          fi
+
+          {
+            echo "version=$version"
+            echo "floating=${version%.*}"
+            echo "publish=$publish"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "version ${version}, floating tag ${version%.*}, publish ${publish}"
+
+  # The same checks a pull request gets, from the same file. A release is not a cheaper claim.
+  ci:
+    needs: verify
+    uses: ./.github/workflows/ci.yml
+
+  # One job per architecture on its own runner, never one emulating the other: the build stage
+  # runs dotnet publish, and dotnet under QEMU user-mode emulation does not fail cleanly, it
+  # hangs. Each leg pushes by digest and the manifest list is assembled afterwards, so no
+  # architecture-specific tag is ever visible in the registry.
+  image:
+    needs: [verify, ci]
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v5
+
+      # push-by-digest with a type=image output needs the docker-container driver; the
+      # runner's default driver cannot do it.
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Only the three labels that change per build. The static ones are in the Dockerfile so
+      # that an image built from a clone carries them, and metadata-action is deliberately not
+      # used here: it would substitute the repository's name and one-line description for the
+      # title and description written there, and its tag handling is moot because these legs
+      # push by digest and are tagged later, together.
+      - id: labels
+        run: |
+          {
+            echo 'value<<LABELS'
+            echo 'org.opencontainers.image.version=${{ needs.verify.outputs.version }}'
+            echo 'org.opencontainers.image.revision=${{ github.sha }}'
+            echo "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo 'LABELS'
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: docker/build-push-action@v7
+        id: build
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.labels.outputs.value }}
+          # The manifest list is attested after the merge. buildx's own inline provenance
+          # would add unknown/unknown entries to that list alongside the real ones.
+          provenance: false
+          sbom: false
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=${{ needs.verify.outputs.publish }}
+
+      - name: Keep this leg's digest
+        if: needs.verify.outputs.publish == 'true'
+        run: |
+          mkdir -p /tmp/digests
+          digest='${{ steps.build.outputs.digest }}'
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - uses: actions/upload-artifact@v7
+        if: needs.verify.outputs.publish == 'true'
+        with:
+          name: digest-${{ strategy.job-index }}
+          path: /tmp/digests/*
+          retention-days: 1
+          if-no-files-found: error
+
+  # The tags a reader actually uses, over both architectures at once.
+  merge:
+    needs: [verify, image]
+    if: needs.verify.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+    outputs:
+      digest: ${{ steps.index.outputs.digest }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: /tmp/digests
+          pattern: digest-*
+          merge-multiple: true
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Three tags, and all three are needed. The pinned one is what a suite asserting on bytes
+      # should use; the shorter one is what StubIdBuilder's remark has always promised floats;
+      # latest is what four documented docker run lines resolve to when they name no tag.
+      - name: One manifest list, three tags
+        working-directory: /tmp/digests
+        run: |
+          set -euo pipefail
+          # Unquoted on purpose: the split is what turns one digest per file into one argument
+          # per architecture. Quoting it would hand imagetools a single argument naming both.
+          # shellcheck disable=SC2046
+          docker buildx imagetools create \
+            -t "${IMAGE}:${{ needs.verify.outputs.version }}" \
+            -t "${IMAGE}:${{ needs.verify.outputs.floating }}" \
+            -t "${IMAGE}:latest" \
+            $(printf "${IMAGE}@sha256:%s " *)
+
+      - id: index
+        run: |
+          set -euo pipefail
+          digest=$(docker buildx imagetools inspect \
+                     "${IMAGE}:${{ needs.verify.outputs.version }}" \
+                     --format '{{json .Manifest}}' | jq -r .digest)
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.index.outputs.digest }}
+          push-to-registry: true
+
+  # What an adopter meets, met the same way, on both architectures. Nothing here trusts that
+  # the arm64 image works because it built; it is pulled and signed into.
+  verify-published:
+    needs: [verify, merge]
+    if: needs.verify.outputs.publish == 'true'
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: read
+      attestations: read
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      # Testcontainers reads the daemon's config, so one login covers the container tests too.
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: A login through the published image, and keys that survive a restart
+        run: ./scripts/verify-container.sh "${IMAGE}:${{ needs.verify.outputs.version }}"
+
+      - name: The Testcontainers module against the published image
+        env:
+          STUBID_TEST_IMAGE: ${{ env.IMAGE }}:${{ needs.verify.outputs.version }}
+        run: dotnet test tests/StubId.Testing.Tests --configuration Release --filter "Category=Container"
+
+      - name: The manifest list names both architectures
+        run: |
+          set -euo pipefail
+          platforms=$(docker buildx imagetools inspect "${IMAGE}:${{ needs.verify.outputs.version }}" \
+                        --format '{{range .Manifest.Manifests}}{{.Platform.OS}}/{{.Platform.Architecture}} {{end}}' \
+                      | tr ' ' '\n' | grep -v '^$' | grep -v unknown | sort | tr '\n' ' ')
+          [ "$platforms" = "linux/amd64 linux/arm64 " ] || {
+            echo "::error::expected linux/amd64 and linux/arm64, got: ${platforms}"; exit 1; }
+
+      - name: The provenance attestation verifies
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh attestation verify \
+            "oci://${IMAGE}:${{ needs.verify.outputs.version }}" --repo ${{ github.repository }}
+
+  # Last, because a tag in a registry can be deleted and a NuGet push cannot. Packing is proved
+  # on every pull request by ci.yml's build job; what is new here is only the push.
+  nuget:
+    needs: [verify, ci, verify-published]
+    if: needs.verify.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - run: dotnet pack --configuration Release --output artifacts
+
+      # Trusted publishing: a short-lived key from an OIDC token, so this public repository
+      # holds no NuGet credential of any kind. The policy on nuget.org names this file.
+      - uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ vars.NUGET_USER }}
+
+      # A glob, because NuGet normalises the padded date and the file on disk is named for the
+      # normalised form. Nothing here has to know that.
+      - run: |
+          dotnet nuget push 'artifacts/*.nupkg' \
+            --api-key '${{ steps.login.outputs.NUGET_API_KEY }}' \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+
+  release:
+    needs: [verify, verify-published]
+    if: needs.verify.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      # Written, not generated. Release notes have a reader, and a generated list of commit
+      # subjects is the opposite of what CONTRIBUTING.md asks of anything that does.
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --notes-file "docs/releases/${{ needs.verify.outputs.version }}.md" \
+            --verify-tag
