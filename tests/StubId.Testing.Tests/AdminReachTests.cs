@@ -26,6 +26,30 @@ public class AdminReachTests : IAsyncLifetime
 
     public async ValueTask DisposeAsync() => await _stub.DisposeAsync();
 
+    /// <summary>
+    /// The certificate this instance serves is named on its own page.
+    /// </summary>
+    /// <remarks>
+    /// Only reachable here. The in-memory suites have no certificate at all - StubId:Tls is off
+    /// for every one of them - so the branch that renders a subject and an expiry, rather than
+    /// saying TLS is off, runs nowhere else.
+    /// </remarks>
+    [Fact]
+    public async Task The_emulated_page_names_the_certificate_it_serves()
+    {
+        using var plain = new HttpClient();
+        using var page = await plain.GetAsync(
+            new Uri(_stub.MappedAddress, "_stubid/admin/emulated"), Ct);
+
+        var html = await page.Content.ReadAsStringAsync(Ct);
+
+        Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+        // The subject a self-signed instance mints for itself. localhost and the machine name are
+        // subject alternative names on it, not the common name.
+        Assert.Contains("CN=StubID", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("plain HTTP only", html, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task The_admin_page_answers_on_both_listeners()
     {

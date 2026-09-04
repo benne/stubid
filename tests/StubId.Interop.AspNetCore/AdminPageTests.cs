@@ -95,10 +95,23 @@ public class AdminPageTests
         var http = Browser(stub);
 
         using var discovery = await http.GetAsync("/op/.well-known/openid-configuration", Ct);
-        using var page = await http.GetAsync(Admin, Ct);
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, discovery.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+
+        foreach (var path in new[] { Admin, $"{Admin}/citizens", $"{Admin}/emulated" })
+        {
+            using var page = await http.GetAsync(path, Ct);
+
+            Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+        }
+
+        // And the page a person would open says which of the two problems it is.
+        using var told = await http.GetAsync($"{Admin}/emulated", Ct);
+
+        Assert.Contains(
+            "has not been told its own address",
+            await told.Content.ReadAsStringAsync(Ct),
+            StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -531,6 +544,44 @@ public class AdminPageTests
             .ToList();
 
         Assert.Equal([section], marked);
+    }
+
+    /// <summary>
+    /// What this build emulates, read from what it is running rather than written down.
+    /// </summary>
+    /// <remarks>
+    /// The assertions are deliberately about shape rather than content. A count of ledger entries
+    /// or of routes would be a number to update on every change, and the one thing worse than an
+    /// undocumented divergence is a documented count nobody keeps true.
+    /// </remarks>
+    [Fact]
+    public async Task The_emulated_page_is_generated_from_what_the_instance_runs()
+    {
+        using var stub = Parking();
+        var http = Browser(stub);
+
+        using var page = await http.GetAsync($"{Admin}/emulated", Ct);
+        var html = await page.Content.ReadAsStringAsync(Ct);
+
+        Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+
+        // A route the profile declares, with the role the engine matches it by.
+        Assert.Contains("/op/connect/authorize", html, StringComparison.Ordinal);
+        Assert.Contains("authorize", html, StringComparison.Ordinal);
+
+        // The client every guide here tells a reader to configure.
+        Assert.Contains(CodeClient, html, StringComparison.Ordinal);
+
+        // A ledger entry, and the fact that it carries its provenance rather than just a name.
+        Assert.Contains("Divergent", html, StringComparison.Ordinal);
+
+        // A signing key id, which is what a client caches and what a restart must not change.
+        using var jwks = await http.GetAsync("/op/.well-known/openid-configuration/jwks", Ct);
+        using var keys = JsonDocument.Parse(await jwks.Content.ReadAsStringAsync(Ct));
+
+        var kid = keys.RootElement.GetProperty("keys")[0].GetProperty("kid").GetString()!;
+
+        Assert.Contains(kid, html, StringComparison.Ordinal);
     }
 
     /// <summary>The clock, which nothing reported before.</summary>

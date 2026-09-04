@@ -266,13 +266,6 @@ public sealed class BehaviourApi(HttpClient http)
 public sealed class ClockApi(HttpClient http)
 {
     /// <summary>
-    /// Moves the clock forward and answers with the time it now reads.
-    /// </summary>
-    /// <remarks>
-    /// Throws unless the instance was started with a controllable clock; the exception carries
-    /// StubID's own instruction for which setting to change.
-    /// </remarks>
-    /// <summary>
     /// What the instance thinks the time is, and whether it can be moved.
     /// </summary>
     /// <remarks>
@@ -287,6 +280,13 @@ public sealed class ClockApi(HttpClient http)
         return await Control.ReadAsync(response, ControlJson.Default.StubIdClock, ct);
     }
 
+    /// <summary>
+    /// Moves the clock forward and answers with the time it now reads.
+    /// </summary>
+    /// <remarks>
+    /// Throws unless the instance was started with a controllable clock; the exception carries
+    /// StubID's own instruction for which setting to change.
+    /// </remarks>
     public async Task<DateTimeOffset> AdvanceAsync(TimeSpan by, CancellationToken ct = default)
     {
         using var response = await http.PostAsJsonAsync(

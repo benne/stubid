@@ -44,6 +44,22 @@ public sealed record QueuedDecision(
     string? ErrorCode,
     string? Error);
 
+/// <summary>One of the clients this broker publishes.</summary>
+public sealed record RegisteredClient(
+    string ClientId,
+    IReadOnlyList<string> ResponseTypes,
+    string Organisation);
+
+/// <summary>One route this build answers on.</summary>
+/// <param name="Role">
+/// What the route is for, so a caller can find one without knowing its path. Roles a single broker
+/// invents for itself are prefixed <c>extra:</c>.
+/// </param>
+public sealed record EmulatedRoute(
+    string Pattern,
+    IReadOnlyList<string> Methods,
+    string? Role);
+
 /// <summary>What the instance's clock reads, and whether a test may move it.</summary>
 public sealed record StubIdClock(DateTimeOffset Now, bool Controllable);
 
