@@ -168,6 +168,69 @@ public class SampleApplicationTests : IAsyncLifetime
         await elsewhere.StopAsync(Ct);
     }
 
+    /// <summary>What the reader sees when the login is refused instead.</summary>
+    /// <remarks>
+    /// The guide invites this: start the container with automatic approval off and somebody has to
+    /// decide the login, which means somebody can abort it. The refusal here is queued rather than
+    /// clicked, because the two are the same bytes - the login page's Abort button and a queued
+    /// decision meet at the broker's one refusal path - and what is under test is the sample's
+    /// answer to it, not StubID's decision ladder, which has its own tests.
+    /// <para>
+    /// The sample answered with an empty 400 until somebody aborted a login in a browser and could
+    /// not tell it from a crash. A refusal is an outcome, so it gets a page and the broker's own
+    /// error code, which is the part <c>docs/guides/approvals.md</c> is written around.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task The_sample_shows_a_refused_login()
+    {
+        await using var sample = Sample(_stub.Authority.ToString());
+
+        var clientId = sample.Services.GetRequiredService<IConfiguration>()["StubId:ClientId"];
+
+        Assert.False(string.IsNullOrEmpty(clientId), "The sample does not configure a client id.");
+
+        await _stub.Behaviour.EnqueueAsync(Decision.Refused().ForClient(clientId!), Ct);
+
+        var rp = sample.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            BaseAddress = new Uri("https://localhost/"),
+        });
+
+        rp.DefaultRequestVersion = HttpVersion.Version11;
+
+        using var trusting = _stub.CreateTrustingHandler();
+        trusting.AllowAutoRedirect = false;
+        using var browser = new HttpClient(trusting, disposeHandler: false);
+
+        var cookies = new CookieJar();
+
+        using var challenge = await Browser.Send(rp, HttpMethod.Get, "/secure", cookies);
+
+        Assert.Equal(HttpStatusCode.Redirect, challenge.StatusCode);
+
+        using var authorized = await browser.GetAsync(challenge.Headers.Location!, Ct);
+        var fields = Browser.HiddenFields(await authorized.Content.ReadAsStringAsync(Ct));
+
+        Assert.Equal("access_denied", fields.GetValueOrDefault("error"));
+        Assert.False(fields.ContainsKey("code"), "A refused login handed out a code.");
+
+        using var callback = await Browser.Send(
+            rp, HttpMethod.Post, "/signin-oidc", cookies, new FormUrlEncodedContent(fields));
+
+        var page = await callback.Content.ReadAsStringAsync(Ct);
+
+        // A page rather than a bare status, carrying what the broker actually said.
+        Assert.Equal(HttpStatusCode.OK, callback.StatusCode);
+        Assert.Contains("mitid_user_aborted", page, StringComparison.Ordinal);
+
+        // And nobody is signed in, which a page saying so could otherwise hide.
+        using var secure = await Browser.Send(rp, HttpMethod.Get, "/secure", cookies);
+
+        Assert.Equal(HttpStatusCode.Redirect, secure.StatusCode);
+    }
+
     /// <summary>
     /// The sample, told where this container answers. Built here rather than in
     /// <see cref="InitializeAsync" /> because it reads the certificate while it composes, so the
