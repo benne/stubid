@@ -80,13 +80,27 @@ builder.Services
                 && CryptographicOperations.FixedTimeEquals(presented.RawData, expected),
         };
 
-        // A real application handles a refused login rather than letting the exception escape.
-        // Aborting on StubID's page arrives here, and so does a queued refusal.
-        options.Events.OnRemoteFailure = context =>
+        // A refused login is an ordinary outcome rather than a crash, and a real application
+        // answers it with a page instead of letting the exception escape. The framework already
+        // makes the distinction worth making: a refusal reaches the client as access_denied and
+        // is routed here rather than to a failure. Somebody aborting on StubID's page arrives
+        // this way, and so does a queued refusal and a login nobody decided in time.
+        options.Events.OnAccessDenied = async context =>
         {
-            context.Response.StatusCode = StatusCodes.Status400BadRequest;
             context.HandleResponse();
-            return Task.CompletedTask;
+            await Refused(context.HttpContext);
+        };
+
+        // Everything else, which is a fault rather than a decision: a correlation cookie that
+        // did not survive the round trip, a token that failed validation, a refusal the broker
+        // chose to send under some other OAuth error. Those keep a status code that says so.
+        options.Events.OnRemoteFailure = async context =>
+        {
+            context.HandleResponse();
+            await Answer(context.HttpContext, StatusCodes.Status400BadRequest, Page(
+                "<h1>The sign-in did not complete</h1>"
+                + $"<p>{Escape(context.Failure?.Message ?? "Nothing was reported about why.")}</p>"
+                + "<p><a href=\"/\">Start over</a></p>"));
         };
     });
 
@@ -126,13 +140,43 @@ string Setting(string key) =>
     builder.Configuration[key]
     ?? throw new InvalidOperationException($"{key} is not configured.");
 
-static IResult Html(string body) =>
-    Results.Content(
-        "<!doctype html><meta charset=\"utf-8\"><title>StubID sample</title>"
-        + "<style>body{font-family:system-ui;margin:3rem;max-width:48rem}"
-        + "td{padding:.15rem .75rem .15rem 0;vertical-align:top}</style>"
-        + body,
-        "text/html");
+static IResult Html(string body) => Results.Content(Page(body), "text/html");
+
+// Shared with the two authentication events above, which write to the response themselves: an
+// event has no IResult to return.
+static string Page(string body) =>
+    "<!doctype html><meta charset=\"utf-8\"><title>StubID sample</title>"
+    + "<style>body{font-family:system-ui;margin:3rem;max-width:48rem}"
+    + "td{padding:.15rem .75rem .15rem 0;vertical-align:top}</style>"
+    + body;
+
+static async Task Answer(HttpContext http, int status, string page)
+{
+    http.Response.StatusCode = status;
+    http.Response.ContentType = "text/html";
+    await http.Response.WriteAsync(page);
+}
+
+// What StubID said, rather than a description of it. The broker's own code travels in
+// error_description - mitid_user_aborted for somebody who aborted, mitid_timeout for a login
+// nobody decided - and that code is the part worth reading, so the page shows it instead of
+// swallowing it. This client asked for form_post, so the refusal arrives as a form; the handler
+// has already read it and reading it again returns the same cached collection.
+static async Task Refused(HttpContext http)
+{
+    var reported = http.Request.HasFormContentType
+        ? (await http.Request.ReadFormAsync())["error_description"].ToString()
+        : http.Request.Query["error_description"].ToString();
+
+    var code = reported.Length > 0 ? reported : "(none)";
+
+    await Answer(http, StatusCodes.Status200OK, Page(
+        "<h1>The login was refused</h1>"
+        + "<p>Nobody is signed in. StubID sent back <code>error=access_denied</code> with "
+        + $"<code>error_description={Escape(code)}</code>, which is the pair the real broker "
+        + "sends for a login that did not go through.</p>"
+        + "<p><a href=\"/secure\">Try again</a></p>"));
+}
 
 // Claim values come from a token. Encoding them is not paranoia about StubID; it is what the
 // same page would have to do against the real broker.

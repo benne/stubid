@@ -82,6 +82,17 @@ with `-e StubId__ApproveAutomatically=false` and the login parks instead: the br
 StubID's own page, and nothing continues until somebody approves or aborts there. That page is
 deliberately StubID's own, with no MitID logo on it.
 
+Abort it once, because the refused path is the one applications get wrong. The browser comes back to
+the application with `error=access_denied` and `error_description=mitid_user_aborted`, which is the
+pair the real broker sends, and the sample renders both. The second one is the broker's own naming
+and the thing worth logging, so a client that answers a refusal with a bare status code has thrown
+away the only part that says what happened.
+
+Nothing about that is StubID-specific. ASP.NET Core already separates the two: a refusal arrives at
+`OnAccessDenied`, and a genuine fault - a correlation cookie that did not survive, a token that
+failed validation - arrives at `OnRemoteFailure`. The sample answers them differently for the same
+reason a real application would, because somebody aborting is an outcome and not an error.
+
 A test would decide the same login through the control API without a browser at all, and both go
 through the same store rather than two implementations that agree until one changes. How a login is
 decided, and how to ask why it went the way it did, is in [its own guide](approvals.md).
