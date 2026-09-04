@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Both ends of the agreement these tests check, and the only pairing that sees them: the
+         Testcontainers module names the image tag, the server's profile names the recording.
+         No other test project references both. -->
+    <ProjectReference Include="../../src/StubId.Server/StubId.Server.csproj" />
+    <ProjectReference Include="../../src/StubId.Testing/StubId.Testing.csproj" />
+  </ItemGroup>
+
+</Project>

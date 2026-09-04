@@ -152,7 +152,7 @@ waited on it.
 The module runs the published image by default. Point it somewhere else with the constructor:
 
 ```csharp
-new StubIdBuilder("ghcr.io/benne/stubid:2026.08.1")
+new StubIdBuilder("ghcr.io/benne/stubid:2026.09.1")
 ```
 
 Pin a version. Fidelity corrections change what StubID puts on the wire, and a suite asserting on
