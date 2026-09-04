@@ -1,5 +1,4 @@
 using System.Net;
-using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Builder;
@@ -65,7 +64,7 @@ public class StockClientOverTlsTests : IAsyncLifetime
 
         // The application challenges. Reaching this at all means the handler fetched discovery over
         // TLS with its own https requirement intact.
-        using var challenge = await Send(rp, HttpMethod.Get, "/secure", cookies);
+        using var challenge = await Browser.Send(rp, HttpMethod.Get, "/secure", cookies);
 
         Assert.Equal(HttpStatusCode.Redirect, challenge.StatusCode);
 
@@ -79,17 +78,17 @@ public class StockClientOverTlsTests : IAsyncLifetime
 
         Assert.Equal(HttpStatusCode.OK, authorized.StatusCode);
 
-        var fields = HiddenFields(await authorized.Content.ReadAsStringAsync(Ct));
+        var fields = Browser.HiddenFields(await authorized.Content.ReadAsStringAsync(Ct));
 
         Assert.True(fields.ContainsKey("code"), "The stub did not post a code back.");
 
-        using var callback = await Send(
+        using var callback = await Browser.Send(
             rp, HttpMethod.Post, "/signin-oidc", cookies, new FormUrlEncodedContent(fields));
 
         Assert.Equal(HttpStatusCode.Redirect, callback.StatusCode);
         Assert.Equal("/secure", callback.Headers.Location!.ToString());
 
-        using var secure = await Send(rp, HttpMethod.Get, "/secure", cookies);
+        using var secure = await Browser.Send(rp, HttpMethod.Get, "/secure", cookies);
 
         Assert.Equal(HttpStatusCode.OK, secure.StatusCode);
         Assert.False(string.IsNullOrWhiteSpace(await secure.Content.ReadAsStringAsync(Ct)));
@@ -150,60 +149,5 @@ public class StockClientOverTlsTests : IAsyncLifetime
                 });
             })
             .StartAsync(Ct);
-    }
-
-    private static async Task<HttpResponseMessage> Send(
-        HttpClient client, HttpMethod method, string path, CookieJar cookies, HttpContent? content = null)
-    {
-        using var request = new HttpRequestMessage(method, path) { Content = content };
-        cookies.ApplyTo(request);
-
-        var response = await client.SendAsync(request, Ct);
-        cookies.Capture(response);
-
-        return response;
-    }
-
-    private static Dictionary<string, string> HiddenFields(string html) => Regex
-        .Matches(html, """<input type="hidden" name="([^"]+)" value="([^"]*)" />""")
-        .ToDictionary(m => m.Groups[1].Value, m => WebUtility.HtmlDecode(m.Groups[2].Value));
-
-    /// <summary>The browser's share of the work: carry cookies between requests.</summary>
-    private sealed class CookieJar
-    {
-        private readonly Dictionary<string, string> _cookies = new(StringComparer.Ordinal);
-
-        public void Capture(HttpResponseMessage response)
-        {
-            if (!response.Headers.TryGetValues("Set-Cookie", out var values))
-            {
-                return;
-            }
-
-            foreach (var pair in values.Select(v => v.Split(';')[0]))
-            {
-                var separator = pair.IndexOf('=', StringComparison.Ordinal);
-                var name = pair[..separator];
-                var value = pair[(separator + 1)..];
-
-                if (value.Length == 0)
-                {
-                    _cookies.Remove(name);
-                }
-                else
-                {
-                    _cookies[name] = value;
-                }
-            }
-        }
-
-        public void ApplyTo(HttpRequestMessage request)
-        {
-            if (_cookies.Count > 0)
-            {
-                request.Headers.Add(
-                    "Cookie", string.Join("; ", _cookies.Select(c => $"{c.Key}={c.Value}")));
-            }
-        }
     }
 }

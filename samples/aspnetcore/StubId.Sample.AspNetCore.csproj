@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <!-- The Web SDK defaults this to false. Said out loud anyway, because ci.yml checks the
+         packed set against the one we mean to publish, and a sample is not one of them. -->
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The client library a Danish integrator actually uses. -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- In your own project this line is `dotnet add package StubId.Client`. It is a project
+         reference here so the sample is built against this working tree rather than against
+         whatever was published last, which is what lets a change that breaks it fail the pull
+         request that made it rather than a reader's afternoon. -->
+    <ProjectReference Include="../../src/StubId.Client/StubId.Client.csproj" />
+  </ItemGroup>
+
+</Project>
