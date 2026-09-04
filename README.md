@@ -10,8 +10,8 @@ side. So does a real browser, in Chromium, Firefox and WebKit, which is the step
 makes impossible. Tests can create citizens,
 decide how each login resolves, and move the clock to force a timeout, and a .NET suite can drive
 all of that from code — against a container, or against an instance hosted inside the test process
-with no Docker at all. What is missing is transaction signing, the admin interface, and published
-packages — nothing is on NuGet or GHCR yet. See [docs/roadmap.md](docs/roadmap.md).
+with no Docker at all. What is missing is the admin interface and published packages —
+nothing is on NuGet or GHCR yet. See [docs/roadmap.md](https://github.com/benne/stubid/blob/master/docs/roadmap.md).
 
 ## The problem
 
@@ -53,12 +53,12 @@ The container is ready in about three seconds, and the login itself takes about 
 milliseconds. Both numbers come from a test that runs in CI.
 
 How a login is decided, and how to ask why it went the way it did, is in
-[docs/guides/approvals.md](docs/guides/approvals.md). Running StubID from a test suite is in
-[docs/guides/testcontainers.md](docs/guides/testcontainers.md) for the container, and in
-[docs/guides/in-process.md](docs/guides/in-process.md) for a host inside the test process, which
+[docs/guides/approvals.md](https://github.com/benne/stubid/blob/master/docs/guides/approvals.md). Running StubID from a test suite is in
+[docs/guides/testcontainers.md](https://github.com/benne/stubid/blob/master/docs/guides/testcontainers.md) for the container, and in
+[docs/guides/in-process.md](https://github.com/benne/stubid/blob/master/docs/guides/in-process.md) for a host inside the test process, which
 starts in about 150 milliseconds and needs no Docker. Trusting the certificate it serves over TLS,
-from any stack, is in [docs/guides/certificates.md](docs/guides/certificates.md), and driving a
-login from a browser test is in [docs/guides/browsers.md](docs/guides/browsers.md).
+from any stack, is in [docs/guides/certificates.md](https://github.com/benne/stubid/blob/master/docs/guides/certificates.md), and driving a
+login from a browser test is in [docs/guides/browsers.md](https://github.com/benne/stubid/blob/master/docs/guides/browsers.md).
 
 ## Fidelity
 
@@ -76,16 +76,16 @@ own documentation and was wrong in eight ways at once. Four of the claims it omi
 no vendor table, one claim it emitted is never sent, and one timestamp is a string where every
 other timestamp in the same token is a number. Every one of those tokens validated — a client
 library would have accepted all of them. The recordings are in `fixtures/`, and what they
-established is written up in [docs/brokers/neb/claims.md](docs/brokers/neb/claims.md).
+established is written up in [docs/brokers/neb/claims.md](https://github.com/benne/stubid/blob/master/docs/brokers/neb/claims.md).
 
 ## Not affiliated
 
 StubID is an independent project. It is not affiliated with, endorsed by, or connected to
 Digitaliseringsstyrelsen, Signaturgruppen, Idura, or IN Groupe. It performs no
 authentication, verifies no identity, and produces no signature with any legal effect. Do
-not point it at real people or real personal data. See [NOTICE](NOTICE) and
-[TRADEMARKS.md](TRADEMARKS.md).
+not point it at real people or real personal data. See [NOTICE](https://github.com/benne/stubid/blob/master/NOTICE) and
+[TRADEMARKS.md](https://github.com/benne/stubid/blob/master/TRADEMARKS.md).
 
 ## Licence
 
-Apache-2.0. See [LICENSE](LICENSE).
+Apache-2.0. See [LICENSE](https://github.com/benne/stubid/blob/master/LICENSE).

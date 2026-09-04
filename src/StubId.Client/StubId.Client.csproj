@@ -3,6 +3,7 @@
   <PropertyGroup>
     <Description>A typed client for StubID's control API. HttpClient only, no Docker.</Description>
     <PackageTags>stubid;mitid;oidc;testing</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <!--
@@ -11,5 +12,11 @@
     that already runs StubID somewhere gets the typed surface without pulling Docker into its
     test project.
   -->
+
+  <!-- The root README, so the package page says what this is. Absolute links in it are what
+       make that work: nuget.org resolves a relative one against itself. -->
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
 </Project>

@@ -1,7 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>What a broker profile declares. Sees ASP.NET, unlike StubId.Abstractions.</Description>
+    <!-- No PackageTags and no PackageReadmeFile here, nor on StubId.Abstractions or
+         StubId.Wire, and that is a decision rather than an oversight. All three ship only
+         because they are ProjectReferences of packages that do, and a dependency a reader
+         finds by searching the tags is a dependency they will reference directly. -->
+    <Description>What a broker profile declares. Sees ASP.NET, unlike StubId.Abstractions.
+      Substrate: reference StubId.Testing or StubId.InProcess to run StubID from a test
+      suite.</Description>
     <RootNamespace>StubId.Profiles</RootNamespace>
   </PropertyGroup>
 

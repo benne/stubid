@@ -3,6 +3,7 @@
   <PropertyGroup>
     <Description>Runs StubID inside your test process. No Docker, no listener, no browser.</Description>
     <PackageTags>stubid;mitid;oidc;testing;inprocess;testserver</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,6 +23,12 @@
     <!-- The module hands back a typed client rather than a base address, as the container one
          does, so a test never has to assemble a control URL by hand. -->
     <ProjectReference Include="../StubId.Client/StubId.Client.csproj" />
+  </ItemGroup>
+
+  <!-- The root README, so the package page says what this is. Absolute links in it are what
+       make that work: nuget.org resolves a relative one against itself. -->
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

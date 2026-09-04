@@ -28,8 +28,35 @@
     <Authors>StubID contributors</Authors>
     <Copyright>Copyright 2026 StubID contributors</Copyright>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/benne/stubid</PackageProjectUrl>
     <RepositoryUrl>https://github.com/benne/stubid</RepositoryUrl>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
+  </PropertyGroup>
+
+  <!-- What a consumer gets besides the assembly. The doc comments in this repository carry the
+       reasoning rather than restating the signature, which is worth more in IntelliSense than
+       it is in the source alone, and the symbols let someone step into the emulator when a
+       fidelity assertion surprises them - which is this project's characteristic failure. -->
+  <PropertyGroup>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+  </PropertyGroup>
+
+  <!-- Only two of the documentation diagnostics are suppressed, and only because a sweep of
+       roughly six hundred undocumented members is its own change rather than a release blocker.
+       Everything else the switch turns on stays an error: CS1572 caught a param tag naming a
+       parameter that does not exist, which had silently dropped a paragraph of reasoning out of
+       RouteDeclaration's documentation. Widening this list would have hidden it. -->
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);CS1591;CS1573</NoWarn>
+  </PropertyGroup>
+
+  <!-- Normalises source paths into the package, which only helps where the paths are a build
+       server's. Set locally it would make stepping through a local build worse. -->
+  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
 </Project>

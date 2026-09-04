@@ -3,6 +3,7 @@
   <PropertyGroup>
     <Description>The emulated broker surface, and the composition that hosts it.</Description>
     <PackageTags>stubid;mitid;oidc;testing;aspnetcore</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <RootNamespace>StubId.Server</RootNamespace>
     <!--
       The Web SDK defaults this to false, because a web application is normally shipped as an
@@ -65,5 +66,11 @@
       <EmbeddedResource Include="$(IntermediateOutputPath)discovery.template.json" LogicalName="discovery.json" />
     </ItemGroup>
   </Target>
+
+  <!-- The root README, so the package page says what this is. Absolute links in it are what
+       make that work: nuget.org resolves a relative one against itself. -->
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
 </Project>

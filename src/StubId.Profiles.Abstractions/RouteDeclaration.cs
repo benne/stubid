@@ -89,10 +89,6 @@ public abstract record WrongMethod
 /// than a mount prefix — which is what lets a document served from under a path segment
 /// declare an issuer without one, as Idura's does.
 /// </remarks>
-/// <param name="ParameterPolicies">
-/// Policy instances rather than names. A name would go through the application-wide constraint
-/// map, where two profiles calling their constraint the same thing would collide.
-/// </param>
 /// <param name="Handler">
 /// Bound by the framework's own request-delegate factory, so a handler declares the services
 /// and parameters it wants exactly as a minimal-API handler does. Anything a middleware can do,
@@ -105,6 +101,10 @@ public sealed record RouteDeclaration(
     RouteRole Role,
     Delegate Handler)
 {
+    /// <summary>
+    /// Policy instances rather than names. A name would go through the application-wide
+    /// constraint map, where two profiles calling their constraint the same thing would collide.
+    /// </summary>
     public IReadOnlyDictionary<string, IParameterPolicy> ParameterPolicies { get; init; } =
         new Dictionary<string, IParameterPolicy>(StringComparer.Ordinal);
 

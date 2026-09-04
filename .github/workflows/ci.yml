@@ -31,6 +31,27 @@ jobs:
       # daemon, and a test that needs one there fails for a reason nobody can fix.
       - run: dotnet test --no-build --configuration Release --filter "Category!=Container"
 
+      # Packing here rather than only at release time, because everything that can go wrong
+      # with it goes wrong quietly: the server's discovery template is derived from a fixture
+      # outside its own project cone, the Web SDK needs an explicit IsPackable, and a project
+      # added later packs by default whether or not anyone meant it to.
+      - run: dotnet pack --no-build --configuration Release --output artifacts
+
+      - name: The package set is the one we mean to publish
+        shell: bash
+        run: |
+          expected="StubId.Abstractions StubId.Client StubId.InProcess StubId.Profiles.Abstractions StubId.Server StubId.Testing StubId.Wire"
+          for kind in nupkg snupkg; do
+            actual=$(ls artifacts/*.$kind | sed -E 's|.*/([A-Za-z.]+)\.[0-9].*|\1|' | sort | tr '\n' ' ')
+            [ "$actual" = "$(echo $expected | tr ' ' '\n' | sort | tr '\n' ' ')" ] || {
+              echo "::error::Unexpected .$kind set. Wanted: $expected. Got: $actual"; exit 1; }
+          done
+          # A spike that answers 501 to every route it declares, and the recording harness.
+          for unwanted in StubId.Profiles.Idura StubId.CaptureHarness; do
+            ! ls artifacts/$unwanted.*.nupkg >/dev/null 2>&1 || {
+              echo "::error::$unwanted must not be published"; exit 1; }
+          done
+
   secrets:
     runs-on: ubuntu-latest
     steps:

@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>Contracts shared by StubID's broker profiles and host.</Description>
+    <Description>Contracts shared by StubID's broker profiles and host. Substrate: reference
+      StubId.Testing or StubId.InProcess to run StubID from a test suite.</Description>
   </PropertyGroup>
 
 </Project>

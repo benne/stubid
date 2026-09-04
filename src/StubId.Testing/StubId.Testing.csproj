@@ -3,6 +3,7 @@
   <PropertyGroup>
     <Description>A Testcontainers module that runs StubID in Docker for a test suite.</Description>
     <PackageTags>stubid;mitid;oidc;testing;testcontainers;docker</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,6 +16,12 @@
     <!-- The module hands back a typed client rather than a base address, so a test never has to
          assemble a control URL by hand. -->
     <ProjectReference Include="../StubId.Client/StubId.Client.csproj" />
+  </ItemGroup>
+
+  <!-- The root README, so the package page says what this is. Absolute links in it are what
+       make that work: nuget.org resolves a relative one against itself. -->
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>
