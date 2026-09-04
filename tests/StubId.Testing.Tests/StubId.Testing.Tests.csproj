@@ -22,6 +22,9 @@
     <!-- To mint a certificate that is not this instance's, which is how the trusting handler is
          told apart from one that waves validation through. -->
     <ProjectReference Include="../../src/StubId.Wire/StubId.Wire.csproj" />
+    <!-- The sample is hosted, not copied: SampleApplicationTests runs its own Program.cs, so a
+         change that breaks the two commands in the guide fails the pull request that made it. -->
+    <ProjectReference Include="../../samples/aspnetcore/StubId.Sample.AspNetCore.csproj" />
   </ItemGroup>
 
 </Project>
