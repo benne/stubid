@@ -14,7 +14,7 @@ namespace StubId.Server;
 /// </remarks>
 public sealed class NetsEidBrokerProfile : IBrokerProfile
 {
-    public ProfileId Id => new("neb", "2026.08.1");
+    public ProfileId Id => new("neb", "2026.09.1");
 
     public IReadOnlyList<RouteDeclaration> DeclareRoutes(ProfileContext context) => Endpoints.Declare();
 }

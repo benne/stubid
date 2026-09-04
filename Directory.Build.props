@@ -10,6 +10,19 @@
     <InvariantGlobalization>false</InvariantGlobalization>
   </PropertyGroup>
 
+  <!-- One place says what version this is, and everything that names a version is checked
+       against it by tests/StubId.Release.Tests. Dated rather than numbered for the reason
+       StubIdBuilder.StubIdImage gives: what this emulator changes is bytes, and a fidelity
+       correction breaks anyone asserting on the bytes it corrects. Bumped by hand, because
+       which recording is being shipped is a decision rather than something a tool can derive
+       from the commit graph. NuGet normalises the leading zero away, so the package version
+       reads 2026.9.1 while the container tag stays padded - the padding is what makes the
+       tags sort, since 2026.09 precedes 2026.10 and 2026.9 does not. -->
+  <PropertyGroup>
+    <StubIdVersion>2026.09.1</StubIdVersion>
+    <Version>$(StubIdVersion)</Version>
+  </PropertyGroup>
+
   <PropertyGroup>
     <Product>StubID</Product>
     <Authors>StubID contributors</Authors>
