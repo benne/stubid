@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using StubId.Testing;
 
 namespace StubId.Release.Tests;
@@ -72,5 +73,57 @@ public class SampleDefaultsTests
         Assert.True(
             new StubId.Server.BrokerState().Allows(clientId, "code"),
             $"{clientId} is not a registered client that may ask for a code.");
+    }
+
+    /// <summary>
+    /// The Node sample reaches the same instance the guide tells a reader to start.
+    /// </summary>
+    /// <remarks>
+    /// Its default named a port that existed only inside this repository's CI until it moved into
+    /// samples/, which is the sort of thing nothing notices: the workflow passes an authority
+    /// explicitly, so the default is exercised by a reader and by nobody else.
+    /// </remarks>
+    [Fact]
+    public void The_node_samples_default_authority_is_the_plain_port_too()
+    {
+        var script = File.ReadAllText(
+            Path.Combine(Repository.Root, "samples", "node", "signin.mjs"));
+
+        var fallback = Regex.Match(script, @"STUBID_AUTHORITY \?\? '([^']+)'");
+
+        Assert.True(fallback.Success, "signin.mjs no longer has a default authority to check.");
+
+        var authority = new Uri(fallback.Groups[1].Value);
+
+        Assert.Equal(Uri.UriSchemeHttp, authority.Scheme);
+        Assert.Equal(StubIdBuilder.StubIdPort, authority.Port);
+    }
+
+    /// <summary>
+    /// The command the guide opens with starts the instance the sample expects to find.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately narrow: the two published ports and the address the instance is told, which is
+    /// everything the sample's own defaults depend on. Checking more of a shell command against a
+    /// regex would fail on rewording rather than on breakage, and a test people delete guards
+    /// nothing.
+    /// </remarks>
+    [Fact]
+    public void The_guides_first_command_publishes_what_the_sample_reaches()
+    {
+        var guide = File.ReadAllText(
+            Path.Combine(Repository.Root, "docs", "guides", "signing-in.md"));
+
+        var section = guide[..guide.IndexOf("cd samples/aspnetcore", StringComparison.Ordinal)];
+        var stubid = StubIdSection();
+        var authority = new Uri(stubid.GetProperty("Authority").GetString()!);
+        var control = new Uri(stubid.GetProperty("ControlUrl").GetString()!);
+
+        Assert.Contains($"-p {control.Port}:{StubIdBuilder.StubIdPort}", section, StringComparison.Ordinal);
+        Assert.Contains($"-p {authority.Port}:{StubIdBuilder.StubIdTlsPort}", section, StringComparison.Ordinal);
+        Assert.Contains(
+            $"StubId__PublicBaseUrl={authority.GetLeftPart(UriPartial.Authority)}",
+            section,
+            StringComparison.Ordinal);
     }
 }
