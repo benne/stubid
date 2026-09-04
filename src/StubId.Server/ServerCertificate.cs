@@ -98,31 +98,21 @@ public sealed class ServerCertificate : IDisposable
 
         var file = Path.Combine(directory, "tls.pfx");
 
-        if (!File.Exists(file))
+        // The same reasoning as the signing keys, and the same failure if it is skipped: two
+        // instances sharing a key directory have to serve the same certificate, or a client that
+        // pinned what one of them handed out cannot reach the other.
+        var stored = WriteOnceFile.ReadOrCreate(file, () =>
         {
             var notBefore = TimeProvider.System.GetUtcNow().AddDays(-1);
 
             using var created = CertificateFactory.CreateServerCertificate(
                 "StubID", Names(configuration), notBefore, notBefore.AddYears(5));
 
-            // Written through a temporary file and moved into place, so two instances sharing a key
-            // directory cannot read a half-written certificate or fight over the same handle. The
-            // same reasoning as the signing keys, and the same failure if it is skipped.
-            var pending = Path.Combine(directory, $"tls.{Guid.NewGuid():N}.tmp");
-            File.WriteAllBytes(pending, created.Export(X509ContentType.Pkcs12, Password));
-
-            try
-            {
-                File.Move(pending, file, overwrite: false);
-            }
-            catch (IOException)
-            {
-                File.Delete(pending);
-            }
-        }
+            return created.Export(X509ContentType.Pkcs12, Password);
+        });
 
         return X509CertificateLoader.LoadPkcs12(
-            File.ReadAllBytes(file),
+            stored,
             Password,
             X509KeyStorageFlags.Exportable | X509KeyStorageFlags.EphemeralKeySet);
     }
