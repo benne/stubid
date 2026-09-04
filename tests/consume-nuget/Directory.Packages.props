@@ -1,0 +1,8 @@
+<!-- Same reason as Directory.Build.props next to it: without this, the repository's central
+     package management would apply and these references would be told their versions from a
+     file this project is pretending not to have. -->
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+</Project>

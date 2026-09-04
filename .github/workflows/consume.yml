@@ -1,0 +1,62 @@
+name: Consume
+
+# Proves the published artefacts work when consumed from outside, which nothing else here can.
+# Every other check in this repository builds from the working tree, so none of them can notice
+# a package that was pushed but never indexed, one unlisted by mistake, a dependency missing
+# from the graph, or an image tag that stopped resolving - and those are exactly the ways the
+# instruction in the guides stops being true.
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: The version just published, so the run asserts it is what resolves.
+        type: string
+        required: false
+  # Weekly, because what this catches does not happen on a commit. A check that only ran on
+  # changes to this repository would never see it.
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: A version to pin, or empty to check whatever a reader would get today.
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  consume:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      # nuget.org indexes a push a little after it accepts it, so a release calling this
+      # immediately can arrive before the package is resolvable. Retried rather than delayed by
+      # a fixed sleep, which would be a guess in both directions.
+      - name: Restore from nuget.org, allowing for indexing lag
+        working-directory: tests/consume-nuget
+        env:
+          VERSION: ${{ inputs.version || '*' }}
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            if dotnet restore -p:StubIdPackageVersion="$VERSION"; then exit 0; fi
+            echo "::warning::restore failed on attempt ${attempt}; nuget.org may still be indexing"
+            sleep 60
+          done
+          echo "::error::${VERSION} never became resolvable from nuget.org"
+          exit 1
+
+      - name: The README's example, run the way a reader runs it
+        working-directory: tests/consume-nuget
+        env:
+          VERSION: ${{ inputs.version || '*' }}
+          # Empty on the scheduled run, where floating is the point and there is nothing to
+          # assert the version against.
+          STUBID_EXPECTED_VERSION: ${{ inputs.version }}
+        run: dotnet test --no-restore -p:StubIdPackageVersion="$VERSION"

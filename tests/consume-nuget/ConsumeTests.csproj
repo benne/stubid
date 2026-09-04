@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <OutputType>Exe</OutputType>
+    <!-- Deliberately not in StubID.slnx. In the solution, every restore in this repository would
+         reach nuget.org and every pull request would depend on it being up. -->
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- A floating version by default, so the scheduled run always checks what a reader would
+         get today. The release workflow passes the exact version it just published, which is
+         also how the padded spelling gets exercised against the real feed. -->
+    <StubIdPackageVersion Condition="'$(StubIdPackageVersion)' == ''">*</StubIdPackageVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="StubId.Testing" Version="$(StubIdPackageVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit.v3" Version="3.2.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
+  </ItemGroup>
+
+</Project>
