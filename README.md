@@ -4,13 +4,14 @@ A stand-in for the test environments of the Danish MitID identity brokers, so yo
 your MitID login and signing integration in automated tests.
 
 **Status: early development.** A login works: a stock ASP.NET Core application signs in
-against it, and so do Node's `openid-client` and Spring Security — over TLS as well as plain
-HTTP, each trusting only the certificate the instance hands out, with nothing relaxed on either
-side. So does a real browser, in Chromium, Firefox and WebKit, which is the step the real broker
-makes impossible. Tests can create citizens,
-decide how each login resolves, and move the clock to force a timeout, and a .NET suite can drive
-all of that from code — against a container, or against an instance hosted inside the test process
-with no Docker at all. What is missing is the admin interface. See [docs/roadmap.md](https://github.com/benne/stubid/blob/master/docs/roadmap.md).
+against it, and so does Node's `openid-client` — over TLS as well as plain HTTP, each trusting
+only the certificate the instance hands out, with nothing relaxed on either side. So does a real
+browser over TLS, in Chromium, Firefox and WebKit, which is the step the real broker makes
+impossible. Spring Security resolves its metadata from the path-bearing issuer, which is the part
+it is strictest about. Tests can create citizens, decide how each login resolves, and move the
+clock to force a timeout, and a .NET suite can drive all of that from code — against a container,
+or against an instance hosted inside the test process with no Docker at all. What is missing is
+the admin interface. See [docs/roadmap.md](https://github.com/benne/stubid/blob/master/docs/roadmap.md).
 
 ## The problem
 
@@ -51,6 +52,8 @@ await stub.Behaviour.EnqueueAsync(Decision.Approved(citizen.Id).ForClient(client
 The container is ready in about three seconds, and the login itself takes about fifty
 milliseconds. Both numbers come from a test that runs in CI.
 
+Seeing a login work, against an application you can start yourself, is in
+[docs/guides/signing-in.md](https://github.com/benne/stubid/blob/master/docs/guides/signing-in.md).
 How a login is decided, and how to ask why it went the way it did, is in
 [docs/guides/approvals.md](https://github.com/benne/stubid/blob/master/docs/guides/approvals.md). Running StubID from a test suite is in
 [docs/guides/testcontainers.md](https://github.com/benne/stubid/blob/master/docs/guides/testcontainers.md) for the container, and in

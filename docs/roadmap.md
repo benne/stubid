@@ -12,12 +12,21 @@ Status of the first emulated surface, Signaturgruppen Broker ("Nets eID Broker")
 | M4 | Broker profile seam, routing, fidelity ledger | routes and ledger done; claims, errors and keys stay in the engine until a second broker is recorded, [on purpose](explanation/profile-seam.md) |
 | M5 | Sessions, approval resolution, citizens | done |
 | M6 | Full request surface, error fidelity, logout | done |
-| M7 | Control API, test modules, TLS trust, quickstarts | control API, both test modules, TLS, certificate trust and the browser matrix done; the remaining quickstarts not started |
+| M7 | Control API, test modules, TLS trust, quickstarts | done |
 | M8 | Admin interface | not started |
 | M9 | Transaction signing | done |
 | M10 | Release engineering | done |
 | M11 | Documentation site and generated broker reference | not started |
 | M12 | v1.0 | not started |
+
+There are samples to run since 2026-09-04, which is what the word "quickstarts" in M7 turned out
+to mean: it had never been given content anywhere. `samples/aspnetcore` is a stock ASP.NET Core
+application that signs in against a container, and it is the first application in this repository a
+reader can start rather than read - every other one is a test server built inside a test. The Node
+sign-in moved out of `tests/` beside it, and [one guide](guides/signing-in.md) routes a reader to
+whichever of the four client stacks is theirs. Spring and the browser matrix keep the checks they
+already had; neither needed a sample, and the guide says which of the two signs in and which only
+resolves metadata.
 
 Released since 2026-09-04. `StubId.Testing`, `StubId.InProcess` and `StubId.Client` are on
 nuget.org, and `ghcr.io/benne/stubid` is on GHCR for linux/amd64 and linux/arm64, carrying a
