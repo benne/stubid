@@ -73,4 +73,14 @@
     <None Include="../../README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
+
+  <ItemGroup>
+    <!-- WriteOnceFile is the answer to a race, and the only way to test a race properly is to run
+         it thousands of times. Through a caller that generates a certificate each attempt that
+         costs ten seconds and still misses; against the primitive it is a fraction of a second and
+         does not. Internal rather than public because nothing outside this assembly should be
+         writing into the key directory. -->
+    <InternalsVisibleTo Include="StubId.Interop.AspNetCore" />
+  </ItemGroup>
+
 </Project>
