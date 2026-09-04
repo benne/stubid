@@ -53,7 +53,7 @@ That adds StubID's certificate to the roots Node already trusts rather than repl
 read once, when the process starts, so exporting it afterwards does nothing — it has to be on the
 command that launches Node. It is also ignored for any request that passes an explicit `ca` option.
 
-`tests/interop-node/signin.mjs` drives a complete sign-in this way in CI. Over https it passes
+`samples/node/signin.mjs` drives a complete sign-in this way in CI. Over https it passes
 `openid-client` no allowance at all — it decides that from the scheme of the authority it was given,
 so the secured run cannot carry a relaxation somebody forgot to remove.
 

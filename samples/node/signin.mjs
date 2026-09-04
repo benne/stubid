@@ -1,4 +1,8 @@
-// A real sign-in with openid-client, which checks things the .NET handler does not.
+// A real sign-in with openid-client: a starting point to copy from, and a check that runs in
+// CI on every change. The assertions below are the half a sample would not have - they are
+// what stops this file quietly ceasing to work, which would be worse than not having it.
+//
+// It checks things the .NET handler does not.
 //
 // Two in particular. It asserts that the issuer it discovers equals the address it was given,
 // character for character - and StubID's issuer carries a path segment, which is exactly the
@@ -12,7 +16,7 @@
 // could forget to pass.
 import * as client from 'openid-client'
 
-const authority = process.env.STUBID_AUTHORITY ?? 'http://localhost:18080/op'
+const authority = process.env.STUBID_AUTHORITY ?? 'http://localhost:8080/op'
 const clientId = '0a775a87-878c-4b83-abe3-ee29c720c3e7'
 const redirectUri = 'http://localhost:5099/callback'
 

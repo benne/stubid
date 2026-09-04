@@ -180,8 +180,12 @@ jobs:
         with:
           node-version: 20
 
+      # STUBID_AUTHORITY is named rather than left to the script's default, which is the port
+      # the guide tells a reader to publish rather than the one this job happens to use.
       - name: Node, with openid-client
-        working-directory: tests/interop-node
+        working-directory: samples/node
+        env:
+          STUBID_AUTHORITY: http://localhost:18080/op
         run: |
           npm install --no-audit --no-fund
           node signin.mjs
@@ -190,7 +194,7 @@ jobs:
       # all - it decides that from the authority's scheme. NODE_EXTRA_CA_CERTS adds to node's
       # bundled roots rather than replacing them, and is read once when the process starts.
       - name: Node, over TLS, with nothing relaxed
-        working-directory: tests/interop-node
+        working-directory: samples/node
         env:
           NODE_EXTRA_CA_CERTS: ${{ runner.temp }}/stubid.crt
           STUBID_AUTHORITY: https://localhost:18443/op
