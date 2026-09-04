@@ -33,6 +33,17 @@ public sealed record StubIdSession(
     string? OauthError = null,
     int Version = 0);
 
+/// <summary>One decision waiting to be taken by the next matching login.</summary>
+/// <param name="ClientId">The client it is queued for, or <c>*</c> for any.</param>
+/// <param name="Position">Where it sits in that client's queue, counting from one.</param>
+public sealed record QueuedDecision(
+    string ClientId,
+    int Position,
+    bool Approve,
+    string? CitizenId,
+    string? ErrorCode,
+    string? Error);
+
 /// <summary>What the instance's clock reads, and whether a test may move it.</summary>
 public sealed record StubIdClock(DateTimeOffset Now, bool Controllable);
 

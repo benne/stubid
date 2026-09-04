@@ -118,6 +118,32 @@ public sealed class Citizens
         return Add(citizen);
     }
 
+    /// <summary>
+    /// Changes what approving this person means, and nothing else about them.
+    /// </summary>
+    /// <remarks>
+    /// The rule is the only field it is safe to change. The personal number is derived at
+    /// creation from the date of birth and a sequence, so moving the birthday without it would
+    /// leave a person whose number disagrees with their own age - the class of infidelity this
+    /// project exists to avoid. Everything else is delete and create again.
+    /// </remarks>
+    public Citizen? SetRule(string id, string? rule)
+    {
+        while (_citizens.TryGetValue(id, out var citizen))
+        {
+            var amended = citizen with { Rule = rule };
+
+            // Compare-and-swap rather than an assignment, so two people flipping the same rule
+            // from two tabs cannot lose one of the writes silently.
+            if (_citizens.TryUpdate(id, amended, citizen))
+            {
+                return amended;
+            }
+        }
+
+        return null;
+    }
+
     public bool Remove(string id) => _citizens.TryRemove(id, out _);
 
     private static readonly Guid Namespace = new("2a1f6c9d-84b3-4e57-9a20-7d5c1e8f3b64");

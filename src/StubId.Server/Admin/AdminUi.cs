@@ -1,5 +1,6 @@
 using System.Globalization;
 using StubId.Server.Sessions;
+using StubId.Wire;
 
 using static StubId.Server.Admin.Markup;
 
@@ -51,6 +52,13 @@ internal static class AdminUi
                 ? Layout.Page(http, "Login", Login(session, citizens, clock, problem))
                 : Results.NotFound());
 
+        app.MapGet($"{Root}/citizens", (HttpContext http, Citizens citizens, string? problem) =>
+            Layout.Page(http, "People", People(citizens, problem)));
+
+        app.MapGet($"{Root}/behaviour", (
+            HttpContext http, EnqueuedDecisions queue, Citizens citizens, string? problem) =>
+            Layout.Page(http, "Queued decisions", Behaviours(queue, citizens, problem)));
+
         // The form is read rather than bound. Binding IFormCollection attaches anti-forgery
         // metadata to the endpoint, and the framework then refuses to serve it without
         // UseAntiforgery - which this instance deliberately does not have. The broker's own login
@@ -76,6 +84,101 @@ internal static class AdminUi
                 oauthError: null,
                 "the admin page"));
         });
+
+        app.MapPost($"{Root}/citizens", async (HttpContext http, Citizens citizens) =>
+        {
+            var form = await http.Request.ReadFormAsync();
+            var name = form["name"].ToString();
+
+            // Refused rather than invented. A page that quietly names somebody "Unnamed" is worse
+            // than one that says the field was empty.
+            if (name.Length == 0)
+            {
+                return See(http, $"{Root}/citizens", "name");
+            }
+
+            if (!DateOnly.TryParse(
+                form["dateOfBirth"].ToString(), CultureInfo.InvariantCulture, out var born))
+            {
+                return See(http, $"{Root}/citizens", "date");
+            }
+
+            citizens.Create(
+                Optional(form, "id"),
+                name,
+                born,
+                string.Equals(form["gender"].ToString(), "male", StringComparison.OrdinalIgnoreCase)
+                    ? Gender.Male
+                    : Gender.Female,
+                Optional(form, "userName"),
+                Optional(form, "rule"));
+
+            return See(http, $"{Root}/citizens");
+        });
+
+        app.MapPost($"{Root}/citizens/{{id}}/rule", async (
+            HttpContext http, Citizens citizens, string id) =>
+        {
+            var form = await http.Request.ReadFormAsync();
+
+            // An empty box clears the rule, which is how somebody set to fail is put back.
+            return citizens.SetRule(id, Optional(form, "rule")) is null
+                ? Results.NotFound()
+                : See(http, $"{Root}/citizens");
+        });
+
+        // A form cannot send DELETE, so the verb is a POST and the path says what it does.
+        app.MapPost($"{Root}/citizens/{{id}}/delete", (HttpContext http, Citizens citizens, string id) =>
+            citizens.Remove(id) ? See(http, $"{Root}/citizens") : Results.NotFound());
+
+        app.MapPost($"{Root}/behaviour", async (HttpContext http, EnqueuedDecisions queue) =>
+        {
+            var form = await http.Request.ReadFormAsync();
+            var approve = form["outcome"].ToString() == "approve";
+            var citizen = Optional(form, "citizen");
+
+            var clientId = Optional(form, "clientId");
+
+            if (!approve)
+            {
+                queue.Enqueue(
+                    Decision.Refused(Optional(form, "errorCode") ?? "mitid_user_aborted"), clientId);
+
+                return See(http, $"{Root}/behaviour");
+            }
+
+            // Refused rather than falling back to "default". The form's own picker always sends
+            // somebody, so a request without one is hand-made - and naming a citizen who may since
+            // have been deleted queues an approval that fails later for a reason nobody can trace.
+            if (citizen is null)
+            {
+                return See(http, $"{Root}/behaviour", "citizen");
+            }
+
+            queue.Enqueue(Decision.Approved(citizen), clientId);
+
+            return See(http, $"{Root}/behaviour");
+        });
+
+        app.MapPost($"{Root}/behaviour/clear", (HttpContext http, EnqueuedDecisions queue) =>
+        {
+            queue.Clear();
+
+            return See(http, $"{Root}/behaviour");
+        });
+    }
+
+    /// <summary>A form field, or null where a blank box means "not given".</summary>
+    private static string? Optional(IFormCollection form, string field) =>
+        form[field].ToString() is { Length: > 0 } value ? value : null;
+
+    /// <summary>Post, redirect, get, for the pages that are not deciding a login.</summary>
+    private static IResult See(HttpContext http, string path, string? problem = null)
+    {
+        http.Response.StatusCode = StatusCodes.Status303SeeOther;
+        http.Response.Headers.Location = problem is null ? path : $"{path}?problem={problem}";
+
+        return Results.Empty;
     }
 
     /// <summary>
@@ -290,9 +393,127 @@ internal static class AdminUi
         ? "-"
         : step.Tier.ToString(CultureInfo.InvariantCulture);
 
-    private static Html Note(string? problem) => problem == "citizen"
-        ? H($"""<p><strong>That citizen is not on this instance, so nothing was decided.</strong></p>""")
-        : Html.Empty;
+    /// <summary>
+    /// The people this instance can sign in as.
+    /// </summary>
+    /// <remarks>
+    /// The rule is editable and nothing else is. A personal number is derived at creation from the
+    /// date of birth, so moving a birthday without it would leave somebody whose number disagrees
+    /// with their own age, and the rest is identity a login reads rather than setup a person
+    /// tunes. Delete and add again is the honest way to change those, and it is one click.
+    /// </remarks>
+    private static Html People(Citizens citizens, string? problem) => H($"""
+        {Note(problem)}
+        <table>
+        <tr><th>Id</th><th>Name</th><th>Born</th><th>Personal number</th><th>Username</th>
+        <th>Signing in as them</th><th></th></tr>
+        {Join(citizens.All
+            .OrderBy(citizen => citizen.Id, StringComparer.Ordinal)
+            .Select(Person))}
+        </table>
+
+        <h2>Adding somebody</h2>
+        <p class="dim">The personal number is generated and never supplied, and it is always a
+        replacement number: the day of month is raised into the 61 to 91 range, which no issued
+        number uses. A number this instance produces cannot belong to anybody.</p>
+        <form method="post" action="{Root}/citizens">
+        <p><label>Name <input name="name" size="30" required></label>
+        <label>born <input name="dateOfBirth" placeholder="1985-03-29" size="12" required></label>
+        <label>registered as
+        <select name="gender"><option value="female">female</option>
+        <option value="male">male</option></select></label></p>
+        <p><label>Id <input name="id" placeholder="chosen for you" size="16"></label>
+        <label>username <input name="userName" size="16"></label>
+        <label>and signing in as them <input name="rule" placeholder="approves" size="22"></label></p>
+        <p><button type="submit">Add</button></p>
+        </form>
+        """);
+
+    private static Html Person(Citizen citizen) => H($"""
+        <tr>
+        <td><code>{citizen.Id}</code></td>
+        <td>{citizen.Name}</td>
+        <td class="dim">{citizen.DateOfBirth}</td>
+        <td><code>{citizen.Cpr}</code></td>
+        <td>{citizen.UserName ?? "-"}</td>
+        <td>
+        <form method="post" action="{Root}/citizens/{Uri.EscapeDataString(citizen.Id)}/rule" class="inline">
+        <input name="rule" value="{citizen.Rule}" placeholder="approves" size="22">
+        <button type="submit">Save</button>
+        </form>
+        </td>
+        <td>
+        <form method="post" action="{Root}/citizens/{Uri.EscapeDataString(citizen.Id)}/delete" class="inline">
+        <button type="submit">Delete</button>
+        </form>
+        </td>
+        </tr>
+        """);
+
+    /// <summary>
+    /// What is waiting to be taken by the next login, which nothing could see until now.
+    /// </summary>
+    /// <remarks>
+    /// Tier 2 is the tier suites use most, and a decision queued by one test and spent by the
+    /// next is the hardest kind of surprise to explain from the outside. Reading the queue does
+    /// not consume it.
+    /// </remarks>
+    private static Html Behaviours(EnqueuedDecisions queue, Citizens citizens, string? problem)
+    {
+        var queued = queue.Snapshot();
+
+        var rows = queued.Count == 0
+            ? H($"""<p class="empty">Nothing is queued. Every login is decided by the tiers below it.</p>""")
+            : H($"""
+                <table>
+                <tr><th>For</th><th>Next</th><th>Does</th><th>As</th><th>Refusing with</th></tr>
+                {Join(queued.SelectMany(entry => entry.Queued.Select((decision, index) => H($"""
+                    <tr>
+                    <td><code>{(entry.ClientId == "*" ? "any client" : Short(entry.ClientId))}</code></td>
+                    <td class="dim">{index + 1}</td>
+                    <td>{(decision.Approve ? "approves" : "refuses")}</td>
+                    <td>{decision.CitizenId ?? "-"}</td>
+                    <td><code>{decision.ErrorCode ?? "-"}</code></td>
+                    </tr>
+                    """))))}
+                </table>
+                <form method="post" action="{Root}/behaviour/clear">
+                <p><button type="submit">Clear the queue</button></p>
+                </form>
+                """);
+
+        var people = Join(citizens.All
+            .OrderBy(citizen => citizen.Id, StringComparer.Ordinal)
+            .Select(citizen => H($"""<option value="{citizen.Id}">{citizen.Name}</option>""")));
+
+        return H($"""
+            {Note(problem)}
+            <p class="dim">A queued decision is taken by the next login that matches it, once, and
+            is then gone. It is the one way to approve somebody whose own rule refuses.</p>
+            {rows}
+
+            <h2>Queueing one</h2>
+            <form method="post" action="{Root}/behaviour">
+            <p><label>For <input name="clientId" placeholder="any client" size="38"></label></p>
+            <p><label><input type="radio" name="outcome" value="approve" checked> approve as
+            <select name="citizen">{people}</select></label></p>
+            <p><label><input type="radio" name="outcome" value="refuse"> refuse with
+            <input name="errorCode" value="mitid_user_aborted" size="24"></label></p>
+            <p><button type="submit">Queue it</button></p>
+            </form>
+            """);
+    }
+
+    // Codes rather than messages, so nothing a caller typed is reflected back into a page.
+    private static Html Note(string? problem) => problem switch
+    {
+        "citizen" => Told("That citizen is not on this instance, so nothing was decided."),
+        "name" => Told("A person needs a name."),
+        "date" => Told("That date of birth could not be read. Write it as 1985-03-29."),
+        _ => Html.Empty,
+    };
+
+    private static Html Told(string message) => H($"<p><strong>{message}</strong></p>");
 
     private static Html Row(string label, string? value) => value is { Length: > 0 }
         ? H($"<tr><th>{label}</th><td><code>{value}</code></td></tr>")

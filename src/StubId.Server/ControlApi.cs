@@ -111,20 +111,58 @@ public static class ControlApi
             return Results.Created($"/_stubid/v1/citizens/{citizen.Id}", citizen);
         });
 
+        // The route POST /citizens has been handing out in a Location header since it was
+        // written, and which did not exist until now.
+        api.MapGet("/citizens/{id}", (Citizens citizens, string id) =>
+            citizens.ById(id) is { } citizen ? Results.Json(citizen) : Results.NotFound());
+
+        // The one field on a person it is safe to change, and the only one worth changing while
+        // something is running: whether signing in as them works. Sending no rule clears it,
+        // which is how a person set to fail is put back.
+        api.MapPatch("/citizens/{id}", (Citizens citizens, string id, SetRuleRequest? body) =>
+            citizens.SetRule(id, body?.Rule) is { } citizen
+                ? Results.Json(citizen)
+                : Results.NotFound());
+
         api.MapDelete("/citizens/{id}", (Citizens citizens, string id) =>
             citizens.Remove(id) ? Results.NoContent() : Results.NotFound());
 
-        // Time. Only where the clock is controllable, which is how a five-minute timeout is
-        // exercised in milliseconds rather than waited out.
-        // Nothing reported the clock, and every argument about a timeout starts by asking what the
-        // instance thinks the time is. It also lets a page say how long a login has left without
-        // keeping a clock of its own and disagreeing.
+        // What is queued, in the order it will be taken, without taking any of it. Tier 2 is the
+        // tier suites use most and was the only one nothing could look at, which made a decision
+        // left over from an earlier test the hardest kind of surprise to explain.
+        api.MapGet("/behaviours", (EnqueuedDecisions queue) => Results.Json(new
+        {
+            queued = queue.Snapshot().SelectMany(entry => entry.Queued.Select((decision, index) => new
+            {
+                clientId = entry.ClientId,
+                position = index + 1,
+                decision.Approve,
+                decision.CitizenId,
+                decision.ErrorCode,
+                error = decision.OAuthError,
+            })),
+        }));
+
+        api.MapDelete("/behaviours", (EnqueuedDecisions queue) =>
+        {
+            queue.Clear();
+
+            return Results.NoContent();
+        });
+
+        // Time.
+        //
+        // Reading it is always allowed, and every argument about a timeout starts by asking what
+        // the instance thinks the time is. It also lets a page say how long a login has left
+        // without keeping a clock of its own and disagreeing with the one that decides.
         api.MapGet("/time", (TimeProvider clock) => Results.Json(new
         {
             now = clock.GetUtcNow(),
             controllable = clock is FakeTimeProvider,
         }));
 
+        // Moving it is not. Only where the clock is controllable, which is how a five-minute
+        // timeout is exercised in milliseconds rather than waited out.
         api.MapPost("/time/advance", (TimeProvider clock, AdvanceRequest body) =>
         {
             if (clock is not FakeTimeProvider controllable)
@@ -280,6 +318,12 @@ public static class ControlApi
         string Name, string DateOfBirth, string? Gender, string? Id, string? UserName, string? Rule);
 
     public sealed record AdvanceRequest(double Seconds);
+
+    /// <remarks>
+    /// A null rule is a cleared rule rather than an absent field. There is one field here, so
+    /// there is nothing a caller could mean by omitting it except "no rule".
+    /// </remarks>
+    public sealed record SetRuleRequest(string? Rule);
 
     /// <remarks>
     /// Nullable so a missing body is refused with our own message rather than the framework's

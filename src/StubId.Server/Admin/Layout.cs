@@ -64,6 +64,8 @@ internal static class Layout
     private static readonly (string Path, string Label)[] Sections =
     [
         ("/_stubid/admin", "Logins"),
+        ("/_stubid/admin/citizens", "People"),
+        ("/_stubid/admin/behaviour", "Queue"),
     ];
 
     /// <summary>A rendered page, with the headers an administrative page wants.</summary>
@@ -94,13 +96,24 @@ internal static class Layout
         </body></html>
         """);
 
-    private static Html Navigation(PathString here) => H($"""
-        <nav>{Join(Sections.Select(section => H(
-            $"""<a href="{section.Path}"{Current(here, section.Path)}>{section.Label}</a>""")))}</nav>
-        """);
+    private static Html Navigation(PathString here)
+    {
+        // The longest section that owns this path, rather than every section that prefixes it:
+        // every admin path begins with the logins one, so a first-match rule would mark that tab
+        // on every page. Marked on the section rather than on an exact URL, so a login's own page
+        // still shows which list it came from.
+        var current = Sections
+            .Where(section => here.StartsWithSegments(section.Path))
+            .OrderByDescending(section => section.Path.Length)
+            .Select(section => section.Path)
+            .FirstOrDefault();
 
-    // Marked on the section that owns the page rather than only on an exact match, so a login's own
-    // page still shows which list it came from.
-    private static Html Current(PathString here, string section) =>
-        here.StartsWithSegments(section) ? new Html(" aria-current=\"page\"") : Html.Empty;
+        return H($"""
+            <nav>{Join(Sections.Select(section => H(
+                $"""<a href="{section.Path}"{Current(section.Path == current)}>{section.Label}</a>""")))}</nav>
+            """);
+    }
+
+    private static Html Current(bool here) =>
+        here ? new Html(" aria-current=\"page\"") : Html.Empty;
 }
