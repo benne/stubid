@@ -302,6 +302,17 @@ jobs:
             --source https://api.nuget.org/v3/index.json \
             --skip-duplicate
 
+  # Deliberately not something the release waits on. By the time this runs the packages are
+  # public and cannot be withdrawn, so a failure here is something to investigate rather than
+  # something to gate on - and blocking the GitHub release on it would leave a release that
+  # exists on nuget.org and GHCR but not on GitHub.
+  consume:
+    needs: [verify, nuget]
+    if: needs.verify.outputs.publish == 'true'
+    uses: ./.github/workflows/consume.yml
+    with:
+      version: ${{ needs.verify.outputs.version }}
+
   release:
     needs: [verify, verify-published]
     if: needs.verify.outputs.publish == 'true'

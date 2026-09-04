@@ -1,0 +1,4 @@
+<!-- Empty on purpose, and load-bearing. MSBuild imports the nearest Directory.Build.props and
+     stops, so this is what keeps the repository's own build settings, version property and
+     central package management out of a project that is meant to know nothing about them. -->
+<Project />
