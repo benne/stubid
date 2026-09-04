@@ -52,10 +52,13 @@ collide with a real one.
 ```
 dotnet build
 dotnet test
+dotnet pack
 ```
 
 CI runs the same on Linux and Windows, plus the conformance suite against recorded
-fixtures.
+fixtures. Pack is there because a project added to `src/` produces a package by default,
+whether or not that was the intention, and CI checks the set against the one we mean to
+publish.
 
 Every commit is signed off (`git commit -s`). The sign-off is the Developer Certificate of
 Origin: your certification that you have the right to submit the work. It is a human

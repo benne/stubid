@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>Byte-level primitives: tokens, keys, hashes and identifiers. No ASP.NET.</Description>
+    <Description>Byte-level primitives: tokens, keys, hashes and identifiers. No ASP.NET.
+      Substrate: reference StubId.Testing or StubId.InProcess to run StubID from a test
+      suite.</Description>
   </PropertyGroup>
 
   <ItemGroup>
