@@ -132,11 +132,18 @@ public sealed record AuthorizationRequest(
 /// the browser arrives rather than where the token is collected: the token endpoint is called
 /// by the application's back end, and its address is not the one that signed anything.
 /// </param>
+/// <param name="LoginId">
+/// The login this came from, which is not <paramref name="SessionId" />. That one is the broker's
+/// own sid, minted here and put into the tokens; this one is the <c>AuthSession</c> a browser
+/// parked, and it is the only thing that ties an issued artefact back to a login somebody can
+/// look at.
+/// </param>
 public sealed record IssuedCode(
     AuthorizationRequest Request,
     Citizen Citizen,
     DateTimeOffset AuthenticatedAt,
     string SessionId,
+    string LoginId,
     string TransactionId,
     string IdpTransactionId,
     string ClientIp);
@@ -164,6 +171,7 @@ public sealed record IssuedAccessToken(
     Citizen Citizen,
     string Scope,
     string SessionId,
+    string LoginId,
     string IdpTransactionId,
     DateTimeOffset AuthenticatedAt,
     string? ReferenceText = null,
@@ -266,7 +274,7 @@ public sealed class BrokerState
                 "pushed request",
                 pushed.Request.ClientId,
                 CitizenId: null,
-                SessionId: null,
+                LoginId: null,
                 AuthenticatedAt: null,
                 pushed.Expires,
                 pushed.Request.Scope))
@@ -274,7 +282,7 @@ public sealed class BrokerState
                 "code",
                 code.Request.ClientId,
                 code.Citizen.Id,
-                code.SessionId,
+                code.LoginId,
                 code.AuthenticatedAt,
                 Expires: null,
                 code.Request.Scope)))
@@ -282,7 +290,7 @@ public sealed class BrokerState
                 "access token",
                 token.ClientId,
                 token.Citizen.Id,
-                token.SessionId,
+                token.LoginId,
                 token.AuthenticatedAt,
                 Expires: null,
                 token.Scope)))
@@ -321,7 +329,7 @@ public sealed record IssuedArtefact(
     string Kind,
     string ClientId,
     string? CitizenId,
-    string? SessionId,
+    string? LoginId,
     DateTimeOffset? AuthenticatedAt,
     DateTimeOffset? Expires,
     string? Scope);
@@ -412,12 +420,17 @@ public sealed record Client(string ClientId, string[] ResponseTypes, string Orga
     }
 
     public string IssueCode(
-        AuthorizationRequest request, Citizen citizen, DateTimeOffset now, string clientIp)
+        AuthorizationRequest request,
+        Citizen citizen,
+        DateTimeOffset now,
+        string clientIp,
+        string loginId)
     {
         var code = Base64Url.Encode(RandomNumberGenerator.GetBytes(32));
         _codes[code] = new IssuedCode(
             request, citizen, now,
             SessionId: Guid.NewGuid().ToString(),
+            LoginId: loginId,
             TransactionId: Guid.NewGuid().ToString(),
             IdpTransactionId: Guid.NewGuid().ToString(),
             ClientIp: clientIp);
@@ -439,7 +452,7 @@ public sealed record Client(string ClientId, string[] ResponseTypes, string Orga
         var token = Base64Url.Encode(RandomNumberGenerator.GetBytes(32));
         _accessTokens[token] = new IssuedAccessToken(
             code.Request.ClientId, code.Citizen, code.Request.Scope,
-            code.SessionId, code.IdpTransactionId, code.AuthenticatedAt,
+            code.SessionId, code.LoginId, code.IdpTransactionId, code.AuthenticatedAt,
             code.Request.ReferenceText,
             code.Request.TransactionTextType,
             code.Request.TransactionTextSha256);

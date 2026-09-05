@@ -275,16 +275,17 @@ public class ControlClientTests(WebApplicationFactory<Program> factory)
         Assert.DoesNotContain(issued, artefact => artefact.Kind == "code");
         Assert.All(issued, artefact => Assert.Equal(CodeClient, artefact.ClientId));
 
-        // A login it can be lined up against, which is what a value would otherwise be used for.
+        // A login it can be lined up against, which is what a value would otherwise be used for,
+        // and it has to be the login's own id rather than the broker's sid or the link is dead.
         Assert.All(
             issued.Where(artefact => artefact.Kind != "pushed request"),
-            artefact => Assert.False(string.IsNullOrEmpty(artefact.SessionId)));
+            artefact => Assert.False(string.IsNullOrEmpty(artefact.LoginId)));
 
         var everything = string.Join(
             "\u001f",
             waiting.Concat(issued).SelectMany(artefact => new[]
             {
-                artefact.Kind, artefact.ClientId, artefact.CitizenId, artefact.SessionId,
+                artefact.Kind, artefact.ClientId, artefact.CitizenId, artefact.LoginId,
                 artefact.Scope, artefact.AuthenticatedAt?.ToString(), artefact.Expires?.ToString(),
             }));
 
