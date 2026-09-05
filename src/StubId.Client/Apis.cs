@@ -324,6 +324,34 @@ public sealed class RuntimeApi(HttpClient http)
             : X509CertificateLoader.LoadCertificate(Convert.FromBase64String(body.Certificate));
     }
 
+    /// <summary>Whether logins are decided without anybody deciding them.</summary>
+    public async Task<StubIdApproval> GetAutomaticApprovalAsync(CancellationToken ct = default)
+    {
+        using var response = await http.GetAsync("/_stubid/v1/runtime/automatic-approval", ct);
+
+        return await Control.ReadAsync(response, ControlJson.Default.StubIdApproval, ct);
+    }
+
+    /// <summary>
+    /// Switches it over while the instance runs, or puts it back with null.
+    /// </summary>
+    /// <remarks>
+    /// An override rather than a write to the setting, so null means "whatever this instance was
+    /// started with" rather than "off". A suite that shares one instance and needs a login to
+    /// park for one test can turn it off and hand it back.
+    /// </remarks>
+    public async Task<StubIdApproval> SetAutomaticApprovalAsync(
+        bool? enabled, CancellationToken ct = default)
+    {
+        using var response = await http.PutAsJsonAsync(
+            "/_stubid/v1/runtime/automatic-approval",
+            new AutomaticApprovalBody(enabled),
+            ControlJson.Default.AutomaticApprovalBody,
+            ct);
+
+        return await Control.ReadAsync(response, ControlJson.Default.StubIdApproval, ct);
+    }
+
     /// <summary>The address this instance answers at, or null if nothing has told it.</summary>
     public async Task<Uri?> GetPublicBaseUrlAsync(CancellationToken ct = default)
     {

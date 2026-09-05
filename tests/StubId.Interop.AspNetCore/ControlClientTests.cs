@@ -339,6 +339,44 @@ public class ControlClientTests(WebApplicationFactory<Program> factory)
         Assert.Equal(HttpStatusCode.BadRequest, afterwards.StatusCode);
     }
 
+    /// <summary>
+    /// A suite sharing one instance can make a login park for one test and hand it back.
+    /// </summary>
+    /// <remarks>
+    /// The setting is what the instance was started with, and this is an override in front of
+    /// it, which is why null puts it back rather than turning approval off. Asserted through a
+    /// login, because the ladder is what has to change.
+    /// </remarks>
+    [Fact]
+    public async Task Automatic_approval_can_be_turned_off_and_handed_back()
+    {
+        using var stub = Connect();
+
+        var started = await stub.Runtime.GetAutomaticApprovalAsync(Ct);
+
+        Assert.True(started.Enabled);
+        Assert.Null(started.Overridden);
+
+        var manual = await stub.Runtime.SetAutomaticApprovalAsync(false, Ct);
+
+        Assert.False(manual.Enabled);
+        Assert.True(manual.Configured);
+        Assert.False(manual.Overridden);
+
+        var parked = await stub.Sessions.FindAsync(await Drive(stub, _automatic), Ct);
+
+        Assert.Equal(SessionState.AwaitingApproval, parked?.State);
+
+        var handedBack = await stub.Runtime.SetAutomaticApprovalAsync(null, Ct);
+
+        Assert.True(handedBack.Enabled);
+        Assert.Null(handedBack.Overridden);
+
+        var decided = await stub.Sessions.FindAsync(await Drive(stub, _automatic), Ct);
+
+        Assert.NotEqual(SessionState.AwaitingApproval, decided?.State);
+    }
+
     /// <summary>The three clients, which a reader otherwise finds by grepping for a GUID.</summary>
     [Fact]
     public async Task The_client_reads_the_clients_it_is_allowed_to_use()
@@ -512,9 +550,11 @@ public class ControlClientTests(WebApplicationFactory<Program> factory)
     /// decision resolves a login before the authorize response is written, so there is nothing
     /// awaiting approval to find - which is the whole point of the tier.
     /// </remarks>
-    private async Task<string> Drive(StubIdClient stub)
+    private async Task<string> Drive(StubIdClient stub, WebApplicationFactory<Program>? host = null)
     {
-        using var browser = _manual.CreateClient(
+        // The host has to be the one the client is talking to. They are two separate instances,
+        // and driving a login into one while asking the other about it finds nothing.
+        using var browser = (host ?? _manual).CreateClient(
             new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
         using var response = await browser.GetAsync(

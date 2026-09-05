@@ -17,6 +17,8 @@ namespace StubId.Client;
 [JsonSerializable(typeof(IReadOnlyList<StubIdSession>))]
 [JsonSerializable(typeof(SessionExplanation))]
 [JsonSerializable(typeof(StubIdClock))]
+[JsonSerializable(typeof(StubIdApproval))]
+[JsonSerializable(typeof(AutomaticApprovalBody))]
 [JsonSerializable(typeof(QueuedBody))]
 [JsonSerializable(typeof(ClientsBody))]
 [JsonSerializable(typeof(IssuedBody))]
@@ -65,6 +67,8 @@ internal sealed record FaultBody(string? Error, string? Detail);
 internal sealed record NowBody(DateTimeOffset Now);
 
 internal sealed record SetRuleBody(string? Rule);
+
+internal sealed record AutomaticApprovalBody(bool? Enabled);
 
 internal sealed record QueuedBody(IReadOnlyList<QueuedDecision> Queued);
 

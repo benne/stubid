@@ -25,13 +25,34 @@ public class AdminPageTests
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
+    /// <summary>
+    /// An instance, with configuration reloading switched off.
+    /// </summary>
+    /// <remarks>
+    /// Every host a factory builds watches its configuration files, and each watcher is an inotify
+    /// instance. Linux gives a user 128 of them by default, this assembly builds two dozen hosts,
+    /// and crossing the limit fails with a message about file descriptors that names nothing a
+    /// reader would connect to a test. Nothing here edits appsettings while it runs, so the
+    /// watching buys nothing and costs the thing the suite is short of.
+    /// </remarks>
+    private static WebApplicationFactory<Program> Host(Action<IWebHostBuilder> configure) =>
+        new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
+        {
+            b.UseSetting("hostBuilder:reloadConfigOnChange", "false");
+            configure(b);
+        });
+
     /// <summary>An instance that parks a login, so there is something to decide.</summary>
     private static WebApplicationFactory<Program> Parking() =>
-        new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
+        Host(b =>
         {
             b.UseSetting("StubId:PublicBaseUrl", "http://localhost");
             b.UseSetting("StubId:ApproveAutomatically", "false");
         });
+
+    /// <summary>An instance that decides its own logins, which is the default a test wants.</summary>
+    private static WebApplicationFactory<Program> Automatic() =>
+        Host(b => b.UseSetting("StubId:PublicBaseUrl", "http://localhost"));
 
     private static HttpClient Browser(WebApplicationFactory<Program> stub) =>
         stub.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
@@ -89,8 +110,7 @@ public class AdminPageTests
     [Fact]
     public async Task The_pages_answer_before_the_address_is_set()
     {
-        using var stub = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
-            b.UseSetting("StubId:PublicBaseUrl", ""));
+        using var stub = Host(b => b.UseSetting("StubId:PublicBaseUrl", ""));
 
         var http = Browser(stub);
 
@@ -596,8 +616,7 @@ public class AdminPageTests
     [Fact]
     public async Task The_issued_page_shows_what_was_handed_out_and_never_the_value()
     {
-        using var stub = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
-            b.UseSetting("StubId:PublicBaseUrl", "http://localhost"));
+        using var stub = Automatic();
 
         var http = Browser(stub);
 
@@ -644,11 +663,173 @@ public class AdminPageTests
         }
     }
 
+    /// <summary>
+    /// Whether logins decide themselves, switched while the instance runs.
+    /// </summary>
+    /// <remarks>
+    /// The moment somebody is watching an instance is the moment they want it to stop deciding
+    /// for them, and restarting a container to change one boolean takes the sessions they were
+    /// looking at with it. Asserted through a login rather than by reading the flag back: the
+    /// ladder is what has to change, not a field.
+    /// </remarks>
+    [Fact]
+    public async Task Approval_can_be_switched_over_while_the_instance_runs()
+    {
+        // Started automatic, which is the default a test wants.
+        using var stub = Automatic();
+
+        var http = Browser(stub);
+
+        using var made = await http.PostAsync(
+            $"{Admin}/controls/approval", Form(("enabled", "false")), Ct);
+
+        Assert.Equal(HttpStatusCode.SeeOther, made.StatusCode);
+
+        var parked = await Park(http);
+
+        using var waiting = await http.GetAsync($"/_stubid/v1/sessions/{parked}", Ct);
+        using var session = JsonDocument.Parse(await waiting.Content.ReadAsStringAsync(Ct));
+
+        Assert.Equal("AwaitingApproval", session.RootElement.GetProperty("state").GetString());
+
+        // A form with no field at all is the page's "back to how it started" button, and a
+        // request with no body is not an error either.
+        using var restored = await http.PostAsync($"{Admin}/controls/approval", null, Ct);
+
+        Assert.Equal(HttpStatusCode.SeeOther, restored.StatusCode);
+
+        using var reported = await http.GetAsync("/_stubid/v1/runtime/automatic-approval", Ct);
+        using var approval = JsonDocument.Parse(await reported.Content.ReadAsStringAsync(Ct));
+
+        Assert.True(approval.RootElement.GetProperty("enabled").GetBoolean());
+        Assert.True(approval.RootElement.GetProperty("configured").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, approval.RootElement.GetProperty("overridden").ValueKind);
+
+        // And it decides again, which the flag alone would not have proved.
+        using var decided = await http.GetAsync($"/_stubid/v1/sessions/{await Park(http)}", Ct);
+        using var afterwards = JsonDocument.Parse(await decided.Content.ReadAsStringAsync(Ct));
+
+        Assert.NotEqual("AwaitingApproval", afterwards.RootElement.GetProperty("state").GetString());
+    }
+
+    /// <summary>The address, set from the page through the instance's own validation.</summary>
+    [Theory]
+    [InlineData("http://renamed.example:9000", null)]
+    [InlineData("http://localhost:8080/op", "address")]
+    [InlineData("", "address")]
+    public async Task The_address_can_be_set_and_a_bad_one_is_refused(string address, string? problem)
+    {
+        using var stub = Parking();
+        var http = Browser(stub);
+
+        using var set = await http.PostAsync(
+            $"{Admin}/controls/address", Form(("address", address)), Ct);
+
+        Assert.Equal(HttpStatusCode.SeeOther, set.StatusCode);
+
+        var back = set.Headers.Location!.ToString();
+
+        if (problem is null)
+        {
+            Assert.Equal($"{Admin}/controls", back);
+
+            using var document = JsonDocument.Parse(
+                await http.GetStringAsync("/op/.well-known/openid-configuration", Ct));
+
+            Assert.Equal($"{address}/op", document.RootElement.GetProperty("issuer").GetString());
+        }
+        else
+        {
+            Assert.EndsWith($"?problem={problem}", back, StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>Moving the clock, and saying so when it cannot be moved.</summary>
+    [Fact]
+    public async Task The_clock_moves_only_where_it_was_made_movable()
+    {
+        using var fixed_ = Parking();
+        using var refused = await Browser(fixed_).PostAsync(
+            $"{Admin}/controls/advance", Form(("seconds", "300")), Ct);
+
+        Assert.EndsWith(
+            "?problem=clock", refused.Headers.Location!.ToString(), StringComparison.Ordinal);
+
+        using var stub = Host(b =>
+        {
+            b.UseSetting("StubId:PublicBaseUrl", "http://localhost");
+            b.UseSetting("StubId:ControllableClock", "true");
+        });
+
+        var http = Browser(stub);
+
+        using var before = await http.GetAsync("/_stubid/v1/time", Ct);
+        using var started = JsonDocument.Parse(await before.Content.ReadAsStringAsync(Ct));
+        var was = started.RootElement.GetProperty("now").GetDateTimeOffset();
+
+        using var moved = await http.PostAsync(
+            $"{Admin}/controls/advance", Form(("seconds", "600")), Ct);
+
+        Assert.Equal(HttpStatusCode.SeeOther, moved.StatusCode);
+
+        using var after = await http.GetAsync("/_stubid/v1/time", Ct);
+        using var now = JsonDocument.Parse(await after.Content.ReadAsStringAsync(Ct));
+
+        Assert.Equal(was.AddMinutes(10), now.RootElement.GetProperty("now").GetDateTimeOffset());
+
+        using var nonsense = await http.PostAsync(
+            $"{Admin}/controls/advance", Form(("seconds", "a while")), Ct);
+
+        Assert.EndsWith(
+            "?problem=seconds", nonsense.Headers.Location!.ToString(), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The page's reset is the control API's reset, not a second idea of what one means.
+    /// </summary>
+    [Fact]
+    public async Task Resetting_from_the_page_clears_what_the_api_clears()
+    {
+        using var stub = Automatic();
+
+        var http = Browser(stub);
+
+        await Park(http);
+
+        using var queued = await http.PostAsync(
+            $"{Admin}/behaviour", Form(("outcome", "refuse")), Ct);
+
+        using var reset = await http.PostAsync($"{Admin}/controls/reset", null, Ct);
+
+        Assert.Equal(HttpStatusCode.SeeOther, reset.StatusCode);
+
+        foreach (var (path, property) in new[]
+        {
+            ("/_stubid/v1/sessions", (string?)null),
+            ("/_stubid/v1/issued", "issued"),
+            ("/_stubid/v1/behaviours", "queued"),
+        })
+        {
+            using var read = await http.GetAsync(path, Ct);
+            using var body = JsonDocument.Parse(await read.Content.ReadAsStringAsync(Ct));
+
+            var array = property is null ? body.RootElement : body.RootElement.GetProperty(property);
+
+            Assert.Equal(0, array.GetArrayLength());
+        }
+
+        // The people stay, which is the line this endpoint draws.
+        using var people = await http.GetAsync("/_stubid/v1/citizens", Ct);
+        using var kept = JsonDocument.Parse(await people.Content.ReadAsStringAsync(Ct));
+
+        Assert.Equal(1, kept.RootElement.GetArrayLength());
+    }
+
     /// <summary>The clock, which nothing reported before.</summary>
     [Fact]
     public async Task The_instance_reports_its_clock()
     {
-        using var stub = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
+        using var stub = Host(b =>
         {
             b.UseSetting("StubId:PublicBaseUrl", "http://localhost");
             b.UseSetting("StubId:ControllableClock", "true");
