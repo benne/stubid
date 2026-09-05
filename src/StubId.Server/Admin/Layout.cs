@@ -68,6 +68,7 @@ internal static class Layout
         ("/_stubid/admin/behaviour", "Queue"),
         ("/_stubid/admin/issued", "Issued"),
         ("/_stubid/admin/emulated", "Emulated"),
+        ("/_stubid/admin/controls", "Controls"),
     ];
 
     /// <summary>A rendered page, with the headers an administrative page wants.</summary>

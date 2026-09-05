@@ -237,6 +237,30 @@ public static class ControlApi
         // its own mapped host port until Docker has started it, and the caller that mapped it is
         // the only party that knows - so a test module starts the instance, reads the port, and
         // tells it, before anything has discovered a document with the wrong issuer in it.
+        // Whether logins decide themselves, switchable while the instance runs. A container
+        // restart to change one boolean would take the sessions somebody was watching with it.
+        api.MapGet("/runtime/automatic-approval", (AutomaticApproval approval) => Results.Json(new
+        {
+            enabled = approval.Enabled,
+            configured = approval.Configured,
+            overridden = approval.Overridden,
+        }));
+
+        api.MapPut("/runtime/automatic-approval", (
+            AutomaticApproval approval, AutomaticApprovalRequest? body) =>
+        {
+            // A null enabled clears the override rather than meaning false, so an instance can be
+            // put back to what it was started with.
+            approval.Set(body?.Enabled);
+
+            return Results.Json(new
+            {
+                enabled = approval.Enabled,
+                configured = approval.Configured,
+                overridden = approval.Overridden,
+            });
+        });
+
         api.MapGet("/runtime/public-base-url", (PublicBaseUrl publicBaseUrl) =>
             Results.Json(new { publicBaseUrl = publicBaseUrl.Value }));
 
@@ -369,6 +393,12 @@ public static class ControlApi
     /// there is nothing a caller could mean by omitting it except "no rule".
     /// </remarks>
     public sealed record SetRuleRequest(string? Rule);
+
+    /// <remarks>
+    /// Nullable throughout: no body, or a null <c>enabled</c>, puts the instance back to the
+    /// setting it was started with rather than turning approval off.
+    /// </remarks>
+    public sealed record AutomaticApprovalRequest(bool? Enabled);
 
     /// <remarks>
     /// Nullable so a missing body is refused with our own message rather than the framework's

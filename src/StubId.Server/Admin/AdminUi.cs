@@ -60,6 +60,78 @@ internal static class AdminUi
             HttpContext http, EnqueuedDecisions queue, Citizens citizens, string? problem) =>
             Layout.Page(http, "Queued decisions", Behaviours(queue, citizens, problem)));
 
+        app.MapGet($"{Root}/controls", (
+            HttpContext http, PublicBaseUrl address, TimeProvider clock,
+            AutomaticApproval approval, Citizens citizens, string? problem) =>
+            Layout.Page(http, "Controls", Controls(address, clock, approval, citizens, problem)));
+
+        app.MapPost($"{Root}/controls/address", async (HttpContext http, PublicBaseUrl address) =>
+        {
+            var form = await Submitted(http.Request);
+
+            // The instance's own validation, so the page refuses exactly what the API refuses and
+            // does not grow a second opinion about what an address may be.
+            if (!PublicBaseUrl.TryNormalise(Optional(form, "address"), out var normalised, out _))
+            {
+                return See(http, $"{Root}/controls", "address");
+            }
+
+            address.Set(normalised);
+
+            return See(http, $"{Root}/controls");
+        });
+
+        app.MapPost($"{Root}/controls/advance", async (HttpContext http, TimeProvider clock) =>
+        {
+            var form = await Submitted(http.Request);
+
+            if (clock is not FakeTimeProvider controllable)
+            {
+                return See(http, $"{Root}/controls", "clock");
+            }
+
+            if (!double.TryParse(
+                form["seconds"].ToString(), CultureInfo.InvariantCulture, out var seconds))
+            {
+                return See(http, $"{Root}/controls", "seconds");
+            }
+
+            controllable.Advance(TimeSpan.FromSeconds(seconds));
+
+            return See(http, $"{Root}/controls");
+        });
+
+        app.MapPost($"{Root}/controls/approval", async (HttpContext http, AutomaticApproval approval) =>
+        {
+            var wanted = (await Submitted(http.Request))["enabled"].ToString();
+
+            // No enabled field clears the override, which is the page's "back to how it started"
+            // button. Anything unrecognised does the same, because the honest answer to a value
+            // this does not understand is the setting the instance was given.
+            approval.Set(wanted switch
+            {
+                "true" => true,
+                "false" => false,
+                _ => null,
+            });
+
+            return See(http, $"{Root}/controls");
+        });
+
+        app.MapPost($"{Root}/controls/reset", (
+            HttpContext http, SessionStore sessions, EnqueuedDecisions queue,
+            BrokerState state, CprMatch attempts) =>
+        {
+            // The same four the control API clears, called the same way: one reset, not a second
+            // idea of what one means.
+            sessions.Clear();
+            queue.Clear();
+            state.Forget();
+            attempts.Clear();
+
+            return See(http, $"{Root}/controls");
+        });
+
         app.MapGet($"{Root}/issued", (HttpContext http, BrokerState state) =>
             Layout.Page(http, "What it has handed out", Issued(state)));
 
@@ -76,7 +148,7 @@ internal static class AdminUi
         app.MapPost($"{Root}/sessions/{{id}}/approve", async (
             HttpContext http, SessionStore sessions, Citizens citizens, string id) =>
         {
-            var form = await http.Request.ReadFormAsync();
+            var form = await Submitted(http.Request);
 
             return Answer(http, id, Approvals.Approve(
                 sessions, citizens, id, form["citizen"].ToString(), "the admin page"));
@@ -85,7 +157,7 @@ internal static class AdminUi
         app.MapPost($"{Root}/sessions/{{id}}/reject", async (
             HttpContext http, SessionStore sessions, string id) =>
         {
-            var form = await http.Request.ReadFormAsync();
+            var form = await Submitted(http.Request);
 
             return Answer(http, id, Approvals.Reject(
                 sessions,
@@ -97,7 +169,7 @@ internal static class AdminUi
 
         app.MapPost($"{Root}/citizens", async (HttpContext http, Citizens citizens) =>
         {
-            var form = await http.Request.ReadFormAsync();
+            var form = await Submitted(http.Request);
             var name = form["name"].ToString();
 
             // Refused rather than invented. A page that quietly names somebody "Unnamed" is worse
@@ -129,7 +201,7 @@ internal static class AdminUi
         app.MapPost($"{Root}/citizens/{{id}}/rule", async (
             HttpContext http, Citizens citizens, string id) =>
         {
-            var form = await http.Request.ReadFormAsync();
+            var form = await Submitted(http.Request);
 
             // An empty box clears the rule, which is how somebody set to fail is put back.
             return citizens.SetRule(id, Optional(form, "rule")) is null
@@ -143,7 +215,7 @@ internal static class AdminUi
 
         app.MapPost($"{Root}/behaviour", async (HttpContext http, EnqueuedDecisions queue) =>
         {
-            var form = await http.Request.ReadFormAsync();
+            var form = await Submitted(http.Request);
             var approve = form["outcome"].ToString() == "approve";
             var citizen = Optional(form, "citizen");
 
@@ -177,6 +249,17 @@ internal static class AdminUi
             return See(http, $"{Root}/behaviour");
         });
     }
+
+    /// <summary>
+    /// The submitted form, or an empty one where there was no form at all.
+    /// </summary>
+    /// <remarks>
+    /// A browser sends a content type for every form it posts, empty or not. Something driving
+    /// these by hand may send neither, and reading the form then throws - which turns a request
+    /// that is merely malformed into a page that looks like a broken instance.
+    /// </remarks>
+    private static async Task<IFormCollection> Submitted(HttpRequest request) =>
+        request.HasFormContentType ? await request.ReadFormAsync() : FormCollection.Empty;
 
     /// <summary>A form field, or null where a blank box means "not given".</summary>
     private static string? Optional(IFormCollection form, string field) =>
@@ -515,6 +598,91 @@ internal static class AdminUi
     }
 
     /// <summary>
+    /// The four things worth changing while an instance is running.
+    /// </summary>
+    /// <remarks>
+    /// Each one already exists on the control API and each one is here for the same reason: the
+    /// person watching a demonstration has no test to call it from. Nothing on this page is a
+    /// second implementation - the reset clears the same four stores, and the address goes
+    /// through the instance's own validation rather than a second opinion about what an address
+    /// may be.
+    /// </remarks>
+    private static Html Controls(
+        PublicBaseUrl address,
+        TimeProvider clock,
+        AutomaticApproval approval,
+        Citizens citizens,
+        string? problem)
+    {
+        var controllable = clock is FakeTimeProvider;
+
+        var moving = controllable
+            ? H($"""
+                <form method="post" action="{Root}/controls/advance">
+                <p><label>Move it on by <input name="seconds" value="300" size="8"> seconds</label>
+                <button type="submit">Advance</button></p>
+                </form>
+                <p class="dim">A login times out after five minutes, and an approved one has five
+                more to be collected. Moving the clock is how both are reached without waiting.</p>
+                """)
+            : H($"""
+                <p class="dim">This instance has a real clock, so it cannot be moved. Start it with
+                <code>StubId__ControllableClock=true</code> for one that can.</p>
+                """);
+
+        // Approving automatically with nobody to approve as refuses every login with
+        // mitid_identity_not_found, and the page that lets somebody delete the last citizen is two
+        // clicks away.
+        var nobody = approval.Enabled && citizens.All.Count == 0
+            ? H($"""
+                <p><strong>There is nobody to sign in as.</strong> While this instance approves
+                automatically and has no people, every login is refused with
+                <code>mitid_identity_not_found</code>.</p>
+                """)
+            : Html.Empty;
+
+        return H($"""
+            {Note(problem)}
+
+            <h2>Deciding logins</h2>
+            <p>{(approval.Enabled
+                ? "Logins are approved without anybody deciding them, which is what a test wants."
+                : "Logins park and wait for a decision, which is what a demonstration wants.")}</p>
+            {nobody}
+            <form method="post" action="{Root}/controls/approval" class="inline">
+            <input type="hidden" name="enabled" value="{(approval.Enabled ? "false" : "true")}">
+            <button type="submit">{(approval.Enabled ? "Make them wait" : "Approve them automatically")}</button>
+            </form>
+            <form method="post" action="{Root}/controls/approval" class="inline">
+            <button type="submit">Back to how it started</button>
+            </form>
+            <p class="dim">Started as
+            <code>{(approval.Configured ? "automatic" : "manual")}</code>{(approval.Overridden is null
+                ? ", and nothing has changed it."
+                : ", and something changed it while it was running.")}</p>
+
+            <h2>The address it answers as</h2>
+            <p class="dim">Every issuer this instance emits is built from it, and until something
+            sets one everything that needs an issuer answers 503.</p>
+            <form method="post" action="{Root}/controls/address">
+            <p><input name="address" value="{address.Value}" size="42" placeholder="http://localhost:8080">
+            <button type="submit">Set it</button></p>
+            </form>
+
+            <h2>The clock</h2>
+            <p>It reads <code>{Moment(clock.GetUtcNow())} UTC</code>.</p>
+            {moving}
+
+            <h2>Starting over</h2>
+            <p class="dim">Clears the logins, anything queued, and everything issued. The people
+            stay, so what was set up once survives it.</p>
+            <form method="post" action="{Root}/controls/reset">
+            <p><button type="submit">Reset</button></p>
+            </form>
+            """);
+    }
+
+    /// <summary>
     /// The codes, tokens and pushed requests this instance has handed out.
     /// </summary>
     /// <remarks>
@@ -717,6 +885,13 @@ internal static class AdminUi
         "citizen" => Told("That citizen is not on this instance, so nothing was decided."),
         "name" => Told("A person needs a name."),
         "date" => Told("That date of birth could not be read. Write it as 1985-03-29."),
+        "address" => Told(
+            "That is not an address an issuer can be built from. It needs a scheme and a host, "
+            + "and no path: http://localhost:8080, not http://localhost:8080/op."),
+        "clock" => Told(
+            "This instance has a real clock. Start it with StubId__ControllableClock=true "
+            + "for one that can be moved."),
+        "seconds" => Told("That is not a number of seconds."),
         _ => Html.Empty,
     };
 

@@ -77,6 +77,13 @@ public sealed record EmulatedRoute(
     IReadOnlyList<string> Methods,
     string? Role);
 
+/// <summary>
+/// Whether logins decide themselves, and where that answer came from.
+/// </summary>
+/// <param name="Configured">What the instance was started with.</param>
+/// <param name="Overridden">What was set while it ran, or null if nothing was.</param>
+public sealed record StubIdApproval(bool Enabled, bool Configured, bool? Overridden);
+
 /// <summary>What the instance's clock reads, and whether a test may move it.</summary>
 public sealed record StubIdClock(DateTimeOffset Now, bool Controllable);
 

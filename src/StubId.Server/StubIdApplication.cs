@@ -47,6 +47,7 @@ public static class StubIdApplication
         // false for an instance somebody is watching.
         services.AddSingleton<Citizens>();
         services.AddSingleton<EnqueuedDecisions>();
+        services.AddSingleton<AutomaticApproval>();
         services.AddSingleton(sp => new Ladder(
         [
             sp.GetRequiredService<EnqueuedDecisions>(),
@@ -54,10 +55,9 @@ public static class StubIdApplication
             new CitizenRules(sp.GetRequiredService<Citizens>()),
             new DefaultOutcome(
                 sp.GetRequiredService<Citizens>(),
-                // Read per decision rather than captured, so an instance that is reconfigured
-                // while it runs answers with the setting it has now.
-                () => sp.GetRequiredService<IConfiguration>()
-                        .GetValue("StubId:ApproveAutomatically", defaultValue: true)),
+                // Asked per decision rather than captured, so an instance that is switched over
+                // while it runs answers with what it is set to now rather than what it started as.
+                () => sp.GetRequiredService<AutomaticApproval>().Enabled),
         ]));
         services.AddSingleton(sp => new SessionStore(
             sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<Ladder>()));
