@@ -49,14 +49,14 @@ public sealed record QueuedDecision(
 /// </summary>
 /// <remarks>
 /// There is no value here and no prefix of one. A code and an access token are credentials, and
-/// the surface that serves this asks nobody who they are. <see cref="SessionId" /> is what lines
-/// an entry up against a login.
+/// the surface that serves this asks nobody who they are. <see cref="LoginId" /> is what lines an
+/// entry up against a login, and it is null for a pushed request, which exists before there is one.
 /// </remarks>
 public sealed record IssuedArtefact(
     string Kind,
     string ClientId,
     string? CitizenId,
-    string? SessionId,
+    string? LoginId,
     DateTimeOffset? AuthenticatedAt,
     DateTimeOffset? Expires,
     string? Scope);

@@ -97,6 +97,10 @@ A test would decide the same login through the control API without a browser at 
 through the same store rather than two implementations that agree until one changes. How a login is
 decided, and how to ask why it went the way it did, is in [its own guide](approvals.md).
 
+There is also a page for watching it happen. `http://localhost:8080/_stubid/admin` lists the logins
+this instance has as they arrive, decides them, and says why each one went the way it did —
+[watching and steering an instance](admin.md) is that page explained.
+
 ## Signing out
 
 The sign-out link ends both sessions: the application's cookie, and the session inside StubID, which

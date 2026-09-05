@@ -10,8 +10,10 @@ browser over TLS, in Chromium, Firefox and WebKit, which is the step the real br
 impossible. Spring Security resolves its metadata from the path-bearing issuer, which is the part
 it is strictest about. Tests can create citizens, decide how each login resolves, and move the
 clock to force a timeout, and a .NET suite can drive all of that from code — against a container,
-or against an instance hosted inside the test process with no Docker at all. What is missing is
-the admin interface. See [docs/roadmap.md](https://github.com/benne/stubid/blob/master/docs/roadmap.md).
+or against an instance hosted inside the test process with no Docker at all. Every instance also
+serves pages that show logins arriving, decide them by hand, and say what the build emulates. What
+is missing is the documentation site and a 1.0. See
+[docs/roadmap.md](https://github.com/benne/stubid/blob/master/docs/roadmap.md).
 
 ## The problem
 
@@ -61,6 +63,9 @@ How a login is decided, and how to ask why it went the way it did, is in
 starts in about 150 milliseconds and needs no Docker. Trusting the certificate it serves over TLS,
 from any stack, is in [docs/guides/certificates.md](https://github.com/benne/stubid/blob/master/docs/guides/certificates.md), and driving a
 login from a browser test is in [docs/guides/browsers.md](https://github.com/benne/stubid/blob/master/docs/guides/browsers.md).
+Watching logins arrive and steering an instance by hand, without writing any code, is in
+[docs/guides/admin.md](https://github.com/benne/stubid/blob/master/docs/guides/admin.md) — which is
+also where the exposure this tool assumes is written down.
 
 ## Fidelity
 

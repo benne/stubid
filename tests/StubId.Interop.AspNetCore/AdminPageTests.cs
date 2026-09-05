@@ -25,22 +25,9 @@ public class AdminPageTests
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    /// <summary>
-    /// An instance, with configuration reloading switched off.
-    /// </summary>
-    /// <remarks>
-    /// Every host a factory builds watches its configuration files, and each watcher is an inotify
-    /// instance. Linux gives a user 128 of them by default, this assembly builds two dozen hosts,
-    /// and crossing the limit fails with a message about file descriptors that names nothing a
-    /// reader would connect to a test. Nothing here edits appsettings while it runs, so the
-    /// watching buys nothing and costs the thing the suite is short of.
-    /// </remarks>
+    /// <summary>An instance. See <see cref="HostWatching" /> for what these do not do.</summary>
     private static WebApplicationFactory<Program> Host(Action<IWebHostBuilder> configure) =>
-        new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
-        {
-            b.UseSetting("hostBuilder:reloadConfigOnChange", "false");
-            configure(b);
-        });
+        new WebApplicationFactory<Program>().WithWebHostBuilder(configure);
 
     /// <summary>An instance that parks a login, so there is something to decide.</summary>
     private static WebApplicationFactory<Program> Parking() =>
@@ -649,8 +636,18 @@ public class AdminPageTests
         Assert.Equal(HttpStatusCode.OK, page.StatusCode);
         Assert.Contains("access token", html, StringComparison.Ordinal);
 
-        // It says which login it belongs to, which is what a value would otherwise be used for.
-        Assert.Contains($"{Admin}/sessions/", html, StringComparison.Ordinal);
+        // It says which login it belongs to, which is what a value would otherwise be used for -
+        // and the link is followed rather than matched. Asserting the prefix is what let this ship
+        // pointing at the broker's own sid, which is a different id and resolves to nothing.
+        var link = System.Text.RegularExpressions.Regex
+            .Match(html, "href=\"(" + Admin + "/sessions/[^\"]+)\"")
+            .Groups[1].Value;
+
+        Assert.False(string.IsNullOrEmpty(link), "The issued page linked no login.");
+
+        using var login = await http.GetAsync(link, Ct);
+
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
 
         foreach (var secret in new[]
         {

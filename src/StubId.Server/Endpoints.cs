@@ -513,7 +513,7 @@ public static class Endpoints
             return AlreadyCollected();
         }
 
-        var issued = state.IssueCode(request, citizen, clock.GetUtcNow(), ClientIp(http));
+        var issued = state.IssueCode(request, citizen, clock.GetUtcNow(), ClientIp(http), session.Id);
         var organisation = state.OrganisationOf(request.ClientId);
 
         // Member order as recorded: the code first, then a front-channel id_token if one

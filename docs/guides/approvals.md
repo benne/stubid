@@ -150,3 +150,10 @@ browser next asks for it.
 It submits to the same store the control API writes to, so a manual click and an API
 call are the same code path, not two implementations that agree until one of them
 changes.
+
+There is a third door onto that store. Every instance serves an admin page listing the
+logins it has, with the same buttons and the same ladder behind them, and it does not
+need the browser to have been redirected there — which the login page does. Watching
+logins arrive and deciding them from that page is [its own guide](admin.md). Whichever
+door a decision came through, the ladder records it: `the login page`, `the control API`
+or `the admin page`.

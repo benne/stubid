@@ -13,11 +13,19 @@ Status of the first emulated surface, Signaturgruppen Broker ("Nets eID Broker")
 | M5 | Sessions, approval resolution, citizens | done |
 | M6 | Full request surface, error fidelity, logout | done |
 | M7 | Control API, test modules, TLS trust, quickstarts | done |
-| M8 | Admin interface | not started |
+| M8 | Admin interface | done |
 | M9 | Transaction signing | done |
 | M10 | Release engineering | done |
 | M11 | Documentation site and generated broker reference | not started |
 | M12 | v1.0 | not started |
+
+Every instance serves an admin interface since 2026-09-05. It shows logins arriving and decides
+them, manages the people they sign in as and the decisions queued for them, and reads what the build
+emulates out of the routes it loaded and the fidelity attributes on the code that answers - a page
+generated rather than maintained beside the thing it describes. Everything it shows, a test can
+fetch as JSON, so the pages never became the only way to see something; what it never shows is the
+value of a code or a token. It is served on whichever listeners an instance has and has no
+authentication, which is [written down](guides/admin.md) rather than left to be discovered.
 
 There are samples to run since 2026-09-04, which is what the word "quickstarts" in M7 turned out
 to mean: it had never been given content anywhere. `samples/aspnetcore` is a stock ASP.NET Core

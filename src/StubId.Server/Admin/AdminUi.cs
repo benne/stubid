@@ -708,7 +708,7 @@ internal static class AdminUi
         return H($"""
             <p class="dim">What was handed out, and never what it was. A code and an access token
             are credentials, so this page shows who got one and for which login rather than the
-            value itself.</p>
+            value itself. The login is a link, and it goes to that login's own page.</p>
             <table>
             <tr><th>What</th><th>For</th><th>As</th><th>Login</th><th>When</th><th>Until</th>
             <th>Scope</th></tr>
@@ -717,7 +717,7 @@ internal static class AdminUi
                 <td>{artefact.Kind}</td>
                 <td><code>{Short(artefact.ClientId)}</code></td>
                 <td>{artefact.CitizenId ?? "-"}</td>
-                <td>{Login(artefact.SessionId)}</td>
+                <td>{Login(artefact.LoginId)}</td>
                 <td class="dim">{(artefact.AuthenticatedAt is { } at ? Moment(at) : "-")}</td>
                 <td class="dim">{(artefact.Expires is { } until ? Moment(until) : "-")}</td>
                 <td class="dim">{artefact.Scope ?? "-"}</td>
@@ -727,9 +727,9 @@ internal static class AdminUi
             """);
     }
 
-    private static Html Login(string? sessionId) => sessionId is null
+    private static Html Login(string? loginId) => loginId is null
         ? H($"<span class=\"dim\">-</span>")
-        : H($"""<a href="{Root}/sessions/{Uri.EscapeDataString(sessionId)}"><code>{Short(sessionId)}</code></a>""");
+        : H($"""<a href="{Root}/sessions/{Uri.EscapeDataString(loginId)}"><code>{Short(loginId)}</code></a>""");
 
     /// <summary>
     /// What this build is, generated rather than written.
