@@ -64,8 +64,9 @@ Every tier reports, including the ones that were skipped and why. A test that ex
 its queued refusal to apply and got an approval instead can see in one call that some
 earlier test's leftover decision was consumed first.
 
-`POST /_stubid/v1/reset` clears the sessions and the queues, which is what keeps that
-from happening. Citizens survive it, so a suite builds its people once.
+`POST /_stubid/v1/reset` clears the sessions, the queues, and everything the instance has
+issued, which is what keeps that from happening. Citizens survive it, so a suite builds its
+people once. A code or an access token taken before a reset cannot be redeemed after one.
 
 ## Terminal states are written once
 

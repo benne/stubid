@@ -178,8 +178,8 @@ building would need this repository's Dockerfile in your working tree.
 
 Reuse (`WithReuse(true)`) keeps an instance between runs; it needs
 `testcontainers.reuse.enable=true` in `~/.testcontainers.properties`. Call `ResetAsync()` between
-tests: it clears the sessions and anything queued, and keeps the citizens, so a suite builds its
-people once.
+tests: it clears the sessions, anything queued and everything issued, and keeps the citizens, so a
+suite builds its people once.
 
 ## Running the container yourself instead
 

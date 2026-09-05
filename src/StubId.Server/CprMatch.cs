@@ -58,4 +58,14 @@ public sealed class CprMatch(TimeProvider clock)
     }
 
     public void Forget(string sessionId) => _sessions.TryRemove(sessionId, out _);
+
+    /// <summary>
+    /// Drops every session's attempts, for a reset.
+    /// </summary>
+    /// <remarks>
+    /// Counted per session, so a reset that cleared the sessions and left these behind kept
+    /// attempts against logins that no longer existed. Nothing could reach them again, but the
+    /// instance was not as fresh as it said it was.
+    /// </remarks>
+    public void Clear() => _sessions.Clear();
 }
