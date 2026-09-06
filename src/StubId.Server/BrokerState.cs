@@ -135,7 +135,7 @@ public sealed record AuthorizationRequest(
 /// <param name="LoginId">
 /// The login this came from, which is not <paramref name="SessionId" />. That one is the broker's
 /// own sid, minted here and put into the tokens; this one is the <c>AuthSession</c> a browser
-/// parked, and it is the only thing that ties an issued artefact back to a login somebody can
+/// parked, and it is the only thing that ties an issued artifact back to a login somebody can
 /// look at.
 /// </param>
 public sealed record IssuedCode(
@@ -150,7 +150,7 @@ public sealed record IssuedCode(
 
 /// <summary>An access token, the identity behind it, and the client that obtained it.</summary>
 /// <remarks>
-/// The client matters: the subject is scoped to the receiving organisation, so userinfo has
+/// The client matters: the subject is scoped to the receiving organization, so userinfo has
 /// to answer with the same subject the id_token carried, and that depends on who is asking.
 /// </remarks>
 /// <param name="ReferenceText">
@@ -188,8 +188,8 @@ public sealed class BrokerState
     /// existing configuration reaches StubID by changing the authority alone.
     /// </summary>
     /// <remarks>
-    /// All three sit in one organisation. Whether the broker groups its own published clients
-    /// that way is unobserved; one organisation is the arrangement a company integrating
+    /// All three sit in one organization. Whether the broker groups its own published clients
+    /// that way is unobserved; one organization is the arrangement a company integrating
     /// several applications actually has, and it is the one that exercises the shared subject.
     /// </remarks>
     public IReadOnlyDictionary<string, Client> Clients { get; } =
@@ -205,7 +205,7 @@ public sealed class BrokerState
 
     /// <summary>
     /// Whether an id_token_hint is shaped like a token that carries a session, which is what
-    /// decides if a post-logout redirect is honoured.
+    /// decides if a post-logout redirect is honored.
     /// </summary>
     /// <remarks>
     /// It reads the token; it does not verify it. Any three-part token whose payload has a
@@ -248,9 +248,13 @@ public sealed class BrokerState
             .ToHashSet(StringComparer.Ordinal)
             .SetEquals(responseType.Split(' ', StringSplitOptions.RemoveEmptyEntries)));
 
-    /// <summary>The organisation a client belongs to, which is what a subject is scoped to.</summary>
-    public string OrganisationOf(string clientId) =>
-        Clients.TryGetValue(clientId, out var client) ? client.Organisation : clientId;
+    /// <summary>The organization a client belongs to, which is what a subject is scoped to.</summary>
+    public string OrganizationOf(string clientId) =>
+        Clients.TryGetValue(clientId, out var client) ? client.Organization : clientId;
+
+    /// <summary>The old spelling of <see cref="OrganizationOf"/>.</summary>
+    [Obsolete("Renamed to OrganizationOf. This alias is removed in the next release.")]
+    public string OrganisationOf(string clientId) => OrganizationOf(clientId);
 
     /// <summary>A pushed request and the moment it stops being redeemable.</summary>
     private sealed record PushedRequest(AuthorizationRequest Request, DateTimeOffset Expires);
@@ -265,12 +269,12 @@ public sealed class BrokerState
     /// <remarks>
     /// These three dictionaries were unreadable from outside, which made "why did my client get a
     /// token it should not have" a question only a debugger could answer. The keys are the
-    /// credentials, so nothing here reads one: see <see cref="IssuedArtefact" />.
+    /// credentials, so nothing here reads one: see <see cref="IssuedArtifact" />.
     /// </remarks>
-    public IReadOnlyList<IssuedArtefact> Issued() =>
+    public IReadOnlyList<IssuedArtifact> Issued() =>
     [
         .. _pushed.Values
-            .Select(pushed => new IssuedArtefact(
+            .Select(pushed => new IssuedArtifact(
                 "pushed request",
                 pushed.Request.ClientId,
                 CitizenId: null,
@@ -278,7 +282,7 @@ public sealed class BrokerState
                 AuthenticatedAt: null,
                 pushed.Expires,
                 pushed.Request.Scope))
-            .Concat(_codes.Values.Select(code => new IssuedArtefact(
+            .Concat(_codes.Values.Select(code => new IssuedArtifact(
                 "code",
                 code.Request.ClientId,
                 code.Citizen.Id,
@@ -286,7 +290,7 @@ public sealed class BrokerState
                 code.AuthenticatedAt,
                 Expires: null,
                 code.Request.Scope)))
-            .Concat(_accessTokens.Values.Select(token => new IssuedArtefact(
+            .Concat(_accessTokens.Values.Select(token => new IssuedArtifact(
                 "access token",
                 token.ClientId,
                 token.Citizen.Id,
@@ -294,8 +298,8 @@ public sealed class BrokerState
                 token.AuthenticatedAt,
                 Expires: null,
                 token.Scope)))
-            .OrderByDescending(artefact => artefact.AuthenticatedAt ?? DateTimeOffset.MinValue)
-            .ThenBy(artefact => artefact.Kind, StringComparer.Ordinal),
+            .OrderByDescending(artifact => artifact.AuthenticatedAt ?? DateTimeOffset.MinValue)
+            .ThenBy(artifact => artifact.Kind, StringComparer.Ordinal),
     ];
 
     /// <summary>
@@ -325,7 +329,7 @@ public sealed class BrokerState
 /// is its session id, which is already public.
 /// </remarks>
 /// <param name="Kind">A pushed request, a code, or an access token.</param>
-public sealed record IssuedArtefact(
+public sealed record IssuedArtifact(
     string Kind,
     string ClientId,
     string? CitizenId,
@@ -334,18 +338,23 @@ public sealed record IssuedArtefact(
     DateTimeOffset? Expires,
     string? Scope);
 
-/// <summary>A registered client, and the organisation it belongs to.</summary>
-/// <param name="Organisation">
-/// What the subject is scoped to. Two clients of one organisation receive the same subject
+/// <summary>A registered client, and the organization it belongs to.</summary>
+/// <param name="Organization">
+/// What the subject is scoped to. Two clients of one organization receive the same subject
 /// for the same person, which is what the id_token calls org_mapped.
 /// </param>
-public sealed record Client(string ClientId, string[] ResponseTypes, string Organisation);
+public sealed record Client(string ClientId, string[] ResponseTypes, string Organization)
+{
+    /// <summary>The old spelling of <see cref="Organization"/>. Read-only, so `with` needs the new name.</summary>
+    [Obsolete("Renamed to Organization. This alias is removed in the next release.")]
+    public string Organisation => Organization;
+}
 
     /// <summary>
     /// Any non-empty secret is accepted. A stub cannot know the secret an existing
     /// configuration already carries, and demanding a particular one would defeat the point
     /// of changing only the authority. A missing secret is still refused, because telling
-    /// "authenticated badly" from "did not authenticate" is behaviour worth keeping.
+    /// "authenticated badly" from "did not authenticate" is behavior worth keeping.
     /// </summary>
     [Fidelity(FidelityTier.Exact, FidelityProvenance.Divergent,
         Reason = "docs/brokers/neb/divergences.md#client-secrets",

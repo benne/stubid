@@ -12,7 +12,7 @@ Everything with a reader — commits, documentation, issues, pull requests, rele
 error messages — is written the way you would write for a colleague.
 
 - Commit subjects are imperative and under 72 characters. The body explains why the change
-  is needed. When a commit changes emulated behaviour, cite the fixture or the issue that
+  is needed. When a commit changes emulated behavior, cite the fixture or the issue that
   justifies it.
 - Documentation is plain and declarative. Say what something does and what it does not do.
   No marketing language, no emoji headings, no bulleted list where a sentence works.
@@ -24,12 +24,12 @@ error messages — is written the way you would write for a colleague.
 ## Rules specific to this project
 
 **Do not paste vendor documentation prose.** Broker documentation is copyrighted.
-Reimplement from observed behaviour and describe it in your own words. Protocol
+Reimplement from observed behavior and describe it in your own words. Protocol
 identifiers, error codes, and claim names are functional facts and may be reproduced
 exactly — as are the exact error strings the broker puts on the wire.
 
-**New or changed emulated behaviour must cite a fixture.** A claim about what a broker does
-belongs in `fixtures/`, recorded from the real thing, not in a commit message. Behaviour
+**New or changed emulated behavior must cite a fixture.** A claim about what a broker does
+belongs in `fixtures/`, recorded from the real thing, not in a commit message. Behavior
 derived only from vendor documentation ships marked as such and with its test skipped until
 a recording confirms it. Prose has been wrong three times already; recordings have not.
 
@@ -42,7 +42,7 @@ collide with a real one.
 - The tool's terms must not restrict what this project can do with the output, and must not
   impose conditions beyond Apache-2.0.
 - Output that reproduces third-party material is held to the same rule as any other
-  copying: if the licence is unknown or incompatible, it does not land. If you would not
+  copying: if the license is unknown or incompatible, it does not land. If you would not
   paste it from someone else's repository, do not paste it from a model.
 - Name the tools that materially contributed, in one line, in the pull-request description.
   Not in commit trailers — that rule stands.

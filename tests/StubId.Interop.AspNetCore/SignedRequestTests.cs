@@ -309,7 +309,7 @@ public class SignedRequestTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
-    public async Task An_object_nobody_signed_is_read_anyway_and_its_parameters_are_honoured()
+    public async Task An_object_nobody_signed_is_read_anyway_and_its_parameters_are_honored()
     {
         // The divergence, driven. The broker refuses this: a flipped signature byte and a random
         // key were both measured earning invalid_request_object. StubID holds no secret to check

@@ -17,7 +17,7 @@ public class SliceTests : IClassFixture<WebApplicationFactory<Program>>
     private readonly WebApplicationFactory<Program> _factory;
     private readonly HttpClient _client;
 
-    /// <summary>So a cancelled run stops promptly rather than finishing every request.</summary>
+    /// <summary>So a canceled run stops promptly rather than finishing every request.</summary>
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     public SliceTests(WebApplicationFactory<Program> factory)
@@ -167,7 +167,7 @@ public class SliceTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task Userinfo_answers_with_the_subject_the_id_token_carried()
     {
-        // The subject is scoped to the receiving organisation, so it depends on who is
+        // The subject is scoped to the receiving organization, so it depends on who is
         // asking. Userinfo previously answered with the first registered client's subject
         // for every token, which a real client reports as IDX21338 and refuses to sign in.
         const string secondClient = CodeClient;
@@ -205,7 +205,7 @@ public class SliceTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
-    public async Task Two_clients_of_one_organisation_receive_the_same_subject()
+    public async Task Two_clients_of_one_organization_receive_the_same_subject()
     {
         // Recorded: two clients joined to one service provider were given the same subject for
         // the same person, and the id_token says so itself in subject_type: org_mapped.

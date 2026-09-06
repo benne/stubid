@@ -54,7 +54,7 @@ public class EmbeddedDocumentTests
     public async Task The_template_is_the_recording_with_the_host_swapped()
     {
         // The derivation is one substitution and nothing else. Anything the build did beyond
-        // that - a rewritten line ending, a re-serialised member order - shows up here. A byte
+        // that - a rewritten line ending, a re-serialized member order - shows up here. A byte
         // order mark does not. Both sides are read through a reader that drops one, so the
         // bytes have a test of their own.
         var recorded = await RecordingAsync();

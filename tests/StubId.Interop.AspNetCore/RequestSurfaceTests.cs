@@ -260,7 +260,7 @@ public class RequestSurfaceTests
     }
 
     [Fact]
-    public async Task End_session_honours_a_redirect_only_when_it_is_given_a_hint()
+    public async Task End_session_honors_a_redirect_only_when_it_is_given_a_hint()
     {
         await using var factory = Instance();
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
@@ -318,10 +318,10 @@ public class RequestSurfaceTests
     /// </summary>
     /// <remarks>
     /// CAP-040 recorded <c>idp_params</c> that is not JSON at all being refused with the broker's
-    /// own error page. These are the neighbouring class, and they were what turned that refusal
+    /// own error page. These are the neighboring class, and they were what turned that refusal
     /// into an empty 500 the first time this parameter was read: <c>TryGetProperty</c> throws
     /// rather than answering false when the root is not an object, an unpaired surrogate escape
-    /// parses and throws when the string is materialised, and a repeated member throws when the
+    /// parses and throws when the string is materialized, and a repeated member throws when the
     /// section is collected. None of them is a JsonException, so none was caught.
     /// </remarks>
     public static TheoryData<string> IdpParamsThatIsNotAnObject() =>
@@ -429,7 +429,7 @@ public class RequestSurfaceTests
         await using var factory = Instance(automatic: false);
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
-        using var queued = await client.PostAsJsonAsync("/_stubid/v1/behaviours/enqueue",
+        using var queued = await client.PostAsJsonAsync("/_stubid/v1/behaviors/enqueue",
             new { approve = false, errorCode = "mitid_user_aborted" }, Ct);
 
         using var response = await client.GetAsync(

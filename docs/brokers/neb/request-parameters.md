@@ -28,7 +28,7 @@ missing one would be a problem. It is: the request is refused outright.
 ## idp_values
 
 A space-delimited list of identity providers. StubID accepts `mitid` and `mitid_erhverv`,
-which are the two the broker names in its own error catalogue, and refuses anything else the
+which are the two the broker names in its own error catalog, and refuses anything else the
 way CAP-009 records.
 
 `mitid_erhverv` is accepted, but a login completed through it still produces private-identity

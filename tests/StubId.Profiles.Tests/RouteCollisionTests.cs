@@ -14,7 +14,7 @@ namespace StubId.Profiles.Tests;
 /// <remarks>
 /// Left alone it does not fail fast: the matcher is built lazily on the first request, so two
 /// profiles declaring the same path start silently and then throw on every request afterwards.
-/// The compiler's duplicate-route analyser cannot see it either, because it only looks at
+/// The compiler's duplicate-route analyzer cannot see it either, because it only looks at
 /// literal registrations in source and these come from a profile.
 /// </remarks>
 public class RouteCollisionTests

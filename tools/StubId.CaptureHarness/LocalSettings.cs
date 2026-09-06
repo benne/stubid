@@ -60,7 +60,7 @@ public static class LocalSettings
     /// </summary>
     /// <remarks>
     /// Needed because a recording made with a private client carries more than credentials.
-    /// A transaction token's <c>recipient_info</c> names the receiving organisation, so a
+    /// A transaction token's <c>recipient_info</c> names the receiving organization, so a
     /// fixture would otherwise publish a company's name and CVR number.
     /// </remarks>
     public static IReadOnlyDictionary<string, string> Redactions()

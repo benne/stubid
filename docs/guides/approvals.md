@@ -20,7 +20,7 @@ that login exists. It joins the same list afterwards.
 | Tier | Source | Use |
 | --- | --- | --- |
 | 1 | A decision aimed at one login | `POST /_stubid/v1/sessions/{id}/approve` or `/reject`, and the login page's two buttons |
-| 2 | A queued decision, consumed once | `POST /_stubid/v1/behaviours/enqueue` |
+| 2 | A queued decision, consumed once | `POST /_stubid/v1/behaviors/enqueue` |
 | 3 | The request's own `simulation` parameter | Names who logs in; drop-in for suites written against the broker's paid add-on |
 | 4 | A rule on the chosen citizen | "Signing in as this person always aborts" |
 | 8 | The configured default | Approve everything, or park and wait |
@@ -42,7 +42,7 @@ Tier 2 is the one most suites want. Enqueue a decision, drive the application, a
 next login that matches consumes it:
 
 ```
-POST /_stubid/v1/behaviours/enqueue
+POST /_stubid/v1/behaviors/enqueue
 { "approve": false, "clientId": "…", "errorCode": "mitid_user_aborted" }
 ```
 

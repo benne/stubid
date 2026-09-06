@@ -109,7 +109,7 @@ public class OcspWriterTests
             Ocsp.Read(OcspWriter.Good(subject, responder, Moment)).Responses);
 
         // Compared against the encoded content octets rather than a parsed number: a serial
-        // with the high bit set carries a leading zero pad, and normalising it away on either
+        // with the high bit set carries a leading zero pad, and normalizing it away on either
         // side would make two different encodings compare equal.
         Assert.Equal(
             Convert.ToHexString(subject.SerialNumberBytes.Span),
@@ -176,7 +176,7 @@ public class OcspWriterTests
     {
         // A negative, and negatives are what a writer adds back by accident. Neither half of
         // the recorded pair carries a nonce, so a client that requires one gets nothing from
-        // StubID either - which is the behaviour being copied.
+        // StubID either - which is the behavior being copied.
         Assert.Empty(RoundTrip().ResponseExtensions);
     }
 

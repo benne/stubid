@@ -106,7 +106,7 @@ async function walk(context, authorizationUrl) {
 
 /** Queues an outcome for the next login. Plain HTTP: the control API answers there even on a secured instance. */
 async function enqueue(decision) {
-  const response = await fetch(`${control}/_stubid/v1/behaviours/enqueue`, {
+  const response = await fetch(`${control}/_stubid/v1/behaviors/enqueue`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(decision),

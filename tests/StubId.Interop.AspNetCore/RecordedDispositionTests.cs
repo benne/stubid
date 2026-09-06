@@ -50,7 +50,7 @@ public class RecordedDispositionTests(WebApplicationFactory<Program> factory)
         {
             var id = Path.GetFileName(directory);
 
-            // Discovery, JWKS and the error-code catalogue are documents, checked elsewhere by
+            // Discovery, JWKS and the error-code catalog are documents, checked elsewhere by
             // their bytes. CAP-006 is production rather than pre-production.
             if (id is "CAP-001" or "CAP-002" or "CAP-006" or "CAP-007")
             {
@@ -173,7 +173,7 @@ public class RecordedDispositionTests(WebApplicationFactory<Program> factory)
         Assert.Equal("""{"error":"invalid_grant"}""", body.Trim());
 
         // A missing secret is still refused. Telling "authenticated badly" from "did not
-        // authenticate at all" is the part of the behaviour worth keeping.
+        // authenticate at all" is the part of the behavior worth keeping.
         using var anonymous = await _client.PostAsync("/op/connect/token", new FormUrlEncodedContent(
             [new KeyValuePair<string, string>("grant_type", "authorization_code"),
              new KeyValuePair<string, string>("client_id", "0a775a87-878c-4b83-abe3-ee29c720c3e7")]), Ct);

@@ -9,7 +9,7 @@ namespace StubId.Wire;
 /// Writes a JWKS in the shape the broker publishes.
 /// </summary>
 /// <remarks>
-/// Written member by member rather than by serialising a key object. Every JOSE library
+/// Written member by member rather than by serializing a key object. Every JOSE library
 /// helpfully adds an <c>alg</c> member; the broker publishes none, and a client that selects
 /// keys by algorithm behaves differently depending on whether it is there. Emitting the
 /// document by hand is what keeps our output honest.

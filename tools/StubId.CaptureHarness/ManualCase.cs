@@ -49,7 +49,7 @@ public enum FollowUp
 /// One recording from the sitting: what to send, what the operator does, and what it settles.
 /// </summary>
 /// <remarks>
-/// Deliberately separate from the unattended catalogue. Both <c>capture</c> and
+/// Deliberately separate from the unattended catalog. Both <c>capture</c> and
 /// <c>verify</c> iterate that one, and a routine run after the sitting would replay expired
 /// codes and dead tokens over the evidence, then rehash the manifest across the damage.
 /// </remarks>

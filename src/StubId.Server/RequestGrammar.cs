@@ -8,7 +8,7 @@ namespace StubId.Server;
 /// </summary>
 /// <remarks>
 /// <para>
-/// What is validated here and what is carried through is not a judgement call: it is recorded.
+/// What is validated here and what is carried through is not a judgment call: it is recorded.
 /// The broker rejects an <c>idp_values</c> it does not know (CAP-009) and an <c>idp_params</c>
 /// that is not JSON (CAP-040), but accepts a malformed value <em>inside</em> a well-formed
 /// <c>idp_params</c> (CAP-010) and a simulation mode it does not define (CAP-013). Copying
@@ -25,7 +25,7 @@ namespace StubId.Server;
 public static class RequestGrammar
 {
     /// <summary>
-    /// The identity providers the broker names in its own error catalogue. An unknown value is
+    /// The identity providers the broker names in its own error catalog. An unknown value is
     /// refused, which CAP-009 establishes; these two are what CAP-007 and CAP-041 leave.
     /// </summary>
     private static readonly string[] KnownIdentityProviders = ["mitid", "mitid_erhverv"];
@@ -76,7 +76,7 @@ public static class RequestGrammar
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Decoded but not inspected is the whole rule. A value this does not recognise is carried
+    /// Decoded but not inspected is the whole rule. A value this does not recognize is carried
     /// through and handed on, because that is what CAP-010 records the broker doing - refusing
     /// one up front would fail a request the broker accepts.
     /// </para>
@@ -84,7 +84,7 @@ public static class RequestGrammar
     /// What is recorded is that a well-formed object with a nonsense value inside it is accepted
     /// (CAP-010) and that idp_params which is not JSON is refused (CAP-040). Everything between
     /// those - a root that parses and is not an object, a name repeated inside the section, a
-    /// string that parses and cannot be materialised - is unrecorded, and this answers with
+    /// string that parses and cannot be materialized - is unrecorded, and this answers with
     /// nothing rather than throwing. That is StubID's choice, and the reason for it is that the
     /// alternative is an empty 500, which is the one answer the broker never gives.
     /// </para>
@@ -134,7 +134,7 @@ public static class RequestGrammar
         {
             // JsonException is malformed JSON. InvalidOperationException is a value that parsed
             // and cannot be read - an unpaired UTF-16 surrogate escape is accepted by the parser
-            // and throws only when the string is materialised. Both mean the same thing here:
+            // and throws only when the string is materialized. Both mean the same thing here:
             // nothing usable, carried through rather than refused, exactly as an unreadable value
             // is on every other path.
             return new Dictionary<string, string>(StringComparer.Ordinal);

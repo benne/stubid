@@ -8,7 +8,7 @@ namespace StubId.CaptureHarness;
 /// be wrong the recordings are repaired rather than recaptured. Idempotent: running it over
 /// an already-correct directory changes nothing.
 /// </remarks>
-public static class Sanitise
+public static class Sanitize
 {
     public static async Task<int> RunAsync(FixtureStore store, CancellationToken ct)
     {

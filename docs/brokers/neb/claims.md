@@ -18,7 +18,7 @@ Member order is part of the contract, so the tables are in the order the broker 
 | `nonce` | string | when the request carried one |
 | `at_hash` *or* `c_hash` | string | one slot, see below |
 | `sid` | string | Not in the broker's claim tables. Same value as `neb_sid` |
-| `sub` | string | scoped to the **organisation**, not the client |
+| `sub` | string | scoped to the **organization**, not the client |
 | `auth_time` | number | a string in the userinfo token and in the transaction token |
 | `idp` | string | `mitid` |
 | `acr` | string | documented as belonging to the transaction token alone; it is here too |
@@ -46,7 +46,7 @@ ASP.NET Core rejects a front-channel id_token whose `c_hash` is missing or wrong
 
 ## The subject
 
-Scoped to the organisation. Two clients belonging to one service provider receive **the same
+Scoped to the organization. Two clients belonging to one service provider receive **the same
 subject** for the same person, while `mitid.uuid` is the same everywhere. The id_token names
 this itself: `subject_type: org_mapped`.
 

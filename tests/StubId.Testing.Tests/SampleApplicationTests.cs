@@ -59,7 +59,7 @@ public class SampleApplicationTests : IAsyncLifetime
             new CitizenSpec { Name = "Anders Berg Christiansen", DateOfBirth = new DateOnly(1985, 3, 29) },
             Ct);
 
-        await _stub.Behaviour.EnqueueAsync(Decision.Approved(citizen.Id).ForClient(clientId!), Ct);
+        await _stub.Behavior.EnqueueAsync(Decision.Approved(citizen.Id).ForClient(clientId!), Ct);
 
         // https, so the handler builds an https redirect_uri and marks its correlation cookies
         // Secure - the shape a reader's browser will meet. TestServer does not perform a handshake,
@@ -190,7 +190,7 @@ public class SampleApplicationTests : IAsyncLifetime
 
         Assert.False(string.IsNullOrEmpty(clientId), "The sample does not configure a client id.");
 
-        await _stub.Behaviour.EnqueueAsync(Decision.Refused().ForClient(clientId!), Ct);
+        await _stub.Behavior.EnqueueAsync(Decision.Refused().ForClient(clientId!), Ct);
 
         var rp = sample.CreateClient(new WebApplicationFactoryClientOptions
         {

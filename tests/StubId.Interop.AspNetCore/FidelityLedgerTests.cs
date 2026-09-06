@@ -57,7 +57,7 @@ public class FidelityLedgerTests : IClassFixture<WebApplicationFactory<Program>>
     {
         // The failure this prevents is a claim of having checked something against a
         // recording that was renamed, moved or never written.
-        // One behaviour is often settled by several recordings together, so evidence may name
+        // One behavior is often settled by several recordings together, so evidence may name
         // more than one and every one of them has to exist.
         var missing = Ledger()
             .Where(e => e.Provenance == "VerifiedLive" && e.Evidence is not null)

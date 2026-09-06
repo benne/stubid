@@ -50,7 +50,7 @@ public class StockClientOverTlsTests : IAsyncLifetime
             new CitizenSpec { Name = "Anders Berg Christiansen", DateOfBirth = new DateOnly(1985, 3, 29) },
             Ct);
 
-        await _stub.Behaviour.EnqueueAsync(Decision.Approved(citizen.Id).ForClient(ClientId), Ct);
+        await _stub.Behavior.EnqueueAsync(Decision.Approved(citizen.Id).ForClient(ClientId), Ct);
 
         using var relyingParty = await StartRelyingParty();
         var rp = relyingParty.GetTestClient();

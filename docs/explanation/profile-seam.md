@@ -55,7 +55,7 @@ locked the mistake in until it was probed rather than assumed.
 
 Two profiles claiming one path do not fail fast on their own. The matcher is built lazily on
 the first request, so the application starts happily and then throws on every request
-afterwards; the compiler's duplicate-route analyser cannot help either, because it only sees
+afterwards; the compiler's duplicate-route analyzer cannot help either, because it only sees
 literal registrations in source.
 
 The route set is therefore scanned as it loads. The check is conservative rather than a proof:

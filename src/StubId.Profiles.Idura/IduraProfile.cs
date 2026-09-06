@@ -81,7 +81,7 @@ public sealed class IduraProfile(IReadOnlyList<IduraClient> clients) : IBrokerPr
             Route("oauth2/logout", ["GET"], RouteRole.Extra("logout"), () => NotImplemented("logout")),
             Route("oauth2/par", ["POST"], RouteRole.Par, () => NotImplemented("pushed authorization")),
 
-            // Undocumented, and the SDK refuses to initialise without it. Its status depends on
+            // Undocumented, and the SDK refuses to initialize without it. Its status depends on
             // the query string, which routing cannot express - only a handler can.
             Route(".well-known/criipto-configuration", ["GET"], RouteRole.Extra("criipto-configuration"),
                 (HttpContext http) => Configuration(http)),

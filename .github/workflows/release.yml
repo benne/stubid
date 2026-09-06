@@ -294,8 +294,8 @@ jobs:
         with:
           user: ${{ vars.NUGET_USER }}
 
-      # A glob, because NuGet normalises the padded date and the file on disk is named for the
-      # normalised form. Nothing here has to know that.
+      # A glob, because NuGet normalizes the padded date and the file on disk is named for the
+      # normalized form. Nothing here has to know that.
       - run: |
           dotnet nuget push 'artifacts/*.nupkg' \
             --api-key '${{ steps.login.outputs.NUGET_API_KEY }}' \

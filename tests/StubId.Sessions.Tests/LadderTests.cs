@@ -113,7 +113,7 @@ public class LadderTests
     [Fact]
     public void A_rule_on_the_default_citizen_holds_under_automatic_approval()
     {
-        // Otherwise the rule would be honoured only on the paths that name someone, and the
+        // Otherwise the rule would be honored only on the paths that name someone, and the
         // most common path - approve whoever, automatically - would quietly ignore it.
         var citizens = new Citizens();
         citizens.Add(citizens.Default! with { Rule = "mitid_timeout" });

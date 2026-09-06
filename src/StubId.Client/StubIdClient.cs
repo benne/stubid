@@ -31,7 +31,7 @@ public sealed class StubIdClient : IDisposable
         _ownsHttp = false;
         Citizens = new CitizenApi(http);
         Sessions = new SessionApi(http);
-        Behaviour = new BehaviourApi(http);
+        Behavior = new BehaviorApi(http);
         Time = new ClockApi(http);
         Runtime = new RuntimeApi(http);
     }
@@ -47,7 +47,11 @@ public sealed class StubIdClient : IDisposable
 
     public SessionApi Sessions { get; }
 
-    public BehaviourApi Behaviour { get; }
+    public BehaviorApi Behavior { get; }
+
+    /// <summary>The old spelling of <see cref="Behavior"/>.</summary>
+    [Obsolete("Renamed to Behavior. This alias is removed in the next release.")]
+    public BehaviorApi Behaviour => Behavior;
 
     public ClockApi Time { get; }
 
@@ -88,7 +92,7 @@ public sealed class StubIdClient : IDisposable
     /// For the suite asking why its client ended up with a token it did not expect. The values
     /// are absent by design: they are credentials, and this API asks nobody who they are.
     /// </remarks>
-    public async Task<IReadOnlyList<IssuedArtefact>> IssuedAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<IssuedArtifact>> IssuedAsync(CancellationToken ct = default)
     {
         using var response = await Http.GetAsync("/_stubid/v1/issued", ct);
         var body = await Control.ReadAsync(response, ControlJson.Default.IssuedBody, ct);

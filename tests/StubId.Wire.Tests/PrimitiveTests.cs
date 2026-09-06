@@ -96,7 +96,7 @@ public class KeyRingTests
         // a load path that has become pathological.
         var material = Material();
 
-        // The first import pays for JIT and for initialising the platform's key provider,
+        // The first import pays for JIT and for initializing the platform's key provider,
         // neither of which a running server pays per key.
         using (var warmup = KeyRing.Load(material)) { }
 

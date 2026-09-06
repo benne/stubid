@@ -19,9 +19,9 @@
   "STUBID_NEB_PP_SSO_C_CLIENT_SECRET": "",
 
   "redact": {
-    "//": "Values that must not reach a fixture, as replacement-to-original. A personal number is replaced by the same number with 60 added to the day (01-09 to 61-69, 10-19 to 70-79, 20-29 to 80-89, 30-31 to 90-91), which cannot be anyone's and keeps the length and shape a fixture depends on. The example below uses the 31st of February, which nobody was born on, so it shows the mapping without printing a number that might be someone's. Register both the bare and the separated form: the scrubber matches exact strings. A transaction token names the receiving organisation, so its name and CVR belong here before recording one, as does the test identity's name.",
-    "{{ORGANISATION_NAME}}": "Example A/S",
-    "{{ORGANISATION_CVR}}": "12345678",
+    "//": "Values that must not reach a fixture, as replacement-to-original. A personal number is replaced by the same number with 60 added to the day (01-09 to 61-69, 10-19 to 70-79, 20-29 to 80-89, 30-31 to 90-91), which cannot be anyone's and keeps the length and shape a fixture depends on. The example below uses the 31st of February, which nobody was born on, so it shows the mapping without printing a number that might be someone's. Register both the bare and the separated form: the scrubber matches exact strings. A transaction token names the receiving organization, so its name and CVR belong here before recording one, as does the test identity's name.",
+    "{{ORGANIZATION_NAME}}": "Example A/S",
+    "{{ORGANIZATION_CVR}}": "12345678",
     "9102999995": "3102999995",
     "910299-9995": "310299-9995",
     "Synthetic Testperson": "the identity's name as MitID returns it"

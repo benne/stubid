@@ -73,7 +73,7 @@ public class JwksWriterTests
     public void The_document_is_compact_like_the_recorded_one()
     {
         // Member order and the absence of whitespace both survive only because the document
-        // is written rather than serialised from an object.
+        // is written rather than serialized from an object.
         var ours = JwksWriter.Write(TestKeys.Keys.Keys);
 
         Assert.DoesNotContain('\n', ours);

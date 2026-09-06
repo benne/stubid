@@ -11,7 +11,7 @@ public readonly record struct ProfileId(string Broker, string Version)
 /// <summary>What a profile is told about the tenant it is serving.</summary>
 /// <param name="Issuer">
 /// Emitted verbatim: as discovery's issuer, as <c>iss</c> in every token, and as the
-/// authorization-response parameter. Never derived from the request, never normalised, never
+/// authorization-response parameter. Never derived from the request, never normalized, never
 /// given a trailing slash. One broker's issuer carries a path segment and the other's does
 /// not, and both are compared character for character by client libraries.
 /// </param>

@@ -4,7 +4,7 @@ Recorded from Signaturgruppen Broker pre-production on 2026-08-30, during a tria
 capture harness. Every identifier below is replaced; only names, order and types are kept,
 which is what StubID has to reproduce.
 
-The recordings this came from were mislabelled — the operator's first pass through the
+The recordings this came from were mislabeled — the operator's first pass through the
 harness — so they are not committed as fixtures. The facts are still the broker's own bytes,
 and they settle several questions that documentation could not.
 
@@ -74,7 +74,7 @@ on the broker's own error page instead.
 ## The callback
 
 Carries `code`, `state`, `iss` and **`session_state`** — the last of which appears in no
-claim table and is not currently modelled.
+claim table and is not currently modeled.
 
 ## What this means for StubID
 
@@ -103,7 +103,7 @@ The finding that matters is the subject:
 | `sub` | *the same value* | *the same value* |
 | `sid` | *the same value* | *the same value* |
 
-**Two different clients receive the same subject.** It is scoped to the organisation, not to
+**Two different clients receive the same subject.** It is scoped to the organization, not to
 the client, which is what the id_token has been saying all along in `subject_type:
 "org_mapped"`. StubID derived its subject from the client id, so two clients belonging to one
 company would have been given different subjects where the broker gives one — an application

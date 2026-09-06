@@ -15,7 +15,7 @@ await stub.StartAsync();
 var citizen = await stub.Citizens.CreateAsync(
     new CitizenSpec { Name = "Anders Berg Christiansen", DateOfBirth = new DateOnly(1985, 3, 29) });
 
-await stub.Behaviour.EnqueueAsync(Decision.Approved(citizen.Id).ForClient(clientId));
+await stub.Behavior.EnqueueAsync(Decision.Approved(citizen.Id).ForClient(clientId));
 
 // Drive the application under test. Configure it with stub.Authority and nothing else.
 ```

@@ -5,14 +5,14 @@ Signaturgruppen are marks of Signaturgruppen A/S. Idura and Criipto are marks of
 owner. NemLog-in is a service of Digitaliseringsstyrelsen. All are used here only to state
 factually which systems StubID emulates. No endorsement is claimed or implied.
 
-The Apache-2.0 licence covering this project grants no trademark rights (see section 6 of
-the licence).
+The Apache-2.0 license covering this project grants no trademark rights (see section 6 of
+the license).
 
 ## What this project will not do
 
 StubID emulates protocol surfaces. It does not reproduce anyone's brand:
 
-- No MitID logo, icons, colours, typefaces, or design components.
+- No MitID logo, icons, colors, typefaces, or design components.
 - No copy of the MitID authenticator interface. The stub login page is plainly StubID's own
   and says so on the page.
 - No domain containing `mitid`, and no `*.mitid.dk` subdomain.
@@ -26,5 +26,5 @@ a production system.
 
 Protocol identifiers are functional facts and are reproduced exactly, because a test that
 asserts on `mitid_user_aborted` needs that exact string. Vendor documentation prose is not
-reproduced: the broker reference under `docs/brokers/` is written from observed behaviour
+reproduced: the broker reference under `docs/brokers/` is written from observed behavior
 and from recorded exchanges, not copied from anyone's documentation.

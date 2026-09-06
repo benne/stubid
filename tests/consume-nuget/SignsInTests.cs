@@ -50,6 +50,9 @@ public class SignsInTests
             new CitizenSpec { Name = "Anders Berg Christiansen", DateOfBirth = new DateOnly(1985, 3, 29) },
             Ct);
 
+        // Deliberately the old spelling. This project restores StubId.Testing from nuget.org
+        // rather than from the tree, so it compiles against the published package - which has
+        // no Behavior until this change ships. It moves when the release that renames it does.
         await stub.Behaviour.EnqueueAsync(
             Decision.Approved(citizen.Id).ForClient(CodeClient), Ct);
 

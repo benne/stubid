@@ -225,13 +225,13 @@ public static class Endpoints
             var body = new Dictionary<string, object>
             {
                 ["id_token"] = tokens.IdToken(
-                    Issuer(http), issued, accessToken, state.OrganisationOf(clientId!)),
+                    Issuer(http), issued, accessToken, state.OrganizationOf(clientId!)),
                 ["access_token"] = accessToken,
                 ["expires_in"] = Tokens.AccessTokenLifetimeSeconds,
                 ["token_type"] = "Bearer",
                 ["scope"] = issued.Request.Scope,
                 ["userinfo_token"] = tokens.UserInfoToken(
-                    Issuer(http), issued, state.OrganisationOf(clientId!)),
+                    Issuer(http), issued, state.OrganizationOf(clientId!)),
             };
 
             // Last, and both or neither: no recorded body carries one without the other.
@@ -239,7 +239,7 @@ public static class Endpoints
                 .Contains("transaction_token"))
             {
                 body["transaction_token"] = tokens.TransactionToken(
-                    Issuer(http), issued, state.OrganisationOf(clientId!));
+                    Issuer(http), issued, state.OrganizationOf(clientId!));
                 body["transaction_token_ocsp_resp"] = tokens.TransactionTokenOcspResponse();
             }
 
@@ -264,7 +264,7 @@ public static class Endpoints
             using (var json = new Utf8JsonWriter(buffer))
             {
                 json.WriteStartObject();
-                foreach (var claim in tokens.UserInfo(state.OrganisationOf(issued.ClientId), issued))
+                foreach (var claim in tokens.UserInfo(state.OrganizationOf(issued.ClientId), issued))
                 {
                     json.WritePropertyName(claim.Name);
                     using var value = JsonDocument.Parse(claim.RawJson);
@@ -278,7 +278,7 @@ public static class Endpoints
         });
 
         // How a private service provider checks a personal number it already holds, since it
-        // may not ask for one. Three attempts to a session, which is behaviour rather than
+        // may not ask for one. Three attempts to a session, which is behavior rather than
         // configuration: a suite that passes here and fails on the fourth call against the
         // broker has been told nothing useful.
         Map("op/api/v1/mitid/matchCpr", ["POST"], RouteRole.Extra("matchCpr"), async (
@@ -354,7 +354,7 @@ public static class Endpoints
 
             // Where a decided login goes, whichever verb asked and whoever decided it. A GET
             // lands here when something else decided the session while the browser sat on the
-            // page - the control API, a queued behaviour, the deadline - and that browser is
+            // page - the control API, a queued behavior, the deadline - and that browser is
             // owed the same answer the clicker gets.
             IResult Finish() => session.State switch
             {
@@ -514,7 +514,7 @@ public static class Endpoints
         }
 
         var issued = state.IssueCode(request, citizen, clock.GetUtcNow(), ClientIp(http), session.Id);
-        var organisation = state.OrganisationOf(request.ClientId);
+        var organization = state.OrganizationOf(request.ClientId);
 
         // Member order as recorded: the code first, then a front-channel id_token if one
         // was asked for, then state and session_state.
@@ -533,7 +533,7 @@ public static class Endpoints
                 Issuer(http),
                 state.PeekCode(issued)!,
                 accessToken: null,
-                organisation,
+                organization,
                 authorizationCode: wants.Contains("code") ? issued : null);
         }
 
@@ -594,7 +594,7 @@ public static class Endpoints
         // only when an id_token is returned; a failure omits it either way.
         response["session_state"] = SessionStateParameter(request.ClientId, session.Id);
 
-        // The same three modes the success path honours. This answered every mode with a query
+        // The same three modes the success path honors. This answered every mode with a query
         // until a second caller made the asymmetry worth closing: a client that asked for a
         // fragment got its failure somewhere it was not reading.
         return request.ResponseMode switch
@@ -626,7 +626,7 @@ public static class Endpoints
     /// </summary>
     /// <remarks>
     /// Two halves with two different provenances. Without a usable hint the redirect is
-    /// ignored outright, which is recorded twice; honouring it with one is documented rather
+    /// ignored outright, which is recorded twice; honoring it with one is documented rather
     /// than recorded, because reaching that branch needs a real id_token and so a real login.
     /// </remarks>
     [Fidelity(FidelityTier.Exact, FidelityProvenance.VerifiedLive,
@@ -835,7 +835,7 @@ public static class Endpoints
 
     /// <summary>
     /// Every recorded JSON answer carries the same directive, success and failure alike. A
-    /// client that cached a token response would reuse a code, so this is behaviour rather
+    /// client that cached a token response would reuse a code, so this is behavior rather
     /// than decoration.
     /// </summary>
     private static IResult Json(string body) => new CachelessJson(body);

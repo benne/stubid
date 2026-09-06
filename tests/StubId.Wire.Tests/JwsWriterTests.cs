@@ -24,7 +24,7 @@ public class JwsWriterTests
     public void Claims_are_written_in_the_order_given()
     {
         // The broker's id_token opens with iss, and member order is part of what a fixture
-        // pins. A serialiser that sorted alphabetically would quietly break that.
+        // pins. A serializer that sorted alphabetically would quietly break that.
         var token = _writer.Sign(
         [
             JsonClaim.String("iss", "https://pp.netseidbroker.dk/op"),

@@ -28,7 +28,7 @@ public class KeyAndErrorContractTests
     [Fact]
     public void No_key_carries_an_alg_member()
     {
-        // Serialising a JsonWebKey adds one. Emitting the JWKS from a template is what keeps
+        // Serializing a JsonWebKey adds one. Emitting the JWKS from a template is what keeps
         // it out.
         Assert.All(Keys(), key => Assert.False(key.TryGetProperty("alg", out _)));
     }
@@ -71,14 +71,14 @@ public class KeyAndErrorContractTests
     }
 
     [Fact]
-    public void The_error_catalogue_uses_a_pascal_case_envelope()
+    public void The_error_catalog_uses_a_pascal_case_envelope()
     {
         // The broker's own OpenAPI document declares these camelCase. The wire disagrees, and
         // the wire wins: a stub generated from the specification would be wrong on day one.
-        var catalogue = Body("CAP-007");
+        var catalog = Body("CAP-007");
 
-        Assert.True(catalogue.TryGetProperty("Version", out _));
-        Assert.True(catalogue.TryGetProperty("ErrorCodes", out _));
+        Assert.True(catalog.TryGetProperty("Version", out _));
+        Assert.True(catalog.TryGetProperty("ErrorCodes", out _));
     }
 
     [Fact]

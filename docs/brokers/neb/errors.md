@@ -15,7 +15,7 @@ browser goes to the broker's own error page with an opaque reference:
 ```
 
 Your application sees nothing at all. No callback fires, no error handler runs, and the user
-is looking at a page you did not write. That is the behaviour to reproduce, because "my
+is looking at a page you did not write. That is the behavior to reproduce, because "my
 callback never fired" is what the person debugging actually has to work with.
 
 StubID emits a real protected payload for `errorId`, so it carries the same `CfDJ8` prefix and

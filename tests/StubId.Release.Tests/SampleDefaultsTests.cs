@@ -14,7 +14,7 @@ namespace StubId.Release.Tests;
 /// moving one of them to 8444 would leave the guide broken and every test green.
 /// <para>
 /// So they are pinned here against the ports the Testcontainers module names, which is a different
-/// artefact arriving at the same two numbers rather than this file agreeing with itself.
+/// artifact arriving at the same two numbers rather than this file agreeing with itself.
 /// </para>
 /// </remarks>
 public class SampleDefaultsTests
