@@ -143,8 +143,9 @@ public sealed class StubIdHost : IAsyncDisposable
     public HttpClient CreateClient() => (_server ?? throw NotStarted()).CreateClient();
 
     /// <summary>
-    /// Clears the sessions and anything queued, and keeps the citizens. What a suite calls between
-    /// tests when it reuses one instance.
+    /// Clears the protocol state: the sessions, anything queued, and everything issued. Citizens
+    /// survive, so a suite builds its people once. What a suite calls between tests when it reuses
+    /// one instance.
     /// </summary>
     public Task ResetAsync(CancellationToken ct = default) => Control.ResetAsync(ct);
 

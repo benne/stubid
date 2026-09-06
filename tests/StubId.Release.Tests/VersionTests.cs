@@ -10,9 +10,10 @@ namespace StubId.Release.Tests;
 /// </summary>
 /// <remarks>
 /// A release is the one change that has to agree with itself across a build property, a
-/// compiled constant, a profile identifier and the documentation. Nothing in the language
-/// makes those agree, and before this project existed they did not: one image had three tags
-/// at once and the profile named a month whose recordings it no longer matched.
+/// compiled constant and the documentation, while a profile identifier deliberately does not
+/// follow. Nothing in the language holds any of that together, and before this project existed
+/// it did not hold: one image had three tags at once and the profile named a month whose
+/// recordings it no longer matched.
 /// </remarks>
 public class VersionTests
 {
@@ -35,32 +36,47 @@ public class VersionTests
         return informational.Split('+')[0];
     }
 
-    /// <summary>
-    /// The build, the container tag and the recorded broker version are one string.
-    /// </summary>
+    /// <summary>The build and the container tag the module pulls are one string.</summary>
     /// <remarks>
-    /// Two different facts that happen to be the same string today. A profile's version is
-    /// which recording of the broker is being served; the build's version is which StubID is
-    /// being shipped. They coincide because every release so far has carried a sitting.
-    /// <para>
-    /// The first release that fixes a bug and takes no new recording ends that, and this test
-    /// will fail correctly for the wrong reason. When it does: bump the build, leave the
-    /// profile alone, and change this test - it becomes a pin on the last recording's date plus
-    /// an assertion that the profile is not ahead of the build. Bumping the profile to make it
-    /// pass would make the profile version a lie, which is the one thing it cannot afford to
-    /// be.
-    /// </para>
+    /// The image is built from the commit that carries this version and tagged with it, so a
+    /// module naming anything else would pull a StubID that was never published beside the
+    /// package doing the pulling.
     /// </remarks>
     [Fact]
     public void The_version_the_assembly_carries_is_the_image_the_module_names()
     {
-        var declared = Declared();
-
         // The tag rather than the whole reference, so this file carries no image literal of its
         // own for the sweep below to find. What the reference should be is pinned where it
         // belongs, by StubIdBuilderTests.
-        Assert.Equal(declared, StubIdBuilder.StubIdImage.Split(':')[^1]);
-        Assert.Equal(declared, new NetsEidBrokerProfile().Id.Version);
+        Assert.Equal(Declared(), StubIdBuilder.StubIdImage.Split(':')[^1]);
+    }
+
+    /// <summary>Which recording is being served, which is not which build is shipped.</summary>
+    /// <remarks>
+    /// These were one string until 2026.09.2, because every release before it carried a
+    /// sitting. That one built an admin interface and fixed a race and recorded nothing, so the
+    /// profile stayed where it was. A profile's version answers which recording of the broker
+    /// is served; the build's answers which StubID is shipped, and the two only move together
+    /// when a release carries a capture.
+    /// <para>
+    /// So the recording is pinned here rather than derived. Moving the constant is a claim that
+    /// a sitting was taken and its fixtures are in the tree; moving it for any other reason
+    /// makes the profile version a lie, which is the one thing it cannot afford to be. The
+    /// profile may lag the build indefinitely and may never lead it, because a recording cannot
+    /// reach anyone before the release that carries it.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void The_profile_names_the_last_recording_and_never_runs_ahead_of_the_build()
+    {
+        var recorded = new NetsEidBrokerProfile().Id.Version;
+        var declared = Declared();
+
+        Assert.Equal("2026.09.1", recorded);
+        Assert.True(
+            Version.Parse(recorded) <= Version.Parse(declared),
+            $"The profile serves {recorded}, which is ahead of the build's {declared}. A "
+            + "recording cannot ship before the release that carries it.");
     }
 
     /// <summary>
