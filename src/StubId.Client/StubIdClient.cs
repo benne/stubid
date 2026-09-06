@@ -129,7 +129,12 @@ public sealed class StubIdClient : IDisposable
         using var response = await Http.GetAsync("/_stubid/v1/routes", ct);
         var body = await Control.ReadAsync(response, ControlJson.Default.RoutesBody, ct);
 
-        return body.Routes;
+        // An instance older than the field says nothing about it, and silence means the route is
+        // answered - every route there was, before any of them could be only advertised.
+        return [.. body.Routes.Select(route => new EmulatedRoute(route.Pattern, route.Methods, route.Role)
+        {
+            Emulated = route.Emulated ?? true,
+        })];
     }
 
     /// <summary>The process answers.</summary>

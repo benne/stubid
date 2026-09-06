@@ -1,7 +1,9 @@
+using System.Reflection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Routing.Patterns;
 using Microsoft.Extensions.Primitives;
+using StubId.Abstractions;
 using StubId.Profiles;
 
 namespace StubId.Server;
@@ -67,6 +69,25 @@ public sealed class ProfileEndpointDataSource : EndpointDataSource
 
     private readonly IServiceProvider _services;
 
+    /// <summary>
+    /// What a route says about its own fidelity, if its handler is named well enough to say so.
+    /// </summary>
+    /// <remarks>
+    /// A lambda has nowhere to carry an annotation, which is why the only route that needs one
+    /// today is written as a method.
+    /// <para>
+    /// <see cref="RouteDeclaration.Fidelity" /> is deliberately not consulted here, though it
+    /// exists and would be the obvious place to look. The fidelity ledger is built by reflecting
+    /// over assemblies, so an attribute set on a declaration would reach this route table and
+    /// never reach the ledger - a route could then report itself unemulated in one place and be
+    /// absent from the other. Reading the handler keeps one annotation with two readers. If a
+    /// profile ever needs to declare fidelity without a named handler, the ledger has to learn
+    /// about routes first.
+    /// </para>
+    /// </remarks>
+    private static FidelityAttribute? Annotation(Delegate handler) =>
+        handler.Method.GetCustomAttributes<FidelityAttribute>(inherit: false).FirstOrDefault();
+
     private Endpoint Build(RouteDeclaration route, string mountPrefix, ProfileId profile)
     {
         var text = string.IsNullOrEmpty(mountPrefix)
@@ -98,6 +119,18 @@ public sealed class ProfileEndpointDataSource : EndpointDataSource
 
         builder.Metadata.Add(new HttpMethodMetadata(route.Methods));
         builder.Metadata.Add(new RouteRules(route.Exactness, route.Role));
+
+        // Read off the handler rather than taken from the declaration, so this and the fidelity
+        // ledger cannot disagree: the ledger finds the same attribute by reflecting over the
+        // assembly, and there is one place to write it. The framework's factory does not carry
+        // it here on its own - it infers metadata from a handler's attributes only when it is
+        // given an endpoint builder to infer into, and this composes the endpoint itself.
+        // First rather than single: the attribute allows more than one, and several members
+        // carry two.
+        if (Annotation(route.Handler) is { } fidelity)
+        {
+            builder.Metadata.Add(fidelity);
+        }
 
         return builder.Build();
     }

@@ -61,25 +61,30 @@ public sealed class IduraProfile(IReadOnlyList<IduraClient> clients) : IBrokerPr
         return
         [
             Route(".well-known/openid-configuration", ["GET"], RouteRole.Discovery,
-                () => NotImplemented("discovery")),
+                (HttpContext http) => NotImplemented(http, "discovery")),
 
             // The dynamic segment applies here and to authorize, and to nothing else. Idura
             // 404s it in front of the key set and the token endpoint, so a stub that served
             // them there would pass a client the real broker would refuse.
             Route("{acr}/.well-known/openid-configuration", ["GET"], RouteRole.Extra("acr-discovery"),
-                (string acr) => NotImplemented($"discovery scoped to {Decoded(acr)}"), acr),
+                (HttpContext http, string acr) => NotImplemented(http, $"discovery scoped to {Decoded(acr)}"), acr),
 
-            Route(".well-known/jwks", ["GET"], RouteRole.Jwks, () => NotImplemented("key set")),
+            Route(".well-known/jwks", ["GET"], RouteRole.Jwks,
+                (HttpContext http) => NotImplemented(http, "key set")),
 
             Route("oauth2/authorize", ["GET", "POST"], RouteRole.Authorize,
-                () => NotImplemented("authorize")),
+                (HttpContext http) => NotImplemented(http, "authorize")),
             Route("{acr}/oauth2/authorize", ["GET", "POST"], RouteRole.Extra("acr-authorize"),
-                (string acr) => NotImplemented($"authorize pinned to {Decoded(acr)}"), acr),
+                (HttpContext http, string acr) => NotImplemented(http, $"authorize pinned to {Decoded(acr)}"), acr),
 
-            Route("oauth2/token", ["POST"], RouteRole.Token, () => NotImplemented("token")),
-            Route("oauth2/userinfo", ["GET", "POST"], RouteRole.UserInfo, () => NotImplemented("userinfo")),
-            Route("oauth2/logout", ["GET"], RouteRole.Extra("logout"), () => NotImplemented("logout")),
-            Route("oauth2/par", ["POST"], RouteRole.Par, () => NotImplemented("pushed authorization")),
+            Route("oauth2/token", ["POST"], RouteRole.Token,
+                (HttpContext http) => NotImplemented(http, "token")),
+            Route("oauth2/userinfo", ["GET", "POST"], RouteRole.UserInfo,
+                (HttpContext http) => NotImplemented(http, "userinfo")),
+            Route("oauth2/logout", ["GET"], RouteRole.Extra("logout"),
+                (HttpContext http) => NotImplemented(http, "logout")),
+            Route("oauth2/par", ["POST"], RouteRole.Par,
+                (HttpContext http) => NotImplemented(http, "pushed authorization")),
 
             // Undocumented, and the SDK refuses to initialize without it. Its status depends on
             // the query string, which routing cannot express - only a handler can.
@@ -123,7 +128,9 @@ public sealed class IduraProfile(IReadOnlyList<IduraClient> clients) : IBrokerPr
     /// Says so rather than inventing bytes. No Idura login has been recorded, and guessing at
     /// a shape is what this project exists to avoid.
     /// </summary>
-    private static IResult NotImplemented(string what) => Results.Json(
-        new { error = "not_implemented", detail = $"StubID does not emulate Idura's {what} yet." },
-        statusCode: StatusCodes.Status501NotImplemented);
+    private static IResult NotImplemented(HttpContext http, string what) =>
+        NotEmulated.Answer(http, TheSeamIsASpike, $"Idura's {what}");
+
+    /// <summary>Where the decision to declare this profile without answering it is written down.</summary>
+    private const string TheSeamIsASpike = "docs/explanation/profile-seam.md";
 }
