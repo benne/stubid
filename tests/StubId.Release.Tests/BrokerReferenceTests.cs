@@ -23,6 +23,17 @@ public class BrokerReferenceTests
 {
     private const string Docs = "docs";
 
+    /// <summary>
+    /// How this repository writes a link to its own files for a reader who is not in a clone.
+    /// </summary>
+    /// <remarks>
+    /// Stripped before anything is resolved, so a reference written as a full URL is checked as
+    /// the path it is. That is not a nicety: the answer an unemulated endpoint gives carries one
+    /// of these, the divergences show that answer as an example, and an example nobody checks is
+    /// how the documentation went wrong in the first place.
+    /// </remarks>
+    private const string Blob = "https://github.com/benne/stubid/blob/master/";
+
     private static IReadOnlyList<FidelityEntry> Ledger() => FidelityLedger.Read(
         typeof(Tokens).Assembly, typeof(StubId.Wire.JwsWriter).Assembly);
 
@@ -42,8 +53,7 @@ public class BrokerReferenceTests
 
         foreach (var (relative, full) in Referring())
         {
-            foreach (Match reference in Regex.Matches(
-                File.ReadAllText(full), @"(?<file>[A-Za-z0-9_./-]+\.md)#(?<anchor>[a-z0-9-]+)"))
+            foreach (Match reference in References(full))
             {
                 var document = Resolve(relative, reference.Groups["file"].Value);
                 if (document is null || !File.Exists(Path.Combine(Repository.Root, document)))
@@ -78,8 +88,7 @@ public class BrokerReferenceTests
     public void No_anchor_is_left_with_nothing_pointing_at_it()
     {
         var referenced = Referring()
-            .SelectMany(file => Regex
-                .Matches(File.ReadAllText(file.Full), @"(?<file>[A-Za-z0-9_./-]+\.md)#(?<anchor>[a-z0-9-]+)")
+            .SelectMany(file => References(file.Full)
                 .Select(m => (Document: Resolve(file.Relative, m.Groups["file"].Value), Anchor: m.Groups["anchor"].Value)))
             .Where(r => r.Document is not null)
             .Select(r => $"{r.Document}#{r.Anchor}")
@@ -260,6 +269,84 @@ public class BrokerReferenceTests
             + string.Join(Environment.NewLine, broken));
     }
 
+    /// <summary>
+    /// Every endpoint the discovery document advertises is answered, or says it is not.
+    /// </summary>
+    /// <remarks>
+    /// This is the rule the README states, put where the build can read it. The discovery document
+    /// is served from CAP-001 rather than composed, so it advertises everything the broker does -
+    /// which is the faithful thing to serve, and leaves StubID naming endpoints it may not
+    /// reproduce. One of them it did not: the backchannel authentication endpoint answered 404,
+    /// while the README promised a 501 and the divergences said 404 in the same repository.
+    /// <para>
+    /// Both suffixes count. <c>jwks_uri</c> is an endpoint like the rest of them, and a sweep
+    /// matching only <c>_endpoint</c> would have nothing to say about it. The issuer is not: it
+    /// names the tenant root rather than a route.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void Every_endpoint_the_discovery_document_advertises_is_answered_or_declared_missing()
+    {
+        using var discovery = JsonDocument.Parse(File.ReadAllText(
+            Path.Combine(Repository.Root, "fixtures", "neb", "pp", "CAP-001", "response.raw")));
+
+        var host = discovery.RootElement.GetProperty("issuer").GetString()!;
+        host = host[..host.LastIndexOf("/op", StringComparison.Ordinal)];
+
+        var advertised = discovery.RootElement.EnumerateObject()
+            .Where(m => m.Name.EndsWith("_endpoint", StringComparison.Ordinal)
+                        || m.Name.EndsWith("_uri", StringComparison.Ordinal))
+            .Where(m => m.Value.ValueKind == JsonValueKind.String)
+            .Where(m => m.Value.GetString()!.StartsWith(host, StringComparison.Ordinal))
+            .ToList();
+
+        Assert.NotEmpty(advertised);
+
+        var declared = Server.Endpoints.Declare().ToDictionary(r => r.Pattern, StringComparer.Ordinal);
+        var unanswered = advertised
+            .Where(m => !declared.ContainsKey(m.Value.GetString()![host.Length..].TrimStart('/')))
+            .Select(m => $"{m.Name} -> {m.Value.GetString()}")
+            .ToList();
+
+        Assert.True(unanswered.Count == 0,
+            $"Discovery advertises these and no route answers them, so they 404 where the "
+            + $"README promises a 501:{Environment.NewLine}"
+            + string.Join(Environment.NewLine, unanswered));
+    }
+
+    /// <summary>
+    /// Anything declared only to admit it is missing says so in the ledger, and says why.
+    /// </summary>
+    /// <remarks>
+    /// The other half of the rule above. A route can satisfy that one by existing, which would let
+    /// somebody quietly give CIBA a handler that invents bytes. What stops it is that the
+    /// annotation and the answer read the same constant, so a route that stops being unemulated
+    /// has to stop claiming to be.
+    /// </remarks>
+    [Fact]
+    public void Nothing_unemulated_is_in_the_ledger_without_a_reason_that_resolves()
+    {
+        var unemulated = Ledger().Where(e => e.Provenance == "NotEmulated").ToList();
+
+        Assert.NotEmpty(unemulated);
+
+        foreach (var entry in unemulated)
+        {
+            Assert.True(entry.Complete, $"{entry.Subject} says nothing that can be checked.");
+            Assert.Contains("#", entry.Reason!, StringComparison.Ordinal);
+
+            var document = entry.Reason!.Split('#')[0];
+
+            Assert.True(File.Exists(Path.Combine(Repository.Root, document)),
+                $"{entry.Subject} points at {document}, which is not there.");
+
+            var anchor = entry.Reason!.Split('#')[1];
+
+            Assert.True(AnchorsIn(document).Contains(anchor),
+                $"{entry.Subject} points at #{anchor}, which {document} does not offer.");
+        }
+    }
+
     /// <summary>The member names a section carries, in the order it gives them.</summary>
     /// <remarks>
     /// Two readings of one section, because the reference makes two different promises about it.
@@ -308,6 +395,18 @@ public class BrokerReferenceTests
 
         return members;
     }
+
+    /// <summary>Every reference in one file to a section of a document.</summary>
+    /// <remarks>
+    /// The repository's own full URLs are reduced to the paths they name first, so a link written
+    /// either way is checked the same. Anything still carrying a double slash after that belongs
+    /// to somebody else's site and is not this build's to verify.
+    /// </remarks>
+    private static IEnumerable<Match> References(string full) =>
+        Regex.Matches(
+                File.ReadAllText(full).Replace(Blob, "", StringComparison.Ordinal),
+                @"(?<file>[A-Za-z0-9_./-]+\.md)#(?<anchor>[a-z0-9-]+)")
+            .Where(m => !m.Value.Contains("//", StringComparison.Ordinal));
 
     /// <summary>Every anchor a document offers: the ones written out, and the ones headings get.</summary>
     private static HashSet<string> AnchorsIn(string relative)

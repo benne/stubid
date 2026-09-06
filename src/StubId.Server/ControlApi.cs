@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Time.Testing;
+using StubId.Abstractions;
 using StubId.Server.Sessions;
 using StubId.Wire;
 
@@ -51,6 +52,12 @@ public static class ControlApi
                     methods = endpoint.Metadata.GetMetadata<HttpMethodMetadata>()?.HttpMethods
                         ?? (IReadOnlyList<string>)[],
                     role = endpoint.Metadata.GetMetadata<RouteRules>()?.Role.Name,
+
+                    // False where the profile declares a route only so that what discovery
+                    // advertises has an answer behind it. The annotation is on the handler,
+                    // so this and the ledger cannot disagree about which routes those are.
+                    emulated = endpoint.Metadata.GetMetadata<FidelityAttribute>()?.Provenance
+                        is not FidelityProvenance.NotEmulated,
                 })
                 .OrderBy(route => route.pattern, StringComparer.Ordinal),
         }));

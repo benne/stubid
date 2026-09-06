@@ -76,6 +76,26 @@ internal sealed record ClientsBody(IReadOnlyList<RegisteredClient> Clients);
 
 internal sealed record IssuedBody(IReadOnlyList<IssuedArtifact> Issued);
 
-internal sealed record RoutesBody(IReadOnlyList<EmulatedRoute> Routes);
+internal sealed record RoutesBody(IReadOnlyList<RouteOnTheWire> Routes);
+
+/// <summary>A route as the control API writes it, which is not quite the shape a caller sees.</summary>
+/// <remarks>
+/// <c>Emulated</c> is nullable here and not on <see cref="EmulatedRoute" />, because the two
+/// answer different questions. On the wire, absent means the instance predates the field - the
+/// package and the image version separately, and a client is expected to meet an older server.
+/// To a caller there is no such state: a route it cannot ask about is one that is answered.
+/// <para>
+/// Reading straight into the public record would not give that. Source generation writes an
+/// init-only member as an unconditional object-initializer slot with no default recorded, so an
+/// absent key lands as <c>default(bool)</c> and quietly overwrites the property's own initializer
+/// with false - inverting the answer for every route at once, against exactly the older instances
+/// the field was added to describe. Nullable here, defaulted where it is mapped.
+/// </para>
+/// </remarks>
+internal sealed record RouteOnTheWire(
+    string Pattern,
+    IReadOnlyList<string> Methods,
+    string? Role,
+    bool? Emulated);
 
 internal sealed record EntriesBody(IReadOnlyList<FidelityEntry> Entries);

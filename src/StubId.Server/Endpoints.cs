@@ -277,6 +277,11 @@ public static class Endpoints
             return Json(Encoding.UTF8.GetString(buffer.ToArray()));
         });
 
+        // Declared so that what the discovery document advertises has an answer behind it.
+        // GET as well as POST, even though CIBA is a POST endpoint: a 405 would tell a caller
+        // the method was wrong when the truth is that the endpoint is not reproduced at all.
+        Map("op/connect/ciba", ["GET", "POST"], RouteRole.Extra("ciba"), Ciba);
+
         // How a private service provider checks a personal number it already holds, since it
         // may not ask for one. Three attempts to a session, which is behavior rather than
         // configuration: a suite that passes here and fails on the fourth call against the
@@ -620,6 +625,34 @@ public static class Endpoints
         Evidence = "The pre-production swagger. Unrecorded: no capture reached a successful match.")]
     private static string Matched(bool matches) =>
         JsonSerializer.Serialize(new { cprNumberMatch = matches });
+
+    /// <summary>Where the decision not to reproduce CIBA is written down.</summary>
+    /// <remarks>
+    /// One constant for two audiences. The annotation below puts it in the ledger, where the
+    /// build checks that the section it names is really there; the answer sends a caller to it.
+    /// Two spellings of the same path could drift apart, and this one cannot.
+    /// </remarks>
+    private const string CibaIsNotEmulated = "docs/brokers/neb/divergences.md#ciba";
+
+    /// <summary>
+    /// The one endpoint this build advertises and does not reproduce.
+    /// </summary>
+    /// <remarks>
+    /// The discovery document is served from CAP-001 rather than composed, so it advertises
+    /// everything the broker does, and one of those is a backchannel authentication endpoint.
+    /// Trimming the document to match what is implemented would be less faithful, not more -
+    /// some client libraries key off metadata that is absent. So the advertisement stays and
+    /// the endpoint says plainly what it is, which is the whole reason the ledger has a
+    /// provenance for behavior that is advertised and not written.
+    /// <para>
+    /// Nothing here is emulated, so the tier is out of contract: a test must not assert on this
+    /// shape the way it can assert on a token. What it can rely on is the status.
+    /// </para>
+    /// </remarks>
+    [Fidelity(FidelityTier.OutOfContract, FidelityProvenance.NotEmulated,
+        Evidence = "fixtures/neb/pp/CAP-001",
+        Reason = CibaIsNotEmulated)]
+    private static IResult Ciba(HttpContext http) => NotEmulated.Answer(http, CibaIsNotEmulated);
 
     /// <summary>
     /// Where end session sends the browser, or null for the broker's own logout page.

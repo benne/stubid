@@ -97,7 +97,7 @@ does. Some of that is not implemented:
 
 | Advertised | State |
 | --- | --- |
-| `backchannel_authentication_endpoint` (CIBA) | not implemented; the endpoint 404s |
+| `backchannel_authentication_endpoint` (CIBA) | not implemented; the endpoint answers 501, [below](#ciba) |
 | `frontchannel_logout_supported`, `backchannel_logout_supported` | ending a session works; notifying the other clients in it does not |
 | Request-object encryption | not implemented |
 | DPoP | not implemented |
@@ -105,6 +105,31 @@ does. Some of that is not implemented:
 Trimming the discovery document to match would be *less* faithful, not more: some client
 libraries key off metadata that is absent, and the recording is what the broker sends. The
 honest position is to advertise what the broker advertises and say plainly what is missing.
+
+### The backchannel authentication endpoint answers 501
+
+<a id="ciba"></a>
+
+CIBA is the one of those four that is a path rather than a capability, so it is the one that
+can be asked. `POST /op/connect/ciba` — and `GET`, which is not a method the broker takes but
+is the one somebody exploring will try — answers `501` with a body naming this section:
+
+```json
+{
+  "error": "not_implemented",
+  "detail": "StubID does not emulate /op/connect/ciba.",
+  "reason": "https://github.com/benne/stubid/blob/master/docs/brokers/neb/divergences.md#ciba"
+}
+```
+
+It used to answer 404, which is worse than it sounds. A 404 says there is no such endpoint,
+when discovery has just said there is one; whoever is reading the log goes looking for a
+routing mistake that is not there. The status says which of the two it is, and the link says
+why, which is the whole of what this document is for.
+
+Nothing about the shape above is emulated and no test should assert on it beyond the status.
+The broker's own answer to a CIBA request is unrecorded — reaching it needs a client
+provisioned for backchannel authentication, which the test clients are not.
 
 ## Where a recording could not settle it
 

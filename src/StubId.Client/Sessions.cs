@@ -75,7 +75,20 @@ public sealed record RegisteredClient(
 public sealed record EmulatedRoute(
     string Pattern,
     IReadOnlyList<string> Methods,
-    string? Role);
+    string? Role)
+{
+    /// <summary>
+    /// Whether this build answers the route or only admits that it does not.
+    /// </summary>
+    /// <remarks>
+    /// The discovery document is served from a recording, so it advertises everything the broker
+    /// does, and a few of those are not reproduced. Those routes are declared anyway - answering
+    /// 501 with a link to the reason says something a 404 cannot - and this is how a caller tells
+    /// them apart without reading the ledger. Not a positional member, so a suite that
+    /// deserialized the old payload still compiles.
+    /// </remarks>
+    public bool Emulated { get; init; } = true;
+}
 
 /// <summary>
 /// Whether logins decide themselves, and where that answer came from.
