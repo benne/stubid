@@ -164,13 +164,30 @@ public class SpellingTests
     /// What the sweep reads.
     /// </summary>
     /// <remarks>
-    /// Three exemptions, each for a different reason. The recordings, because their meta.json
-    /// files are hashed into a manifest and one of those manifests records a sitting that cannot
-    /// be repeated - the spelling in a recording is part of the record. The release notes,
-    /// because naming what changed is the point of them and one of the things that changed was
-    /// the spelling, so a note about a rename has to be able to write both. And this file, which
-    /// cannot sweep for words it is obliged to contain.
+    /// Three exemptions, each for a different reason. The recording packs, because their files
+    /// are hashed into a manifest and one of those manifests records a sitting that cannot be
+    /// repeated - the spelling in a recording is part of the record. A pack is found by the
+    /// MANIFEST.json that covers it rather than by the fixtures/ prefix, because not everything
+    /// in that directory is a recording: fixtures/README.md and fixtures/neb/certificates.md are
+    /// the project's own writing and are held to the same rule as the rest of it. Skipping by
+    /// prefix hid them through the conversion. The release notes, because naming what changed is
+    /// the point of them and one of the things that changed was the spelling, so a note about a
+    /// rename has to be able to write both. And this file, which cannot sweep for words it is
+    /// obliged to contain.
     /// </remarks>
+    /// <summary>
+    /// The directories a manifest covers, as prefixes. Read from the tree rather than listed here
+    /// so a pack recorded later is exempt the day it arrives, and so prose that merely sits near
+    /// a pack is not.
+    /// </summary>
+    private static readonly string[] Packs =
+        Directory.EnumerateFiles(Repository.Root, "MANIFEST.json", SearchOption.AllDirectories)
+            .Select(manifest =>
+                Path.GetRelativePath(Repository.Root, Path.GetDirectoryName(manifest)!)
+                    .Replace('\\', '/') + "/")
+            .Where(pack => !pack.Split('/').Any(s => s is "bin" or "obj" or "node_modules"))
+            .ToArray();
+
     private static IEnumerable<(string Relative, string Full)> Scanned()
     {
         foreach (var full in Directory.EnumerateFiles(Repository.Root, "*", SearchOption.AllDirectories))
@@ -185,7 +202,7 @@ public class SpellingTests
             var segments = relative.Split('/');
 
             if (segments.Any(s => s is ".git" or "bin" or "obj" or "node_modules" or "target")
-                || segments[0] == "fixtures"
+                || Packs.Any(pack => relative.StartsWith(pack, StringComparison.Ordinal))
                 || relative.StartsWith("docs/releases/", StringComparison.Ordinal)
                 || segments[^1] == "SpellingTests.cs"
                 || segments[^1] == "capture.local.json")

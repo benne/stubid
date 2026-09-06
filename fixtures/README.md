@@ -14,7 +14,7 @@ fixtures/neb/pp/MANIFEST.json            sha256 of every file above
 fixtures/neb/certificates.md             the JWKS certificates, decoded
 ```
 
-Bodies are stored as served: no decompression, no reformatting, no reserialising. Member
+Bodies are stored as served: no decompression, no reformatting, no reserializing. Member
 order and whitespace are part of what is being pinned, and a JSON round-trip would quietly
 destroy both.
 
@@ -59,7 +59,7 @@ destroy both.
   `capture` and the sitting can never be pointed at the same case.
 
   These land in `fixtures/neb/pp-session/` rather than beside the unattended pack: `capture`
-  and `verify` iterate one catalogue, and a routine run would replay expired codes over the
+  and `verify` iterate one catalog, and a routine run would replay expired codes over the
   sitting's evidence.
 
   A later sitting records its own cases beside the existing ones and rewrites `MANIFEST.json`
@@ -100,7 +100,7 @@ have rejected it up front.
 **Two endpoints on the same host challenge differently.** Userinfo answers
 `Bearer realm="IdentityServer",error="invalid_token"`; CPR match answers a bare `Bearer`.
 
-**The error catalogue is PascalCase on the wire and camelCase in the broker's own OpenAPI
+**The error catalog is PascalCase on the wire and camelCase in the broker's own OpenAPI
 document.** Generating a stub from the specification would be wrong on the first response.
 
 ## What the sittings established
@@ -112,7 +112,7 @@ Between them they settled things no documentation states:
 - The id_token carries `nbf`, `sid`, `acr`, `idp_transaction_id`, `idtoken_type` and
   `subject_type`, four of which appear in no vendor claim table, and does **not** carry the
   documented `idp_environment`.
-- The subject is scoped to the **organisation**, not the client: two clients of one service
+- The subject is scoped to the **organization**, not the client: two clients of one service
   provider receive the same one. Deriving it per client gives an application that signs users
   in through two of its own clients two different people.
 - `auth_time` is a number in the id_token and a string in the userinfo token, in the same
@@ -161,7 +161,7 @@ percent-encoded and a plain string replace no longer matched.
 
 The recorded bytes are the broker's wire output: factual, functional protocol data, captured so
 an independent implementation can reproduce the surface. StubID claims no copyright in the
-recordings, and the repository's Apache-2.0 licence is not offered over them — they are the
+recordings, and the repository's Apache-2.0 license is not offered over them — they are the
 facts the emulator answers to, not a work of this project. The selection of what to record, the
 scrubbing, `meta.json`, and this document are the project's own and carry Apache-2.0 like
 everything else here. Any database right in the collection as a whole (the EU sui generis right)
