@@ -189,5 +189,6 @@ suite builds its people once.
 using var stub = new StubIdClient(new Uri("http://localhost:8080"));
 ```
 
-That is the shape for [the compose recipe](../../samples/compose/docker-compose.yml), a shared
-development instance, or [an in-process host](in-process.md).
+That is the shape for
+[the compose recipe](https://github.com/benne/stubid/blob/master/samples/compose/docker-compose.yml),
+a shared development instance, or [an in-process host](in-process.md).

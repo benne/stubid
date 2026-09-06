@@ -214,6 +214,11 @@ public sealed class BrokerState
     /// signed itself would refuse a hint a test had built by hand, which is the more likely
     /// case here. The broker refuses those; StubID does not, and says so in its divergences.
     /// </remarks>
+    // No evidence is cited on purpose. CAP-044 and CAP-045 record the half without a usable
+    // hint, which Endpoints.EndSession already claims; neither shows the broker refusing a
+    // forged one, so naming them here would be a claim no recording supports.
+    [Fidelity(FidelityTier.Exact, FidelityProvenance.Divergent,
+        Reason = "docs/brokers/neb/divergences.md#the-id-token-hint")]
     public bool EndsSession(string idTokenHint)
     {
         var parts = idTokenHint.Split('.');

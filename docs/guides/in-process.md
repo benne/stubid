@@ -158,6 +158,7 @@ already running:
 using var stub = new StubIdClient(new Uri("http://localhost:8080"));
 ```
 
-That is the shape for [the compose recipe](../../samples/compose/docker-compose.yml) or a shared
-development instance. Running one in Docker for the length of a test run is
+That is the shape for
+[the compose recipe](https://github.com/benne/stubid/blob/master/samples/compose/docker-compose.yml)
+or a shared development instance. Running one in Docker for the length of a test run is
 [its own guide](testcontainers.md).

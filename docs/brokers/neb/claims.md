@@ -121,8 +121,9 @@ only some of them carry say so.
 | `mitid.cpr_consent_text`, `mitid.cpr_consent_header` | string | scope-dependent |
 | `transaction_actions` | string *or* array | below |
 | `transaction_client_ip` | string | |
-| `nbf`, `iat` | number | equal |
+| `nbf` | number | equal to `iat`, which the broker sends after `exp` rather than beside it |
 | `exp` | number | `iat` plus 189 388 800 seconds, which is six years |
+| `iat` | number | |
 | `iss` | string | |
 | `aud` | string | the client id |
 
