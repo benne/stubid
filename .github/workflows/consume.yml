@@ -39,17 +39,34 @@ jobs:
       # nuget.org indexes a push a little after it accepts it, so a release calling this
       # immediately can arrive before the package is resolvable. Retried rather than delayed by
       # a fixed sleep, which would be a guess in both directions.
+      #
+      # Twenty minutes, and the number is measured rather than chosen. 2026.09.2 took between
+      # six and eight to become resolvable, which the previous budget of six one-minute attempts
+      # sat underneath - so the release that proved the wait was needed is the one it failed on,
+      # and a red run on every release is a run nobody reads. The budget is a deadline rather
+      # than a count because twenty minutes is the thing being decided; how many probes fit in
+      # it is not.
+      #
+      # Only the release path gets it. Waiting is for lag, and lag only follows a push: a run
+      # that names no version is asking what a reader would get today, and a failure there is
+      # not something waiting fixes.
       - name: Restore from nuget.org, allowing for indexing lag
         working-directory: tests/consume-nuget
         env:
           VERSION: ${{ inputs.version || '*' }}
+          PUBLISHED: ${{ inputs.version }}
         run: |
-          for attempt in 1 2 3 4 5 6; do
+          budget=$([ -n "$PUBLISHED" ] && echo 1200 || echo 120)
+          deadline=$((SECONDS + budget))
+
+          for attempt in $(seq 1 100); do
             if dotnet restore -p:StubIdPackageVersion="$VERSION"; then exit 0; fi
+            [ "$SECONDS" -lt "$deadline" ] || break
             echo "::warning::restore failed on attempt ${attempt}; nuget.org may still be indexing"
             sleep 60
           done
-          echo "::error::${VERSION} never became resolvable from nuget.org"
+
+          echo "::error::${VERSION} never became resolvable from nuget.org in $((budget / 60)) minutes"
           exit 1
 
       - name: The README's example, run the way a reader runs it
