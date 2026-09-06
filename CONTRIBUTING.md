@@ -30,8 +30,13 @@ exactly — as are the exact error strings the broker puts on the wire.
 
 **New or changed emulated behavior must cite a fixture.** A claim about what a broker does
 belongs in `fixtures/`, recorded from the real thing, not in a commit message. Behavior
-derived only from vendor documentation ships marked as such and with its test skipped until
-a recording confirms it. Prose has been wrong three times already; recordings have not.
+derived only from vendor documentation ships annotated `DocsConfirmed` beside the code that
+emits it, with evidence naming the source and saying why no recording reached it, so it
+appears in the ledger a running instance serves at `GET /_stubid/v1/fidelity` and in the
+broker's divergences. It keeps an ordinary test. A skipped one pins nothing, and what says
+the behavior may be wrong is the annotation, which reaches anyone running an instance rather
+than only a reader of the suite. Prose has been wrong three times already; recordings have
+not.
 
 **Never commit real personal data.** Fixtures are scrubbed before they land, and the build
 fails if a CPR-shaped string, a real client secret, or an unscrubbed token appears in the
