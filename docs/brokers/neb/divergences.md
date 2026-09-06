@@ -22,6 +22,8 @@ client is a small change.
 
 ## An id_token_hint is read, not verified
 
+<a id="the-id-token-hint"></a>
+
 At the end-session endpoint the broker checks the hint it is given. StubID reads it: any
 three-part token whose payload carries a `sid` is accepted, including one StubID never issued.
 
@@ -106,7 +108,7 @@ honest position is to advertise what the broker advertises and say plainly what 
 
 ## Where a recording could not settle it
 
-Three behaviors are implemented from the broker's documentation rather than from a
+Four behaviors are implemented from the broker's documentation rather than from a
 recording, because reaching them needs something the unattended captures cannot do.
 
 | Behavior | Why it is unrecorded |

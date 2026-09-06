@@ -56,8 +56,10 @@ close; what came back is in [the claims reference](brokers/neb/claims.md). Still
 address members under `ssn.details_*`, because the test identity has no register entry behind
 it.
 
-Three behaviors are implemented from documentation rather than from a recording, because
-reaching them needs a completed login: end session honoring a post-logout redirect when it
-is given a valid `id_token_hint`, the CPR-match refusal after three attempts, and
-`prompt=none` answering `login_required`. Each is marked as such in the fidelity ledger and
+Four behaviors are implemented from documentation rather than from a recording. Three of them
+need a completed login to reach: end session honoring a post-logout redirect when it is given a
+valid `id_token_hint`, the CPR-match refusal after three attempts, and `prompt=none` answering
+`login_required`. The fourth is the type of `cprNumberMatch`, which no capture reached a
+successful match to settle, so it is the pre-production swagger's boolean — worth doubting, since
+every other value on that endpoint is a string. Each is marked as such in the fidelity ledger and
 listed in [the divergences](brokers/neb/divergences.md).

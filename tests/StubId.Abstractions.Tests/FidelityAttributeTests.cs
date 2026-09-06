@@ -27,7 +27,7 @@ public class FidelityAttributeTests
         var unexplained = new FidelityAttribute(FidelityTier.OutOfContract, provenance);
         var explained = new FidelityAttribute(FidelityTier.OutOfContract, provenance)
         {
-            Reason = "docs/brokers/neb/divergences.md#pades",
+            Reason = "docs/brokers/neb/divergences.md#client-secrets",
         };
 
         Assert.False(unexplained.IsComplete);

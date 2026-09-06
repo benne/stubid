@@ -14,11 +14,13 @@ curl -fsS --cacert stubid.crt https://localhost:18443/op/.well-known/openid-conf
 ```
 
 Those last two lines are the `Take the certificate the way a client stack would` step of the
-`interop` job in [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml), which runs on every
-change against the image the same job built. It uses port 18081 rather than 18080 for the control
-port, because it already has a plain instance on 18080, and writes the file into the runner's
-temporary directory; between the two it runs an `openssl x509` line that prints what was fetched
-into the build log. A copied example that has quietly stopped working is worse than no example.
+`interop` job in
+[`.github/workflows/ci.yml`](https://github.com/benne/stubid/blob/master/.github/workflows/ci.yml),
+which runs on every change against the image the same job built. It uses port 18081 rather than
+18080 for the control port, because it already has a plain instance on 18080, and writes the
+file into the runner's temporary directory; between the two it runs an `openssl x509` line that
+prints what was fetched into the build log. A copied example that has quietly stopped working is
+worse than no example.
 
 The first command needs no trust, which is the point of it. The control API answers on plain HTTP
 even when the instance is serving TLS, so the certificate can be fetched before anything has been
