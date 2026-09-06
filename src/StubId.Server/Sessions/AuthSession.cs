@@ -6,7 +6,7 @@ public enum SessionState
     /// <summary>Validated and parked, waiting for something to decide it.</summary>
     AwaitingApproval,
 
-    /// <summary>Decided in the caller's favour. A code has not been collected yet.</summary>
+    /// <summary>Decided in the caller's favor. A code has not been collected yet.</summary>
     Approved,
 
     /// <summary>The code was collected. Terminal.</summary>

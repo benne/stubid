@@ -6,7 +6,7 @@ namespace StubId.Client;
 /// <remarks>
 /// Source-generated rather than reflective because this ships to other people: it is trim- and
 /// AOT-safe, so a consumer publishing trimmed gets no warning out of us, and a type that cannot be
-/// serialised fails our build rather than their run.
+/// serialized fails our build rather than their run.
 /// </remarks>
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
@@ -74,7 +74,7 @@ internal sealed record QueuedBody(IReadOnlyList<QueuedDecision> Queued);
 
 internal sealed record ClientsBody(IReadOnlyList<RegisteredClient> Clients);
 
-internal sealed record IssuedBody(IReadOnlyList<IssuedArtefact> Issued);
+internal sealed record IssuedBody(IReadOnlyList<IssuedArtifact> Issued);
 
 internal sealed record RoutesBody(IReadOnlyList<EmulatedRoute> Routes);
 

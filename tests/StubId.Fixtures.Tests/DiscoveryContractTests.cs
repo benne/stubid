@@ -66,7 +66,7 @@ public class DiscoveryContractTests
     }
 
     [Fact]
-    public void Pushed_authorisation_is_advertised_so_dotnet_clients_will_use_it()
+    public void Pushed_authorization_is_advertised_so_dotnet_clients_will_use_it()
     {
         // ASP.NET Core defaults to UseIfAvailable, which makes PAR the first protocol
         // request a stock client sends. It cannot be deferred.

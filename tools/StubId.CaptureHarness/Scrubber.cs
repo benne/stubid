@@ -35,7 +35,7 @@ public static partial class Scrubber
     public static string Unscrub(string text) => Unscrub(text, LocalSettings.Get);
 
     /// <summary>
-    /// Takes the settings resolver so the behaviour can be tested without depending on
+    /// Takes the settings resolver so the behavior can be tested without depending on
     /// whatever happens to be configured on the machine running the tests.
     /// </summary>
     public static string Unscrub(string text, Func<string, string?> resolve)
@@ -70,7 +70,7 @@ public static partial class Scrubber
     /// authorize request redirects to a login URL carrying the client_id, so recording with a
     /// private client would publish it without this. Anything listed under "redact" in
     /// capture.local.json is replaced too: a transaction token names the receiving
-    /// organisation, and a fixture is not the place for a company's CVR number.
+    /// organization, and a fixture is not the place for a company's CVR number.
     /// </remarks>
     public static string Scrub(string text) => Scrub(text, LocalSettings.Get);
 

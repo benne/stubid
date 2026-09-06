@@ -422,7 +422,7 @@ public class ResumeTests
     [Fact]
     public async Task A_client_that_asked_for_a_fragment_is_refused_in_the_fragment()
     {
-        // The success path honoured all three response modes and the refusal path answered
+        // The success path honored all three response modes and the refusal path answered
         // every one of them with a query, so a client reading the fragment saw nothing.
         await using var factory = Manual();
         using var client = Browser(factory);

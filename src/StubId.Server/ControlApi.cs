@@ -34,7 +34,7 @@ public static class ControlApi
                 {
                     client.ClientId,
                     client.ResponseTypes,
-                    client.Organisation,
+                    client.Organization,
                 }),
         }));
 
@@ -114,8 +114,8 @@ public static class ControlApi
             };
         });
 
-        // Behaviour
-        api.MapPost("/behaviours/enqueue", (EnqueuedDecisions queue, EnqueueRequest body) =>
+        // Behavior
+        IResult Enqueue(EnqueuedDecisions queue, EnqueueRequest body)
         {
             queue.Enqueue(
                 body.Approve
@@ -124,7 +124,14 @@ public static class ControlApi
                 body.ClientId);
 
             return Results.Accepted();
-        });
+        }
+
+        api.MapPost("/behaviors/enqueue", Enqueue);
+
+        // The spelling this route shipped under in 2026.09.1, kept working for one release so a
+        // suite pinned to the published client does not 404 against a newer image. The other two
+        // queue routes need no alias: they arrived with the admin interface and have never shipped.
+        api.MapPost("/behaviours/enqueue", Enqueue);
 
         // Citizens
         api.MapGet("/citizens", (Citizens citizens) => Results.Json(citizens.All));
@@ -162,7 +169,7 @@ public static class ControlApi
         // What is queued, in the order it will be taken, without taking any of it. Tier 2 is the
         // tier suites use most and was the only one nothing could look at, which made a decision
         // left over from an earlier test the hardest kind of surprise to explain.
-        api.MapGet("/behaviours", (EnqueuedDecisions queue) => Results.Json(new
+        api.MapGet("/behaviors", (EnqueuedDecisions queue) => Results.Json(new
         {
             queued = queue.Snapshot().SelectMany(entry => entry.Queued.Select((decision, index) => new
             {
@@ -175,7 +182,7 @@ public static class ControlApi
             })),
         }));
 
-        api.MapDelete("/behaviours", (EnqueuedDecisions queue) =>
+        api.MapDelete("/behaviors", (EnqueuedDecisions queue) =>
         {
             queue.Clear();
 
@@ -267,14 +274,14 @@ public static class ControlApi
         api.MapPut("/runtime/public-base-url",
             (PublicBaseUrl publicBaseUrl, PublicBaseUrlRequest? body) =>
         {
-            if (!PublicBaseUrl.TryNormalise(body?.PublicBaseUrl, out var normalised, out var fault))
+            if (!PublicBaseUrl.TryNormalize(body?.PublicBaseUrl, out var normalized, out var fault))
             {
                 return Results.BadRequest(new { error = fault.Error, detail = fault.Detail });
             }
 
-            publicBaseUrl.Set(normalised);
+            publicBaseUrl.Set(normalized);
 
-            return Results.Json(new { publicBaseUrl = normalised });
+            return Results.Json(new { publicBaseUrl = normalized });
         });
 
         // The public half of the certificate this instance serves TLS with, so a caller can trust

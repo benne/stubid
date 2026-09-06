@@ -497,13 +497,13 @@ public class AdminPageTests
         var http = Browser(stub);
 
         using var queued = await http.PostAsync(
-            $"{Admin}/behaviour",
+            $"{Admin}/behavior",
             Form(("outcome", "refuse"), ("errorCode", "mitid_timeout")),
             Ct);
 
         Assert.Equal(HttpStatusCode.SeeOther, queued.StatusCode);
 
-        using var page = await http.GetAsync($"{Admin}/behaviour", Ct);
+        using var page = await http.GetAsync($"{Admin}/behavior", Ct);
         var html = await page.Content.ReadAsStringAsync(Ct);
 
         Assert.Contains("mitid_timeout", html, StringComparison.Ordinal);
@@ -511,16 +511,16 @@ public class AdminPageTests
 
         // Reading the page must not have spent it, or the page would be the thing that broke the
         // login somebody opened it to explain.
-        using var still = await http.GetAsync("/_stubid/v1/behaviours", Ct);
+        using var still = await http.GetAsync("/_stubid/v1/behaviors", Ct);
         using var backlog = JsonDocument.Parse(await still.Content.ReadAsStringAsync(Ct));
 
         Assert.Equal(1, backlog.RootElement.GetProperty("queued").GetArrayLength());
 
-        using var emptied = await http.PostAsync($"{Admin}/behaviour/clear", null, Ct);
+        using var emptied = await http.PostAsync($"{Admin}/behavior/clear", null, Ct);
 
         Assert.Equal(HttpStatusCode.SeeOther, emptied.StatusCode);
 
-        using var after = await http.GetAsync("/_stubid/v1/behaviours", Ct);
+        using var after = await http.GetAsync("/_stubid/v1/behaviors", Ct);
         using var nothing = JsonDocument.Parse(await after.Content.ReadAsStringAsync(Ct));
 
         Assert.Equal(0, nothing.RootElement.GetProperty("queued").GetArrayLength());
@@ -536,7 +536,7 @@ public class AdminPageTests
     [Theory]
     [InlineData("/_stubid/admin", "Logins")]
     [InlineData("/_stubid/admin/citizens", "People")]
-    [InlineData("/_stubid/admin/behaviour", "Queue")]
+    [InlineData("/_stubid/admin/behavior", "Queue")]
     public async Task The_navigation_marks_one_section(string path, string section)
     {
         using var stub = Parking();
@@ -794,7 +794,7 @@ public class AdminPageTests
         await Park(http);
 
         using var queued = await http.PostAsync(
-            $"{Admin}/behaviour", Form(("outcome", "refuse")), Ct);
+            $"{Admin}/behavior", Form(("outcome", "refuse")), Ct);
 
         using var reset = await http.PostAsync($"{Admin}/controls/reset", null, Ct);
 
@@ -804,7 +804,7 @@ public class AdminPageTests
         {
             ("/_stubid/v1/sessions", (string?)null),
             ("/_stubid/v1/issued", "issued"),
-            ("/_stubid/v1/behaviours", "queued"),
+            ("/_stubid/v1/behaviors", "queued"),
         })
         {
             using var read = await http.GetAsync(path, Ct);

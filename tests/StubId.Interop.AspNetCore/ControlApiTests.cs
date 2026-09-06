@@ -93,7 +93,7 @@ public class ControlApiTests
         await using var factory = Manual();
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
-        using var queued = await client.PostAsJsonAsync("/_stubid/v1/behaviours/enqueue",
+        using var queued = await client.PostAsJsonAsync("/_stubid/v1/behaviors/enqueue",
             new { approve = false, clientId = CodeClient, errorCode = "mitid_user_aborted" }, Ct);
         Assert.Equal(HttpStatusCode.Accepted, queued.StatusCode);
 

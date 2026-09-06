@@ -4,7 +4,7 @@ using System.Security.Cryptography.X509Certificates;
 
 namespace StubId.CaptureHarness;
 
-/// <summary>One extension, kept whole so an unrecognised one is still recorded as itself.</summary>
+/// <summary>One extension, kept whole so an unrecognized one is still recorded as itself.</summary>
 /// <param name="Oid">Dotted form.</param>
 /// <param name="Value">The <c>extnValue</c> octets, which carry DER of their own.</param>
 public sealed record OcspExtension(string Oid, bool Critical, byte[] Value);
@@ -16,7 +16,7 @@ public sealed record OcspExtension(string Oid, bool Critical, byte[] Value);
 /// </param>
 /// <param name="SerialNumber">
 /// Hex of the INTEGER content octets exactly as encoded, a leading zero pad included if the
-/// responder sent one. Not normalised: how it was encoded is a fact about the wire.
+/// responder sent one. Not normalized: how it was encoded is a fact about the wire.
 /// </param>
 public sealed record OcspSingleResponse(
     string HashAlgorithm,
@@ -316,7 +316,7 @@ public static class Ocsp
             0 => "good",
             1 => "revoked",
             2 => "unknown",
-            _ => "unrecognised",
+            _ => "unrecognized",
         };
 
         // RevokedInfo is consumed and not decoded. Nothing in the recordings is revoked, and a

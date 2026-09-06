@@ -412,7 +412,7 @@ public static class Session
 
     private static string ClientId(ClientProfile profile) => profile switch
     {
-        ClientProfile.OpenCode => CaptureCatalogue.OpenCodeClient,
+        ClientProfile.OpenCode => CaptureCatalog.OpenCodeClient,
         ClientProfile.OpenImplicit => "93ed8e0d-93ad-405c-b1ac-8bf13d484941",
         ClientProfile.Restricted => Required("STUBID_NEB_PP_SSO_A_CLIENT_ID"),
         ClientProfile.SsoA => Required("STUBID_NEB_PP_SSO_A_CLIENT_ID"),

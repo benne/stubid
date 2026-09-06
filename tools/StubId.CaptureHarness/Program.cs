@@ -11,14 +11,14 @@ using StubId.CaptureHarness;
 //   check     verify the local configuration before a sitting
 //   rehearse  send every step's authorize request, without completing any
 //             --only applies here too
-//   sanitise  reprocess a written session with the current rules
+//   sanitize  reprocess a written session with the current rules
 //
 // Both hit the broker's public pre-production environment with unauthenticated requests.
 
 var command = args.Length > 0 ? args[0] : "capture";
 
 // Recording a case rewrites its bytes, and an error id or a timestamp differs every time. So
-// adding a case to the catalogue would otherwise churn every fixture beside it, burying the
+// adding a case to the catalog would otherwise churn every fixture beside it, burying the
 // one new recording in nineteen diffs that say nothing.
 var only = args
     .FirstOrDefault(a => a.StartsWith("--only=", StringComparison.Ordinal))?[7..]
@@ -35,13 +35,13 @@ Console.CancelKeyPress += (_, e) => { e.Cancel = true; cancellation.Cancel(); };
 var store = new FixtureStore(root);
 using var recorder = new Recorder();
 var cases = only is null
-    ? CaptureCatalogue.All
-    : [.. CaptureCatalogue.All.Where(c => only.Contains(c.Id, StringComparer.OrdinalIgnoreCase))];
+    ? CaptureCatalog.All
+    : [.. CaptureCatalog.All.Where(c => only.Contains(c.Id, StringComparer.OrdinalIgnoreCase))];
 
-// The two catalogues are filtered separately, because a name in one is not in the other: the
-// sitting's steps are deliberately not in CaptureCatalogue, and --only=CAP-031 matching
+// The two catalogs are filtered separately, because a name in one is not in the other: the
+// sitting's steps are deliberately not in CaptureCatalog, and --only=CAP-031 matching
 // nothing there is the normal case rather than a mistake.
-var manual = ManualCatalogue.Selected(only);
+var manual = ManualCatalog.Selected(only);
 
 switch (command)
 {
@@ -51,8 +51,8 @@ switch (command)
         return Refuse(cases) ?? await VerifyAsync();
     case "rehearse":
         return Refuse(manual) ?? await Rehearsal.RunAsync(manual, cancellation.Token);
-    case "sanitise":
-        return await Sanitise.RunAsync(new FixtureStore(
+    case "sanitize":
+        return await Sanitize.RunAsync(new FixtureStore(
             Path.GetFullPath(Path.Combine(root, "..", "..", "..", "fixtures", "neb", "pp-session"))),
             cancellation.Token);
     case "check":
@@ -66,7 +66,7 @@ switch (command)
             manual);
     default:
         Console.Error.WriteLine($"Unknown command '{command}'. Use 'capture', 'verify', "
-            + "'session', 'rehearse', 'sanitise' or 'check'.");
+            + "'session', 'rehearse', 'sanitize' or 'check'.");
         return 2;
 }
 
@@ -134,7 +134,7 @@ async Task<int> CaptureAsync()
     if (surprises.Count > 0)
     {
         Console.Error.WriteLine();
-        Console.Error.WriteLine("The broker answered differently than the catalogue expects:");
+        Console.Error.WriteLine("The broker answered differently than the catalog expects:");
         foreach (var line in surprises)
         {
             Console.Error.WriteLine($"  {line}");
@@ -166,8 +166,8 @@ async Task<int> VerifyAsync()
             Path.Combine(directory, "response.raw"), cancellation.Token);
         var committedExchange = fresh with { ResponseBody = committedBody };
 
-        var bodyMatches = Normaliser.NormaliseBody(committedExchange, @case)
-            == Normaliser.NormaliseBody(fresh, @case);
+        var bodyMatches = Normalizer.NormalizeBody(committedExchange, @case)
+            == Normalizer.NormalizeBody(fresh, @case);
 
         Console.WriteLine($"  {@case.Id}  {(bodyMatches ? "match" : "DIFFERS")}  {@case.Description}");
         if (!bodyMatches)

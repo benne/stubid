@@ -1,7 +1,7 @@
 namespace StubId.Abstractions;
 
 /// <summary>
-/// Where the knowledge behind an emulated behaviour came from.
+/// Where the knowledge behind an emulated behavior came from.
 /// </summary>
 /// <remarks>
 /// Vendor documentation has contradicted the live broker on three separate occasions, so

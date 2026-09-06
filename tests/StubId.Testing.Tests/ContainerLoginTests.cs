@@ -43,7 +43,7 @@ public class ContainerLoginTests(StubIdInstance stub, ITestOutputHelper output)
             new CitizenSpec { Name = "Anders Berg Christiansen", DateOfBirth = new DateOnly(1985, 3, 29) },
             Ct);
 
-        await stub.Container.Behaviour.EnqueueAsync(
+        await stub.Container.Behavior.EnqueueAsync(
             Decision.Approved(citizen.Id).ForClient(CodeClient), Ct);
 
         using var authorize = await browser.GetAsync(

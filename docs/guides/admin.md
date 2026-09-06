@@ -80,7 +80,7 @@ That last one is why a demonstration does not need a different container. An ins
 automatically by default, because a test that hangs waiting for a person is worse than one that
 never exercises the waiting; switch it off and logins park until somebody decides them. It is an
 override rather than a change to the setting, so the page can also put the instance back to whatever
-it was started with — and a suite sharing one instance can borrow the behaviour for one test and
+it was started with — and a suite sharing one instance can borrow the behavior for one test and
 hand it back.
 
 ## There is no password on any of this

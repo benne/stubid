@@ -2,7 +2,7 @@
 
 Every entry here is a deliberate decision, not an omission. A running instance serves the same
 list at `GET /_stubid/v1/fidelity`, read from annotations next to the code that emits each
-behaviour, so this document and the running system cannot disagree.
+behavior, so this document and the running system cannot disagree.
 
 ## Client secrets are not checked
 
@@ -14,7 +14,7 @@ non-empty secret for a registered client.
 **Why.** A stub cannot know the secret an existing configuration already carries, and
 demanding a particular one would defeat the point of changing only the authority. A missing
 secret is still refused, because telling "authenticated badly" from "did not authenticate
-at all" is behaviour worth keeping.
+at all" is behavior worth keeping.
 
 **What this costs.** A test asserting that a wrong secret is rejected passes against
 pre-production and fails here. If that matters to you, say so — pinning expected secrets per
@@ -106,12 +106,12 @@ honest position is to advertise what the broker advertises and say plainly what 
 
 ## Where a recording could not settle it
 
-Three behaviours are implemented from the broker's documentation rather than from a
+Three behaviors are implemented from the broker's documentation rather than from a
 recording, because reaching them needs something the unattended captures cannot do.
 
-| Behaviour | Why it is unrecorded |
+| Behavior | Why it is unrecorded |
 | --- | --- |
-| End session honouring `post_logout_redirect_uri` with a valid `id_token_hint` | Needs a real id_token, which needs a completed login. The half without a hint *is* recorded, in CAP-044 and CAP-045: the redirect is ignored and the browser goes to the broker's own logout page. |
+| End session honoring `post_logout_redirect_uri` with a valid `id_token_hint` | Needs a real id_token, which needs a completed login. The half without a hint *is* recorded, in CAP-044 and CAP-045: the redirect is ignored and the browser goes to the broker's own logout page. |
 | The CPR-match refusal after three attempts | Needs a fourth call inside one authenticated session. The sitting that could have recorded it spent its attempts on the earlier branches. The sentence StubID returns is the broker's documented one. |
 | `prompt=none` answering `login_required` | Needs a client with single sign-on and a session already open. The specification's answer is used. |
 | `cprNumberMatch` being a JSON boolean | No capture reached a successful match, so the type is the pre-production swagger's. Worth doubting: every value on this broker's userinfo endpoint is a string, including two that are plainly booleans. |
@@ -193,7 +193,7 @@ emulator, which is what
 [the login page](../../guides/approvals.md#the-login-page) already gives as the reason a page
 that looked convincing is a page someone can be fooled by. The client's name is a separate
 matter and not a decision: StubID registers no display name for a client at all, `Client` being
-a client id, its response types and an organisation.
+a client id, its response types and an organization.
 
 **The text is escaped whether it says `text` or `html`.** The broker parses an html transaction
 text against a tag allowlist and renders it. StubID escapes both, because this is the first
@@ -222,7 +222,7 @@ there. StubID parks at `/op/Login?session=…` and completes in place.
 - **It is not recorded.** That `ReturnUrl` is a `Location` header from a day-zero probe, and
   [the capture session](../../capture-session.md) says plainly that every existing fixture stops
   at the 302 — the page sequence itself is captured nowhere. Building it means inventing a flow
-  in a repository whose rule is that emulated behaviour cites a recording.
+  in a repository whose rule is that emulated behavior cites a recording.
 - **The `ReturnUrl` is the raw-query replay**, and that replay cannot work here. A form POST
   leaves no query to replay, and a pushed request's reference is consumed on the way in, so
   replaying it earns "Unknown or expired request_uri". Reproduce the shape faithfully and you

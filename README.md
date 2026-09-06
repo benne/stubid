@@ -47,7 +47,7 @@ await stub.StartAsync();
 var citizen = await stub.Citizens.CreateAsync(
     new CitizenSpec { Name = "Anders Berg Christiansen", DateOfBirth = new DateOnly(1985, 3, 29) });
 
-await stub.Behaviour.EnqueueAsync(Decision.Approved(citizen.Id).ForClient(clientId));
+await stub.Behavior.EnqueueAsync(Decision.Approved(citizen.Id).ForClient(clientId));
 // Point the application at stub.Authority and sign in.
 ```
 
@@ -93,6 +93,6 @@ authentication, verifies no identity, and produces no signature with any legal e
 not point it at real people or real personal data. See [NOTICE](https://github.com/benne/stubid/blob/master/NOTICE) and
 [TRADEMARKS.md](https://github.com/benne/stubid/blob/master/TRADEMARKS.md).
 
-## Licence
+## License
 
 Apache-2.0. See [LICENSE](https://github.com/benne/stubid/blob/master/LICENSE).

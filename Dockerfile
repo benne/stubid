@@ -11,14 +11,14 @@ COPY src/ src/
 COPY fixtures/neb/pp/CAP-001/response.raw fixtures/neb/pp/CAP-001/response.raw
 RUN dotnet publish src/StubId.Server -c Release -o /app
 
-# An empty directory to seed the key volume from. Docker initialises a named volume from the
+# An empty directory to seed the key volume from. Docker initializes a named volume from the
 # image, ownership included, and the runtime image has no shell to chown one afterwards.
 RUN mkdir -p /keys-seed
 
 # Run
 #
 # Chiselled: no shell, no package manager, nothing to attack. ICU is kept rather than
-# switching on invariant globalisation, because the identities this serves carry Danish names
+# switching on invariant globalization, because the identities this serves carry Danish names
 # and dates and a stub that mangles them is worse than a slightly larger image.
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled
 WORKDIR /app

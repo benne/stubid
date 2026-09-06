@@ -7,8 +7,8 @@ namespace StubId.Wire;
 /// Name-based UUIDs, RFC 9562 section 5.5.
 /// </summary>
 /// <remarks>
-/// Used for the organisation-scoped subject identifier. The broker gives the same person a
-/// different <c>sub</c> for each receiving organisation while their MitID UUID stays the
+/// Used for the organization-scoped subject identifier. The broker gives the same person a
+/// different <c>sub</c> for each receiving organization while their MitID UUID stays the
 /// same, and deriving it means the value survives a restart instead of being regenerated
 /// into every client's cache. .NET has no built-in factory for version 5.
 /// </remarks>

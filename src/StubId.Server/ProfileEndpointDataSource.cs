@@ -37,7 +37,7 @@ public sealed class ProfileEndpointDataSource : EndpointDataSource
 
     /// <summary>
     /// Replaces the whole route set. Copy on write, then swap the change token and cancel the
-    /// old one, in that order: cancelling first would have the framework rebuild against the
+    /// old one, in that order: canceling first would have the framework rebuild against the
     /// list it is replacing.
     /// </summary>
     public void Load(IEnumerable<(IBrokerProfile Profile, ProfileContext Context, string MountPrefix)> tenants)

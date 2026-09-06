@@ -4,7 +4,7 @@ Status of the first emulated surface, Signaturgruppen Broker ("Nets eID Broker")
 
 | | Milestone | Status |
 | --- | --- | --- |
-| M0 | Repository, licence, CI, day-zero probes | done |
+| M0 | Repository, license, CI, day-zero probes | done |
 | M1 | Recordings that need no login (discovery, JWKS, error shapes) | done |
 | M1.5 | The manual recording pass (one login, signing, error paths) | done |
 | M2 | Token writer, keys, JWKS | done |
@@ -56,8 +56,8 @@ close; what came back is in [the claims reference](brokers/neb/claims.md). Still
 address members under `ssn.details_*`, because the test identity has no register entry behind
 it.
 
-Three behaviours are implemented from documentation rather than from a recording, because
-reaching them needs a completed login: end session honouring a post-logout redirect when it
+Three behaviors are implemented from documentation rather than from a recording, because
+reaching them needs a completed login: end session honoring a post-logout redirect when it
 is given a valid `id_token_hint`, the CPR-match refusal after three attempts, and
 `prompt=none` answering `login_required`. Each is marked as such in the fidelity ledger and
 listed in [the divergences](brokers/neb/divergences.md).

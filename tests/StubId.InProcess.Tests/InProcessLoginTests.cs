@@ -11,12 +11,12 @@ namespace StubId.InProcess.Tests;
 /// <remarks>
 /// The milestone's acceptance criterion and the twin of
 /// <c>ContainerLoginTests.A_citizen_created_from_a_test_signs_in_through_the_container</c>. The
-/// containerised one proves the image; this proves the module a .NET suite reaches for when it
+/// containerized one proves the image; this proves the module a .NET suite reaches for when it
 /// would rather not have a Docker daemon in CI at all.
 /// <para>
-/// Each test builds its own instance, which a containerised suite cannot afford and this one can.
+/// Each test builds its own instance, which a containerized suite cannot afford and this one can.
 /// It is also what lets the guide quote the opening of this test verbatim rather than an
-/// idealisation of it.
+/// idealization of it.
 /// </para>
 /// </remarks>
 public class InProcessLoginTests(ITestOutputHelper output)
@@ -42,7 +42,7 @@ public class InProcessLoginTests(ITestOutputHelper output)
             new CitizenSpec { Name = "Anders Berg Christiansen", DateOfBirth = new DateOnly(1985, 3, 29) },
             Ct);
 
-        await stub.Behaviour.EnqueueAsync(Decision.Approved(citizen.Id).ForClient(CodeClient), Ct);
+        await stub.Behavior.EnqueueAsync(Decision.Approved(citizen.Id).ForClient(CodeClient), Ct);
 
         await SignIn(stub);
     }
@@ -91,7 +91,7 @@ public class InProcessLoginTests(ITestOutputHelper output)
                 new CitizenSpec { Name = "Anders Berg Christiansen", DateOfBirth = new DateOnly(1985, 3, 29) },
                 Ct);
 
-            await stub.Behaviour.EnqueueAsync(Decision.Approved(citizen.Id).ForClient(CodeClient), Ct);
+            await stub.Behavior.EnqueueAsync(Decision.Approved(citizen.Id).ForClient(CodeClient), Ct);
 
             await SignIn(stub);
 

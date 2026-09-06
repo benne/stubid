@@ -12,7 +12,7 @@ namespace StubId.CaptureHarness;
 /// value StubID does not have to reproduce; anything left alone is a value it does. Masking
 /// too much turns a fidelity test into a shape test that passes on nearly anything.
 /// </remarks>
-public static class Normaliser
+public static class Normalizer
 {
     /// <summary>Headers that differ on every request regardless of the case.</summary>
     private static readonly string[] AlwaysVolatile =
@@ -20,7 +20,7 @@ public static class Normaliser
         "Date", "Set-Cookie", "Age", "Server-Timing", "Request-Context",
     ];
 
-    public static string NormaliseHead(RecordedExchange exchange, CaptureCase @case)
+    public static string NormalizeHead(RecordedExchange exchange, CaptureCase @case)
     {
         var volatileHeaders = AlwaysVolatile
             .Concat(@case.VolatileHeaders)
@@ -38,7 +38,7 @@ public static class Normaliser
         return Mask(builder.ToString(), @case.VolatileBodyPatterns);
     }
 
-    public static string NormaliseBody(RecordedExchange exchange, CaptureCase @case) =>
+    public static string NormalizeBody(RecordedExchange exchange, CaptureCase @case) =>
         Mask(Encoding.UTF8.GetString(exchange.ResponseBody), @case.VolatileBodyPatterns);
 
     private static string Mask(string text, IReadOnlyList<string> patterns)

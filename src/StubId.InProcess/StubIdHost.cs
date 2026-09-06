@@ -56,7 +56,11 @@ public sealed class StubIdHost : IAsyncDisposable
 
     public SessionApi Sessions => Control.Sessions;
 
-    public BehaviourApi Behaviour => Control.Behaviour;
+    public BehaviorApi Behavior => Control.Behavior;
+
+    /// <summary>The old spelling of <see cref="Behavior"/>.</summary>
+    [Obsolete("Renamed to Behavior. This alias is removed in the next release.")]
+    public BehaviorApi Behaviour => Behavior;
 
     public ClockApi Time => Control.Time;
 
@@ -65,7 +69,7 @@ public sealed class StubIdHost : IAsyncDisposable
     /// </summary>
     /// <remarks>
     /// The control API is the supported surface and the one the container shares; this is the
-    /// escape hatch for reaching a collaborator directly, which no containerised suite can. Code
+    /// escape hatch for reaching a collaborator directly, which no containerized suite can. Code
     /// written against it does not move to a container unchanged, which is the trade.
     /// </remarks>
     public IServiceProvider Services => _app?.Services ?? throw NotStarted();

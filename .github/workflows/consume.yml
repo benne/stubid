@@ -1,6 +1,6 @@
 name: Consume
 
-# Proves the published artefacts work when consumed from outside, which nothing else here can.
+# Proves the published artifacts work when consumed from outside, which nothing else here can.
 # Every other check in this repository builds from the working tree, so none of them can notice
 # a package that was pushed but never indexed, one unlisted by mistake, a dependency missing
 # from the graph, or an image tag that stopped resolving - and those are exactly the ways the

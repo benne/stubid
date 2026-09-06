@@ -21,7 +21,7 @@ public class VersionTests
     /// Directory.Build.props.
     /// </summary>
     /// <remarks>
-    /// Reading the assembly proves the evaluated property reached the artefact. Reading the
+    /// Reading the assembly proves the evaluated property reached the artifact. Reading the
     /// property file would only prove someone typed it there, which is the half that was never
     /// in doubt. The informational version keeps the value verbatim, padding included, and
     /// gains a <c>+commit</c> suffix once SourceLink is active.
@@ -68,18 +68,18 @@ public class VersionTests
     /// </summary>
     /// <remarks>
     /// A container tag sorts as text, where 2026.09 precedes 2026.10 and 2026.9 does not, so
-    /// the tag keeps its padding. NuGet reads a version as numbers and normalises the zero
+    /// the tag keeps its padding. NuGet reads a version as numbers and normalizes the zero
     /// away. Neither is wrong; a reader shown only one of them is, which is what makes this a
     /// documented fact rather than an implementation detail. The assembly version is the same
-    /// normalisation the package version gets, applied by the SDK where a test can see it.
+    /// normalization the package version gets, applied by the SDK where a test can see it.
     /// </remarks>
     [Fact]
     public void The_version_NuGet_publishes_is_the_declared_one_without_its_leading_zeros()
     {
-        var normalised = string.Join('.', Declared().Split('.').Select(int.Parse));
+        var normalized = string.Join('.', Declared().Split('.').Select(int.Parse));
         var assembly = typeof(StubIdBuilder).Assembly.GetName().Version!;
 
-        Assert.Equal(normalised, $"{assembly.Major}.{assembly.Minor}.{assembly.Build}");
+        Assert.Equal(normalized, $"{assembly.Major}.{assembly.Minor}.{assembly.Build}");
     }
 
     /// <summary>Every image tag a reader could copy out of the tree names this version.</summary>

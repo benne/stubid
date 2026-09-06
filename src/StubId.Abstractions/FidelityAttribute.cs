@@ -1,7 +1,7 @@
 namespace StubId.Abstractions;
 
 /// <summary>
-/// Records what StubID knows about one piece of emulated behaviour, and how it knows it.
+/// Records what StubID knows about one piece of emulated behavior, and how it knows it.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -9,7 +9,7 @@ namespace StubId.Abstractions;
 /// compare, the broker reference under <c>docs/brokers/</c> is generated from it, the
 /// <c>/_stubid/v1/fidelity</c> endpoint serves it, and unimplemented endpoints use it to
 /// answer 501 with a link to the reason. Adding a fifth mechanism instead of extending
-/// this one is how documentation and behaviour drift apart.
+/// this one is how documentation and behavior drift apart.
 /// </para>
 /// <para>
 /// Annotate as you build. Byte-faithful discovery advertises capabilities StubID does not
@@ -64,7 +64,7 @@ public sealed class FidelityAttribute : Attribute
 
     /// <summary>
     /// True when the attribute is missing something the build requires of it. Kept here
-    /// rather than in the analyser so the rule has one home.
+    /// rather than in the analyzer so the rule has one home.
     /// </summary>
     public bool IsComplete => Provenance switch
     {

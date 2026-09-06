@@ -27,7 +27,7 @@
 
   <!--
     The recording is the source of truth for what we serve, so the served template is derived
-    from it at build time rather than reproduced by hand. Emitting a document a serialiser
+    from it at build time rather than reproduced by hand. Emitting a document a serializer
     rebuilt would lose member order and the members the broker leaves out. The recording
     itself is not embedded: the build swaps the broker's host for a placeholder first, so the
     shipped assembly carries no occurrence of it.

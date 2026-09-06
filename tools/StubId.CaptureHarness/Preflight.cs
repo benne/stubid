@@ -90,7 +90,7 @@ public static class Preflight
                 continue;
             }
 
-            // The scrubber replaces exact strings, so a length change desynchronises a
+            // The scrubber replaces exact strings, so a length change desynchronizes a
             // recorded Content-Length from the body it describes.
             var lengthNote = replacement.Length == value.Length
                 ? "same length"
@@ -233,7 +233,7 @@ public static class Preflight
     }
 
     private static List<string> Steps(Func<ManualCase, bool> predicate) =>
-        [.. ManualCatalogue.All.Where(predicate).Select(c => c.Id)];
+        [.. ManualCatalog.All.Where(predicate).Select(c => c.Id)];
 
     /// <summary>Enough to identify an entry without printing it.</summary>
     private static string Describe(string value) => value.Length <= 4

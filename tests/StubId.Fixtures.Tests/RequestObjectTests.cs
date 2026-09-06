@@ -151,13 +151,13 @@ public class RequestObjectTests
     }
 
     /// <summary>
-    /// The real path, not a synthetic one: the catalogue's own signed step, through the URL
+    /// The real path, not a synthetic one: the catalog's own signed step, through the URL
     /// the sitting would actually send, into the strip that keeps it out of a fixture.
     /// </summary>
     [Fact]
-    public void The_catalogue_step_that_signs_survives_a_round_trip()
+    public void The_catalog_step_that_signs_survives_a_round_trip()
     {
-        var signing = ManualCatalogue.All.Single(c => c.SignRequest);
+        var signing = ManualCatalog.All.Single(c => c.SignRequest);
         var url = WithCredentials(() => Session.BuildAuthorize(signing).Url);
 
         Assert.True(SensitiveContent.FindSignedToken(url).Found,

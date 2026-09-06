@@ -213,7 +213,7 @@ public sealed class SessionApi(HttpClient http)
 }
 
 /// <summary>Outcomes queued ahead of the logins they resolve.</summary>
-public sealed class BehaviourApi(HttpClient http)
+public sealed class BehaviorApi(HttpClient http)
 {
     /// <summary>
     /// Queues one outcome for the next matching login, consumed once.
@@ -228,7 +228,7 @@ public sealed class BehaviourApi(HttpClient http)
         ArgumentNullException.ThrowIfNull(decision);
 
         using var response = await http.PostAsJsonAsync(
-            "/_stubid/v1/behaviours/enqueue",
+            "/_stubid/v1/behaviors/enqueue",
             new EnqueueBody(
                 decision.Approve, decision.ClientId, decision.CitizenId, decision.ErrorCode, decision.Error),
             ControlJson.Default.EnqueueBody,
@@ -247,7 +247,7 @@ public sealed class BehaviourApi(HttpClient http)
     /// </remarks>
     public async Task<IReadOnlyList<QueuedDecision>> ListAsync(CancellationToken ct = default)
     {
-        using var response = await http.GetAsync("/_stubid/v1/behaviours", ct);
+        using var response = await http.GetAsync("/_stubid/v1/behaviors", ct);
         var body = await Control.ReadAsync(response, ControlJson.Default.QueuedBody, ct);
 
         return body.Queued;
@@ -256,7 +256,7 @@ public sealed class BehaviourApi(HttpClient http)
     /// <summary>Drops everything still queued.</summary>
     public async Task ClearAsync(CancellationToken ct = default)
     {
-        using var response = await http.DeleteAsync("/_stubid/v1/behaviours", ct);
+        using var response = await http.DeleteAsync("/_stubid/v1/behaviors", ct);
 
         await Control.EnsureAsync(response, ct);
     }

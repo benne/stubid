@@ -52,7 +52,7 @@ public sealed record QueuedDecision(
 /// the surface that serves this asks nobody who they are. <see cref="LoginId" /> is what lines an
 /// entry up against a login, and it is null for a pushed request, which exists before there is one.
 /// </remarks>
-public sealed record IssuedArtefact(
+public sealed record IssuedArtifact(
     string Kind,
     string ClientId,
     string? CitizenId,
@@ -65,7 +65,7 @@ public sealed record IssuedArtefact(
 public sealed record RegisteredClient(
     string ClientId,
     IReadOnlyList<string> ResponseTypes,
-    string Organisation);
+    string Organization);
 
 /// <summary>One route this build answers on.</summary>
 /// <param name="Role">
@@ -155,7 +155,7 @@ public sealed record DecisionOutcome
     public StubIdSession? Outcome { get; init; }
 }
 
-/// <summary>One annotated piece of emulated behaviour, as the running instance reports it.</summary>
+/// <summary>One annotated piece of emulated behavior, as the running instance reports it.</summary>
 public sealed record FidelityEntry(
     string Subject,
     string Tier,

@@ -7,9 +7,9 @@ namespace StubId.CaptureHarness;
 /// CAP-001 to CAP-019 are the first round of this pack, and CAP-040 onwards a second, added
 /// while building the request surface: every one of them settles a question the code would
 /// otherwise have had to assume. CAP-020 to CAP-030 need a human to complete a login in
-/// MitID's test tool and live in a separate catalogue, which is why the numbering skips them.
+/// MitID's test tool and live in a separate catalog, which is why the numbering skips them.
 /// </remarks>
-public static class CaptureCatalogue
+public static class CaptureCatalog
 {
     public const string PreProduction = "https://pp.netseidbroker.dk/op";
     public const string Production = "https://netseidbroker.dk/op";
@@ -62,7 +62,7 @@ public static class CaptureCatalogue
         {
             Id = "CAP-004",
             Expected = Disposition.NotFound,
-            Description = "OAuth authorisation-server metadata layout is not served",
+            Description = "OAuth authorization-server metadata layout is not served",
             Settles = "The third layout Spring probes. Also 404.",
             Url = "https://pp.netseidbroker.dk/.well-known/oauth-authorization-server/op",
         },
@@ -88,7 +88,7 @@ public static class CaptureCatalogue
         {
             Id = "CAP-007",
             Expected = Disposition.Success,
-            Description = "Error code catalogue",
+            Description = "Error code catalog",
             Settles = "The PascalCase envelope, the code count, and that per-code members are "
                 + "sparse rather than uniform.",
             Url = $"{PreProduction}/api/v1/documentation/errorcodes",
@@ -242,7 +242,7 @@ public static class CaptureCatalogue
         {
             Id = "CAP-019",
             Expected = Disposition.BareJson,
-            Description = "Pushed authorisation request without client authentication",
+            Description = "Pushed authorization request without client authentication",
             Settles = "How PAR refuses an unauthenticated push. Discovery advertises the "
                 + "endpoint, so .NET clients use it by default and reach this path first.",
             Method = "POST",
@@ -334,7 +334,7 @@ public static class CaptureCatalogue
         {
             Id = "CAP-046",
             Expected = Disposition.Unclassified,
-            Description = "Pushed authorisation request whose request parameter is not a JWT",
+            Description = "Pushed authorization request whose request parameter is not a JWT",
             Settles = "How PAR refuses a request object it cannot read, and with which status. "
                 + "The refusal's body was measured on 2026-09-01 and written down in "
                 + "docs/research/signed-requests.md, but never recorded, and that measurement "

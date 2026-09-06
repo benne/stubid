@@ -10,7 +10,7 @@ namespace StubId.Interop.AspNetCore;
 /// </summary>
 /// <remarks>
 /// In process and without Docker, so these run on every platform CI builds on rather than only the
-/// one that can start a Linux container. The containerised suite proves the container; this proves
+/// one that can start a Linux container. The containerized suite proves the container; this proves
 /// the client, and the two do not need to prove it twice.
 /// </remarks>
 public class ControlClientTests(WebApplicationFactory<Program> factory)
@@ -112,7 +112,7 @@ public class ControlClientTests(WebApplicationFactory<Program> factory)
     /// </summary>
     /// <remarks>
     /// <c>POST /citizens</c> answered 201 with a Location header naming a route that did not
-    /// exist, and the client carried a comment apologising for it. Both are fixed together, which
+    /// exist, and the client carried a comment apologizing for it. Both are fixed together, which
     /// is the only way that apology gets to be deleted honestly.
     /// </remarks>
     [Fact]
@@ -182,10 +182,10 @@ public class ControlClientTests(WebApplicationFactory<Program> factory)
     {
         using var stub = Manual();
 
-        await stub.Behaviour.EnqueueAsync(Decision.Refused("mitid_timeout"), Ct);
+        await stub.Behavior.EnqueueAsync(Decision.Refused("mitid_timeout"), Ct);
 
-        var first = await stub.Behaviour.ListAsync(Ct);
-        var second = await stub.Behaviour.ListAsync(Ct);
+        var first = await stub.Behavior.ListAsync(Ct);
+        var second = await stub.Behavior.ListAsync(Ct);
 
         Assert.Equal(first.Count, second.Count);
 
@@ -200,7 +200,7 @@ public class ControlClientTests(WebApplicationFactory<Program> factory)
         var session = await stub.Sessions.FindAsync(await Drive(stub), Ct);
 
         Assert.Equal(SessionState.Failed, session?.State);
-        Assert.Empty(await stub.Behaviour.ListAsync(Ct));
+        Assert.Empty(await stub.Behavior.ListAsync(Ct));
     }
 
     [Fact]
@@ -208,10 +208,10 @@ public class ControlClientTests(WebApplicationFactory<Program> factory)
     {
         using var stub = Manual();
 
-        await stub.Behaviour.EnqueueAsync(Decision.Refused("mitid_timeout"), Ct);
-        await stub.Behaviour.ClearAsync(Ct);
+        await stub.Behavior.EnqueueAsync(Decision.Refused("mitid_timeout"), Ct);
+        await stub.Behavior.ClearAsync(Ct);
 
-        Assert.Empty(await stub.Behaviour.ListAsync(Ct));
+        Assert.Empty(await stub.Behavior.ListAsync(Ct));
 
         // Nothing decided it, so it waits, which is what this instance does with an undecided one.
         var session = await stub.Sessions.FindAsync(await Drive(stub), Ct);
@@ -248,8 +248,8 @@ public class ControlClientTests(WebApplicationFactory<Program> factory)
         // Before the exchange there is a code and nothing else.
         var waiting = await stub.IssuedAsync(Ct);
 
-        Assert.Contains(waiting, artefact => artefact.Kind == "code");
-        Assert.DoesNotContain(waiting, artefact => artefact.Kind == "access token");
+        Assert.Contains(waiting, artifact => artifact.Kind == "code");
+        Assert.DoesNotContain(waiting, artifact => artifact.Kind == "access token");
 
         using var exchanged = await browser.PostAsync(
             "/op/connect/token",
@@ -271,22 +271,22 @@ public class ControlClientTests(WebApplicationFactory<Program> factory)
         var issued = await stub.IssuedAsync(Ct);
 
         // And after it there is a token and no code: one login, one code, spent.
-        Assert.Contains(issued, artefact => artefact.Kind == "access token");
-        Assert.DoesNotContain(issued, artefact => artefact.Kind == "code");
-        Assert.All(issued, artefact => Assert.Equal(CodeClient, artefact.ClientId));
+        Assert.Contains(issued, artifact => artifact.Kind == "access token");
+        Assert.DoesNotContain(issued, artifact => artifact.Kind == "code");
+        Assert.All(issued, artifact => Assert.Equal(CodeClient, artifact.ClientId));
 
         // A login it can be lined up against, which is what a value would otherwise be used for,
         // and it has to be the login's own id rather than the broker's sid or the link is dead.
         Assert.All(
-            issued.Where(artefact => artefact.Kind != "pushed request"),
-            artefact => Assert.False(string.IsNullOrEmpty(artefact.LoginId)));
+            issued.Where(artifact => artifact.Kind != "pushed request"),
+            artifact => Assert.False(string.IsNullOrEmpty(artifact.LoginId)));
 
         var everything = string.Join(
             "\u001f",
-            waiting.Concat(issued).SelectMany(artefact => new[]
+            waiting.Concat(issued).SelectMany(artifact => new[]
             {
-                artefact.Kind, artefact.ClientId, artefact.CitizenId, artefact.LoginId,
-                artefact.Scope, artefact.AuthenticatedAt?.ToString(), artefact.Expires?.ToString(),
+                artifact.Kind, artifact.ClientId, artifact.CitizenId, artifact.LoginId,
+                artifact.Scope, artifact.AuthenticatedAt?.ToString(), artifact.Expires?.ToString(),
             }));
 
         foreach (var secret in new[] { code, accessToken, idToken })
@@ -389,7 +389,7 @@ public class ControlClientTests(WebApplicationFactory<Program> factory)
         Assert.Equal(3, clients.Count);
         Assert.Contains(clients, client => client.ClientId == CodeClient);
         Assert.All(clients, client => Assert.NotEmpty(client.ResponseTypes));
-        Assert.All(clients, client => Assert.Equal("published-test-clients", client.Organisation));
+        Assert.All(clients, client => Assert.Equal("published-test-clients", client.Organization));
     }
 
     /// <summary>
@@ -489,7 +489,7 @@ public class ControlClientTests(WebApplicationFactory<Program> factory)
     {
         using var stub = Manual();
 
-        await stub.Behaviour.EnqueueAsync(Decision.Refused().ForClient("somebody-else"), Ct);
+        await stub.Behavior.EnqueueAsync(Decision.Refused().ForClient("somebody-else"), Ct);
 
         var session = await Park(stub);
 

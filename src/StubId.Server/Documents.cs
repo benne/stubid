@@ -7,7 +7,7 @@ namespace StubId.Server;
 /// Serves the recorded broker documents with the host swapped for ours.
 /// </summary>
 /// <remarks>
-/// Substitution on the raw text, never a parse and re-serialise. The discovery document's
+/// Substitution on the raw text, never a parse and re-serialize. The discovery document's
 /// member order, its lack of whitespace, and the three members the broker leaves out are all
 /// part of what a client sees, and all three are destroyed by a round trip through a JSON
 /// object.

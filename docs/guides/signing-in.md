@@ -63,7 +63,7 @@ smaller cookie.
 
 ## The client is one of three, and you cannot bring your own
 
-StubID registers three clients, in one organisation, and refuses any other `client_id` outright.
+StubID registers three clients, in one organization, and refuses any other `client_id` outright.
 The sample uses the one that asks for a code. They are the same three every guide here uses, and
 the secret is not checked - StubID accepts any, which is the same trade as not verifying an
 `id_token_hint` it did not issue.

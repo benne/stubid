@@ -10,7 +10,7 @@ namespace StubId.Server;
 /// <remarks>
 /// Duplicate routes do not fail fast on their own. The matcher is built lazily on the first
 /// request, so two profiles declaring the same path start silently and then throw on every
-/// request afterwards — and the compiler's own duplicate-route analyser only sees literal
+/// request afterwards — and the compiler's own duplicate-route analyzer only sees literal
 /// Map calls in source, so it is blind to routes a profile declares. Enumerating the set at
 /// startup and checking it is the only thing that catches it before a user does.
 /// </remarks>

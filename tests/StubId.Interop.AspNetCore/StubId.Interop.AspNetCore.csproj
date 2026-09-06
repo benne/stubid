@@ -17,7 +17,7 @@
   <ItemGroup>
     <ProjectReference Include="../../src/StubId.Server/StubId.Server.csproj" />
     <!-- The shipped client, driven against the in-memory server. Every assertion here is one
-         the containerised suite does not have to make a second time, on a slower machine. -->
+         the containerized suite does not have to make a second time, on a slower machine. -->
     <ProjectReference Include="../../src/StubId.Client/StubId.Client.csproj" />
     <!-- The OCSP reader, so the response StubID emits is checked by the same decoder that reads
          the broker's rather than by a second one written to agree with the writer.

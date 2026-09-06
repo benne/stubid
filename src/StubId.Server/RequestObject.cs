@@ -99,7 +99,7 @@ public static class RequestObject
             return false;
         }
 
-        // Collected first and applied after. A claim that cannot be materialised throws part of
+        // Collected first and applied after. A claim that cannot be materialized throws part of
         // the way through, and half a request object merged over the query is worse than none.
         var claims = new Dictionary<string, string>(StringComparer.Ordinal);
 
@@ -121,7 +121,7 @@ public static class RequestObject
                 }
 
                 // idp_params travels as a JSON string holding JSON, so it has to come back out
-                // as the string it was rather than as re-serialised JSON: what reads it next
+                // as the string it was rather than as re-serialized JSON: what reads it next
                 // parses it again. Anything not a string is rendered, which is how a number or
                 // a boolean written where a parameter was expected reaches the same place a
                 // query would have put it.
@@ -135,7 +135,7 @@ public static class RequestObject
             // FormatException is a payload segment that is not base64url. JsonException is one
             // that is and holds no JSON. InvalidOperationException is a string that parsed and
             // cannot be read - an unpaired UTF-16 surrogate escape is accepted by the parser and
-            // throws only when the string is materialised. All three are the same answer: there
+            // throws only when the string is materialized. All three are the same answer: there
             // is an object, and it cannot be read.
             return false;
         }

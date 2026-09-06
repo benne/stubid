@@ -150,10 +150,10 @@ public class StockClientTests : IClassFixture<WebApplicationFactory<Program>>
         var state = new StubId.Server.BrokerState();
         var citizen = new StubId.Server.Sessions.Citizens().Default!;
 
-        // Scoped to the organisation rather than the client: two clients of one company get
+        // Scoped to the organization rather than the client: two clients of one company get
         // the same subject for the same person, as the broker was recorded doing.
         Assert.Equal(
-            StubId.Server.Tokens.Subject(state.OrganisationOf(ClientId), citizen),
+            StubId.Server.Tokens.Subject(state.OrganizationOf(ClientId), citizen),
             subject);
     }
 

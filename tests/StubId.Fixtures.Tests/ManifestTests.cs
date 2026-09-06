@@ -61,7 +61,7 @@ public class ManifestTests : IDisposable
     [Fact]
     public async Task Rewriting_a_pack_that_has_not_changed_changes_nothing()
     {
-        // What `sanitise` promises in its own remarks, and could not deliver while it stamped
+        // What `sanitize` promises in its own remarks, and could not deliver while it stamped
         // a fresh date over an unchanged directory.
         var store = new FixtureStore(root);
         await File.WriteAllTextAsync(Path.Combine(root, "recorded.json"), "{}", Ct);

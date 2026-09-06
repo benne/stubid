@@ -126,7 +126,7 @@ public sealed class StubIdHostBuilder
     /// <summary>Captures the settings. Nothing is built and nothing is touched until start.</summary>
     public StubIdHost Build()
     {
-        // Every setting the instance reads is materialised here, with its default, and not only
+        // Every setting the instance reads is materialized here, with its default, and not only
         // the ones the caller named. The alternative leaves them to be read from the environment,
         // and a StubId__ApproveAutomatically left over from somebody's compose stack would then
         // quietly decide their logins differently in process than in CI.

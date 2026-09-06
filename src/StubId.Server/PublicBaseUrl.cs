@@ -44,7 +44,7 @@ public sealed class PublicBaseUrl
             return;
         }
 
-        if (!TryNormalise(configured, out var seeded, out var fault))
+        if (!TryNormalize(configured, out var seeded, out var fault))
         {
             throw new InvalidOperationException(
                 $"StubId:PublicBaseUrl is not usable: {fault.Error}. {fault.Detail}");
@@ -64,7 +64,7 @@ public sealed class PublicBaseUrl
     /// it, because the case the setter exists for is the one where the correct value could not
     /// be known when the process started.
     /// </summary>
-    public void Set(string normalised) => _value = normalised;
+    public void Set(string normalized) => _value = normalized;
 
     /// <summary>
     /// Whether a candidate can serve as the base of an issuer, and the exact string to store.
@@ -77,12 +77,20 @@ public sealed class PublicBaseUrl
     /// accepted even though StubID serves plain HTTP, because a proxy in front of it is a
     /// deployment the compose sample already documents.
     /// </remarks>
+    /// <summary>The old spelling of <see cref="TryNormalize"/>.</summary>
+    [Obsolete("Renamed to TryNormalize. This alias is removed in the next release.")]
     public static bool TryNormalise(
         string? candidate,
         out string normalised,
+        out (string Error, string Detail) fault) =>
+        TryNormalize(candidate, out normalised, out fault);
+
+    public static bool TryNormalize(
+        string? candidate,
+        out string normalized,
         out (string Error, string Detail) fault)
     {
-        normalised = "";
+        normalized = "";
 
         if (string.IsNullOrWhiteSpace(candidate))
         {
@@ -126,7 +134,7 @@ public sealed class PublicBaseUrl
             return false;
         }
 
-        normalised = candidate.TrimEnd('/');
+        normalized = candidate.TrimEnd('/');
         fault = default;
         return true;
     }

@@ -15,7 +15,7 @@
        StubIdBuilder.StubIdImage gives: what this emulator changes is bytes, and a fidelity
        correction breaks anyone asserting on the bytes it corrects. Bumped by hand, because
        which recording is being shipped is a decision rather than something a tool can derive
-       from the commit graph. NuGet normalises the leading zero away, so the package version
+       from the commit graph. NuGet normalizes the leading zero away, so the package version
        reads 2026.9.1 while the container tag stays padded - the padding is what makes the
        tags sort, since 2026.09 precedes 2026.10 and 2026.9 does not. -->
   <PropertyGroup>
@@ -53,7 +53,7 @@
     <NoWarn>$(NoWarn);CS1591;CS1573</NoWarn>
   </PropertyGroup>
 
-  <!-- Normalises source paths into the package, which only helps where the paths are a build
+  <!-- Normalizes source paths into the package, which only helps where the paths are a build
        server's. Set locally it would make stepping through a local build worse. -->
   <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>

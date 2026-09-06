@@ -9,7 +9,7 @@ namespace StubId.CaptureHarness;
 /// is terminal for the identity that ran it. The full reasoning, and what "this went wrong"
 /// looks like at each step, is in docs/capture-session.md.
 /// </remarks>
-public static class ManualCatalogue
+public static class ManualCatalog
 {
     private const string MitIdOnly = "mitid";
 
@@ -141,8 +141,8 @@ public static class ManualCatalogue
             Title = "Single sign-on, second client",
             Settles = "Whether a second client joined to the same service provider is waved "
                 + "through without a prompt, and whether the subject differs per client while "
-                + "mitid.uuid stays the same. StubID derives its subject per organisation, and "
-                + "that behaviour currently rests on documentation alone.",
+                + "mitid.uuid stays the same. StubID derives its subject per organization, and "
+                + "that behavior currently rests on documentation alone.",
             Operator = "Nothing. It should complete without asking. If it asks, single sign-on "
                 + "did not apply and that is the finding - say so rather than approving.",
             Client = ClientProfile.SsoB,
@@ -181,14 +181,14 @@ public static class ManualCatalogue
             Step = "Step 16",
             Title = "End session",
             Settles = "What end session does with and without an id_token_hint, and whether "
-                + "post_logout_redirect_uri is honoured either way.",
+                + "post_logout_redirect_uri is honored either way.",
             Operator = "Follow the logout through to wherever it lands.",
             FollowUps = [FollowUp.EndSession],
         },
     ];
 
     /// <summary>
-    /// The steps a run is about, keeping the catalogue's order.
+    /// The steps a run is about, keeping the catalog's order.
     /// </summary>
     /// <remarks>
     /// A sitting after the first one wants one step, not twelve. The launchpad listing a step

@@ -75,7 +75,7 @@ public class OcspResponseContractTests
         Assert.DoesNotContain('_', served);
 
         // Also proves the scrubber has not been through it: this body is rewritten twice, once
-        // when the sitting is written and again by sanitise, and a blob inside a JSON string is
+        // when the sitting is written and again by sanitize, and a blob inside a JSON string is
         // exactly the shape a future redaction rule mangles without anyone noticing.
         Assert.Equal(served, Convert.ToBase64String(Convert.FromBase64String(served)));
     }

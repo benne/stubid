@@ -88,7 +88,11 @@ public sealed class StubIdContainer : DockerContainer
 
     public SessionApi Sessions => Control.Sessions;
 
-    public BehaviourApi Behaviour => Control.Behaviour;
+    public BehaviorApi Behavior => Control.Behavior;
+
+    /// <summary>The old spelling of <see cref="Behavior"/>.</summary>
+    [Obsolete("Renamed to Behavior. This alias is removed in the next release.")]
+    public BehaviorApi Behaviour => Behavior;
 
     public ClockApi Time => Control.Time;
 

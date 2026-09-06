@@ -14,7 +14,7 @@ namespace StubId.Server;
 /// attempts per session, which stops the endpoint being used to enumerate.
 /// </para>
 /// <para>
-/// The limit is behaviour, not configuration: a test that exhausts it is testing something
+/// The limit is behavior, not configuration: a test that exhausts it is testing something
 /// real, and an emulator without it would let a suite pass while the same code fails against
 /// the broker on the fourth call.
 /// </para>

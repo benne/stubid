@@ -60,12 +60,12 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
         string issuer,
         IssuedCode code,
         string? accessToken,
-        string organisation,
+        string organization,
         string? authorizationCode = null)
     {
         var now = clock.GetUtcNow();
         var citizen = code.Citizen;
-        var subject = Subject(organisation, citizen);
+        var subject = Subject(organization, citizen);
         var level = Nsis(citizen.Loa);
 
         List<JsonClaim> claims =
@@ -141,7 +141,7 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
                           + "standing here without a digest beside it is also StubID's own - it "
                           + "is what a text this cannot decode leaves behind, and CAP-031, the "
                           + "only recording, sent a text that decodes.")]
-    public IReadOnlyList<JsonClaim> UserInfo(string organisation, IssuedAccessToken token)
+    public IReadOnlyList<JsonClaim> UserInfo(string organization, IssuedAccessToken token)
     {
         var now = clock.GetUtcNow();
         var citizen = token.Citizen;
@@ -226,7 +226,7 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
             claims.Add(JsonClaim.String("mitid.transaction_text_sha256", digest));
         }
 
-        claims.Add(JsonClaim.String("sub", Subject(organisation, citizen)));
+        claims.Add(JsonClaim.String("sub", Subject(organization, citizen)));
 
         return claims;
     }
@@ -244,7 +244,7 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
     /// </remarks>
     [Fidelity(FidelityTier.Exact, FidelityProvenance.VerifiedLive,
         Evidence = "fixtures/neb/pp-session/CAP-024/token/userinfo_token.payload.json")]
-    public string UserInfoToken(string issuer, IssuedCode code, string organisation)
+    public string UserInfoToken(string issuer, IssuedCode code, string organization)
     {
         var now = clock.GetUtcNow();
         var citizen = code.Citizen;
@@ -273,7 +273,7 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
             JsonClaim.String("acr", level),
             JsonClaim.String("auth_time", code.AuthenticatedAt.ToUnixTimeSeconds()
                 .ToString(System.Globalization.CultureInfo.InvariantCulture)),
-            JsonClaim.String("sub", Subject(organisation, citizen)),
+            JsonClaim.String("sub", Subject(organization, citizen)),
             JsonClaim.String("transaction_id", code.TransactionId),
             JsonClaim.String("aud", code.Request.ClientId),
         ], keys.TokenSigning, type: "at+jwt");
@@ -312,7 +312,7 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
                           + "signing login that also asks for ssn would settle it. Everything "
                           + "else in the order is forced by the three recordings together, which "
                           + "merge without a conflict.")]
-    public string TransactionToken(string issuer, IssuedCode code, string organisation)
+    public string TransactionToken(string issuer, IssuedCode code, string organization)
     {
         var now = clock.GetUtcNow();
         var citizen = code.Citizen;
@@ -364,7 +364,7 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
         [
             JsonClaim.String("auth_time", code.AuthenticatedAt.ToUnixTimeSeconds()
                 .ToString(System.Globalization.CultureInfo.InvariantCulture)),
-            JsonClaim.String("sub", Subject(organisation, citizen)),
+            JsonClaim.String("sub", Subject(organization, citizen)),
             JsonClaim.String("transaction_id", code.TransactionId),
 
             // Where the vendor documents recipient_info, which is not sent.
@@ -544,11 +544,11 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
     }
 
     /// <summary>
-    /// The subject differs per receiving organisation while the MitID identifier stays the
+    /// The subject differs per receiving organization while the MitID identifier stays the
     /// same, and it is derived rather than stored so it survives a restart.
     /// </summary>
     /// <remarks>
-    /// Scoped to the organisation, not the client. Two clients joined to one service provider
+    /// Scoped to the organization, not the client. Two clients joined to one service provider
     /// were recorded receiving the same subject for the same person, which is what the
     /// id_token means by <c>subject_type: org_mapped</c>. Deriving it per client — which this
     /// did until the recording showed otherwise — hands an application that signs users in
@@ -556,8 +556,8 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
     /// </remarks>
     [Fidelity(FidelityTier.Exact, FidelityProvenance.VerifiedLive,
         Evidence = "fixtures/neb/pp-session/CAP-029/token/id_token.payload.json")]
-    public static string Subject(string organisation, Citizen citizen) =>
-        Uuid5.Create(SubjectNamespace, $"{organisation}|{citizen.Uuid}").ToString();
+    public static string Subject(string organization, Citizen citizen) =>
+        Uuid5.Create(SubjectNamespace, $"{organization}|{citizen.Uuid}").ToString();
 
     private static string Nsis(string level) => $"https://data.gov.dk/concept/core/nsis/{level}";
 

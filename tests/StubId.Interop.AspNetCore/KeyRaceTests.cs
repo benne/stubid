@@ -22,7 +22,7 @@ namespace StubId.Interop.AspNetCore;
 /// </remarks>
 public class KeyRaceTests
 {
-    // Five sizes rather than one repeated, because the analyser rejects duplicates and
+    // Five sizes rather than one repeated, because the analyzer rejects duplicates and
     // because the window a race leaves open is not the same width at every degree of
     // contention. The bug this caught showed at eight.
     [Theory]

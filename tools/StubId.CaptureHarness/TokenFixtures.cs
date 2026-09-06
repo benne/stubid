@@ -38,7 +38,7 @@ public sealed record ExtractedToken(
 /// Member order inside the token is the whole evidence for what the broker sends.
 /// </para>
 /// <para>
-/// A token re-signed with the fixture key is a derived artefact for tests that need a whole
+/// A token re-signed with the fixture key is a derived artifact for tests that need a whole
 /// parseable document. It is never presented as what was recorded.
 /// </para>
 /// </remarks>

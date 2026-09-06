@@ -49,14 +49,14 @@ not have.
 | B10 | A ClientRedirect disposition | done, with FormPost alongside it |
 | B11 | A JSON request-body path | outstanding — only the CPR-match follow-up needs it |
 | B12 | Dependent cases for the two-hop error probes | outstanding |
-| B13 | Keep the manual pack out of CaptureCatalogue.All | done — separate catalogue, separate directory |
-| B14 | Ignore session artefacts | done |
+| B13 | Keep the manual pack out of CaptureCatalog.All | done — separate catalog, separate directory |
+| B14 | Ignore session artifacts | done |
 
 **B1. The relying party does not exist.** As this was written `Program.cs` supported `capture`
 and `verify` only, `RecordingHandler` was referenced by nothing, and nothing listened on
 `localhost:5099`. Every step below assumes a local RP that:
 
-- serves a launchpad page of pre-built authorize links, one per recording, labelled with the
+- serves a launchpad page of pre-built authorize links, one per recording, labeled with the
   step number;
 - accepts the callback as **both GET and POST** (`response_mode=form_post` arrives as a POST,
   and the two are different code paths);
@@ -89,11 +89,11 @@ decision, which resolves it:
   (`{{ID_TOKEN}}`, `{{USERINFO_TOKEN}}`, `{{TRANSACTION_TOKEN}}`). The member order,
   whitespace and member positions of the *response* survive, which is what question 6 asks.
 - Beside it, per token, write sidecar files holding the **decoded header and payload bytes
-  verbatim**, scrubbed by text edit and never parsed and reserialised. Member order inside
+  verbatim**, scrubbed by text edit and never parsed and reserialized. Member order inside
   the token is the entire evidence for questions 1 and 4.
 - Record in `meta.json` the `alg`, the `kid`, the JWKS certificate CN it resolved to, the
   real segment lengths, and whether the real signature verified at capture time.
-- A token re-signed with the committed fixture key is a **derived** artefact, marked
+- A token re-signed with the committed fixture key is a **derived** artifact, marked
   synthetic, for tests that need a whole parseable document. It is never presented as the
   recorded bytes.
 
@@ -125,7 +125,7 @@ whether `sid` equals `session_identifier`, and whether `sid` is stable across a 
 questions this sitting is paying an authentication to answer, and a fresh pseudonym per
 occurrence destroys the answer while looking correct.
 
-**B8. Mask `Set-Cookie` values, keep the names and flags.** `Normaliser` masks `Set-Cookie`
+**B8. Mask `Set-Cookie` values, keep the names and flags.** `Normalizer` masks `Set-Cookie`
 for the verify comparison only; `FixtureStore` writes the served value into `response.head`.
 The committed pack already carries real `X-Correlation-Id` and `nebcausationid` values in
 CAP-013. On an authenticated session that same path publishes the broker's live session
@@ -157,7 +157,7 @@ nothing. Also scrub the error page body and read what it actually renders before
 these as safe — the page is rendered *from* that protected blob, so it is exactly where the
 private client's identity or redirect URI can become readable plain text.
 
-**B13. Take the manual pack out of `CaptureCatalogue.All`.** Both `capture` and `verify`
+**B13. Take the manual pack out of `CaptureCatalog.All`.** Both `capture` and `verify`
 iterate that one list, so a routine `capture` run after the sitting would replay expired
 authorization codes, overwrite the sitting's evidence with `invalid_grant`, and rehash the
 manifest over the damage.
@@ -187,7 +187,7 @@ Every one of the items above is a claim that the harness will behave. This is th
 that proves it. Run one complete throwaway login on the **published open code client**
 `0a775a87-878c-4b83-abe3-ee29c720c3e7` with a throwaway test identity, scope
 `openid mitid transaction_token`, **no `ssn`**. Seed the redact block of
-`capture.local.json` with a fake CPR, a fake organisation name, a fake CVR and a fake client
+`capture.local.json` with a fake CPR, a fake organization name, a fake CVR and a fake client
 id, and feed those values to the broker as `state` and `nonce` so they come back echoed.
 
 Then attack the output. Run all three guard tests. Run `git status` and `git add -p`. Grep
@@ -233,7 +233,7 @@ Capture the broker's **login page for the private client**, unattended: follow t
 authorize 302 and record the 200 at `/op/Account/Login?ReturnUrl=…`. That page is where the
 broker renders the relying party's configured display name, which may differ from the legal
 name, may be truncated or HTML-escaped, and may be accompanied by a logo URL or a support
-address that names the organisation. `Scrubber.Scrub` is a plain string replace, so it only
+address that names the organization. `Scrubber.Scrub` is a plain string replace, so it only
 removes the exact rendering it was handed, and the shipped example file guesses
 `Example A/S` / `12345678`. This capture is the only way to freeze a complete list before a
 login, and it is a fixture StubID needs for M3 anyway.
@@ -251,7 +251,7 @@ Then write the whole list into `capture.local.json` under `redact`:
 - Identity A's and C's name and address as **fixed fictional replacements of the same length**,
   so what gets published is a deliberately incoherent dossier rather than a coherent fake
   person that will be scraped and reused.
-- Every rendering of the organisation name found in the login page capture, and the CVR both
+- Every rendering of the organization name found in the login page capture, and the CVR both
   bare and DK-prefixed.
 
 **Restart the harness after this edit.** `LocalSettings` caches `capture.local.json` in a
@@ -304,7 +304,7 @@ Re-run `CAP-001`–`CAP-019`, then add and run, numbered from `CAP-050`:
   the `x-content-security-policy` header (the old header name) with its sha256 script hash and
   `referrer-policy: no-referrer`. Capture this on **one** client only; the two variants
   proposed differ by three bytes, which is the length of the `state` value.
-- **`prompt=bogus`** → `/op/Error`, so the client sees nothing. An unrecognised prompt value
+- **`prompt=bogus`** → `/op/Error`, so the client sees nothing. An unrecognized prompt value
   and an unsatisfiable one use two different refusal channels on the same parameter.
 - **`prompt=select_account`**, which is in the broker's own `prompt_values_supported` and which
   nobody had probed.
@@ -383,7 +383,7 @@ In **browser 2**, open devtools with Preserve log on and click the launchpad lin
 `state=timeout-widget`: the plain authorize with `idp_values=mitid`. Stop as soon as the MitID
 widget has rendered and is asking for a user ID. Type nothing. Write down T0 to the minute.
 
-Leave the window **open and on screen** — not minimised, not behind another window, not a
+Leave the window **open and on screen** — not minimized, not behind another window, not a
 background tab. Browsers throttle timers in hidden tabs and would corrupt the measurement.
 
 Glance at it at T+5, T+10, T+15, T+20, T+30 and T+45, and note the clock time of any visible
@@ -395,7 +395,7 @@ visible cue. **Skip any glance that falls inside the fifteen-minute CPR window o
 duration is the checkpoint schedule, not a number.
 
 *This went wrong if:* the flow is running in the same cookie jar as anything else. A later
-login can consume or replace this flow's context and the measurement becomes an artefact.
+login can consume or replace this flow's context and the measurement becomes an artifact.
 
 ### Step 2. Abort inside the MitID widget (profile 1)
 
@@ -405,7 +405,7 @@ still free.
 
 Clear the network list. Click the launchpad link for `state=abort-mitid`. Wait for the widget
 to render. Click the widget's own abort control — the "Afbryd" / "Cancel" link beneath the
-user-ID field — and confirm if a dialogue asks. Let the browser land wherever it lands. If it
+user-ID field — and confirm if a dialog asks. Let the browser land wherever it lands. If it
 lands back on a broker page rather than at localhost, keep clicking the cancel or return
 control until the browser leaves `pp.netseidbroker.dk`, and record every hop. Export the HAR
 under this step's name and confirm the RP logged a callback for `state=abort-mitid`.
@@ -430,7 +430,7 @@ re-renders. Click the primary control on it, or resubmit the form. Record where 
 Back yields only a cached page with no request at all, reload once to force one. Export the
 HAR under *this* step's name so it is not confused with step 2's.
 
-*Settles:* question 5 for the navigation family, which is three catalogue codes with no
+*Settles:* question 5 for the navigation family, which is three catalog codes with no
 documented OAuth error value: `mitid_anti_forgery_validation_error`, `user_navigation_error`,
 `user_navigation_error_empty_state`, and possibly `mitid_auth_code_already_used`. Browser-back
 is the failure real users cause most often.
@@ -449,7 +449,7 @@ Stop on the chooser. Do not pick MitID. Click the broker's own cancel control �
 the HAR and check the RP log.
 
 *Settles:* whether the broker's plain `user_aborted` code is reachable and distinct from
-`mitid_user_aborted`. The catalogue publishes both and StubID has to know which step produces
+`mitid_user_aborted`. The catalog publishes both and StubID has to know which step produces
 which.
 
 *This went wrong if:* no chooser appears (the broker auto-selects MitID when only one provider
@@ -829,7 +829,7 @@ any id_token member appears only at a particular assurance level, which is the s
 that makes a stub work at Substantial and break at Low.
 
 *This went wrong if:* `loa` is not `Low`, or `auth_time` did not move. In the first case the
-recording is mislabelled rather than useless; in the second it is step 6's authentication
+recording is mislabeled rather than useless; in the second it is step 6's authentication
 wearing a new state value, and it settles nothing about `amr`.
 
 ### Step 12. The single sign-on sequence
@@ -887,7 +887,7 @@ already-planned `prompt=login` mint a fresh session for step 16.
 3. `GET /op/connect/userinfo` with the access token from that same session.
 
 *Settles:* whether the API logout terminates the session at all. And the undocumented
-post-logout behaviour of userinfo: whether the access token still answers after the session is
+post-logout behavior of userinfo: whether the access token still answers after the session is
 terminated, and if it does, whether the session claim flips (`session_is_active: "false"`, or
 `session_status` something other than active) or the whole personal-data set disappears. This
 is the only cheap way to see the session claims in a non-active state.
@@ -995,7 +995,7 @@ a customer test that clears the broker session cookie by name will break against
 names it something else. The **values** never enter the repository (B8).
 
 *Settles:* question 9's logged-in half in full — what endsession does with a real session and a
-validating `id_token_hint`, whether `post_logout_redirect_uri` is honoured for this client,
+validating `id_token_hint`, whether `post_logout_redirect_uri` is honored for this client,
 whether `state` is echoed, whether the no-parameter form prompts or logs out silently, and
 whether logout is idempotent. What front-channel logout actually emits, given discovery
 advertises both front- and back-channel logout with session support while publishing no
@@ -1017,7 +1017,7 @@ invisible until the next request, and this is what converts a silent timeout int
 response. Export the HAR; if the failure renders as a broker page rather than a redirect, save
 the page HTML too, because the RP will never see it.
 
-*Settles:* question 10, and question 5 indirectly — the catalogue hedges on `mitid_no_ctx`
+*Settles:* question 10, and question 5 indirectly — the catalog hedges on `mitid_no_ctx`
 ("In some circumstances, we can redirect the user back to the service"), so which of
 `mitid_no_ctx`, `mitid_timeout`, `no_ctx` or `user_navigation_error_empty_state` appears, and
 whether it arrives as a client redirect or as `/op/Error`, is exactly the hedge a recording
@@ -1039,7 +1039,7 @@ If a fourth attempt is offered, supply the correct password, then reject the app
 code-app simulator once and observe what the widget does. Then click abort. Export the HAR.
 
 *Settles:* question 5's sharpest part — whether an abort after failed attempts produces
-`mitid_core_client_error_user_abort` rather than `mitid_user_aborted`. The catalogue describes
+`mitid_core_client_error_user_abort` rather than `mitid_user_aborted`. The catalog describes
 it as exactly this scenario, so this recording plus step 2 is what lets StubID reproduce both;
 step 2 alone would make the second code look unreachable. Also whether a rejected code-app
 approval stays inside the widget or produces its own redirect, and whether MitID blocking an
@@ -1076,13 +1076,13 @@ personal number, which is the fallback that keeps the surface publishable if ste
 ever has to be withheld or re-recorded, and which isolates which members are caused by scope
 rather than by the presence of a CPR. Question 5 in part: the OAuth error value the broker pairs
 with `mitid_cpr_match_failed` — only `access_denied` + `mitid_user_aborted` is documented, and
-the catalogue in CAP-007 lists `mitid_cpr_match_failed` with no OAuth error value at all. Where
+the catalog in CAP-007 lists `mitid_cpr_match_failed` with no OAuth error value at all. Where
 MitID's three-attempt rule is enforced — inside the broker's CPR screen with retries, or as a
-single refusal that ends the flow — which is a behaviour StubID has to choose between. And what
+single refusal that ends the flow — which is a behavior StubID has to choose between. And what
 the `ssn` scope does when the identity has no CPR to match at all.
 
 *This went wrong if:* you ran it in profile 1. Also write "identity created without a CPR
-number" into these fixtures' `meta.json` and do not generalise the error code to the ordinary
+number" into these fixtures' `meta.json` and do not generalize the error code to the ordinary
 mismatch case: a CPR-less identity may fail the match differently.
 
 ### Step 20. Optional, if a protection control existed
@@ -1133,7 +1133,7 @@ login means MitID kept its own session and the recording carries the previous au
 `amr` while looking correct. Do not file it as an assurance-level recording.
 
 **`loa` came back as something other than what was requested.** `loa_value` is not validated at
-authorize, so this means a misspelling. The recording is mislabelled, not useless — file it with
+authorize, so this means a misspelling. The recording is mislabeled, not useless — file it with
 the `loa` it actually produced.
 
 **No `transaction_token` in step 9's response.** The client has the scope granted but the
@@ -1173,11 +1173,11 @@ dry-run (B16) exists.
 | 2 | The `amr` wire form | **Mostly settled.** The claim name and the value form are settled outright by step 6. Multi-valued `amr` is settled if Low offers password-plus-code-display. `code_app_enchanced` is settled only if the simulator exposes the enhanced approval. **Open:** any documented value the test tool does not offer — `code_reader` and `u2f_token` are the likely gaps, and each would need an identity provisioned with that authenticator. |
 | 3 | Userinfo value types | **Settled** for the `mitid`, `ssn` and `nemid.pid` claims, including whether everything really is a JSON string. **Likely open:** the `ssn.details_*` **success** branch, because a test-tool CPR need not exist in the pre-production register and `unable_to_lookup` is the expected answer — the failure shape is recorded, the success shape stays documentation-only. **Likely open:** `person_status` casing (lowercase versus PascalCase), for the same reason. **Open:** `name_address_protected` as a boolean versus the string `"false"`, unless a protected identity turns out to be creatable (P1's thirty-second check). |
 | 4 | Transaction token claim names | **Settled.** A login settled `identitytype` versus `identity_type`, the presence of `loa`/`aal`/`exp`/`aud`/`nbf`, `auth_time`'s type, the absence of `spec_ver` and `recipient_info`, `transaction_actions` in single- and multi-action form, `mitid.reference_text` versus `mitid.referencetext`, `mitid.psd2`'s type, the full member order, and which key signs it. CAP-031 settled the other half on 2026-09-02: the transaction-text claims arrive under **both** spellings at once, prefixed and unprefixed and underscored in both, so `mitid.transactiontext` is not a spelling this broker uses; `transaction_text_sha256` is issued, over the decoded text, as base64 rather than hex; `transaction_text_type` echoes; the text itself comes back as the base64 that was sent; `transaction_actions` gains `mitid.transaction_signing` and becomes an array. `signing_cert_ocsp_nonce` is absent on a signing transaction as well as on a login, which closes that question negatively. Written up in [the claims reference](brokers/neb/claims.md). |
-| 5 | OAuth `error` per broker error code | **Partly settled**, for the codes actually exercised: `mitid_user_aborted`, `login_required`, `mitid_uuid_hint_malformed`, `mitid_cpr_match_failed`, and — if reachable — `user_aborted`, `mitid_core_client_error_user_abort`, the navigation family, and whichever timeout code step 17 produces. **Open:** the rest of the catalogue, which is dozens of codes, most of them infrastructure or internal-error paths that cannot be provoked from a client at all. This question is never fully closable from the outside; the honest ledger entry is per-code. |
+| 5 | OAuth `error` per broker error code | **Partly settled**, for the codes actually exercised: `mitid_user_aborted`, `login_required`, `mitid_uuid_hint_malformed`, `mitid_cpr_match_failed`, and — if reachable — `user_aborted`, `mitid_core_client_error_user_abort`, the navigation family, and whichever timeout code step 17 produces. **Open:** the rest of the catalog, which is dozens of codes, most of them infrastructure or internal-error paths that cannot be provoked from a client at all. This question is never fully closable from the outside; the honest ledger entry is per-code. |
 | 6 | The successful token response shape | **Settled.** Member set and order, `token_type` casing, `expires_in`, whether `scope` is echoed and in which order, and what `userinfo_token` and `transaction_token` add and where. **Permanently open, deliberately:** the refresh-grant response — `offline_access` is refused with `invalid_scope`, so no refresh token exists on this client and there is nothing to record. |
 | 7 | `c_hash` | **Closed negatively, before the sitting.** Every `response_type` putting an id_token in the front channel is refused with `unauthorized_client` on the private client, on both published open code clients, and on the published implicit client. No client we can reach is entitled to hybrid, so `c_hash` is unrecordable against this broker and stays `FidelityProvenance.Assumed`, computed by the spec rule already in `HashClaims`. What **is** recorded: the byte-exact `form_post` envelope, and whether `s_hash` exists. |
 | 8 | The userinfo success response | **Settled.** Content-Type, minified or indented, member order at minimal and fat scope, which of the three documented session-claim spellings is real, whether `idp_identity_id` appears and equals `mitid.uuid`, whether userinfo answers POST, and whether `Accept: application/jwt` changes anything. |
-| 9 | End session | **Settled**, both halves: with and without a session, with and without a validating `id_token_hint`, whether `post_logout_redirect_uri` and `state` are honoured, whether the bare form prompts or logs out silently, whether logout is idempotent, what front-channel logout emits, and the cookie contract. |
+| 9 | End session | **Settled**, both halves: with and without a session, with and without a validating `id_token_hint`, whether `post_logout_redirect_uri` and `state` are honored, whether the bare form prompts or logs out silently, whether logout is idempotent, what front-channel logout emits, and the cookie contract. |
 | 10 | The undocumented flow timeout | **Partly settled at best.** The measurement runs for the length of the sitting, so the outcome is either an observed expiry with its wall-clock duration, or a lower bound of "still alive after N minutes". A bound is a usable fact and stops the next sitting re-running it blind, but it is not the number. **Open:** whether the broker's own request context and MitID's session expire on different clocks — the second parked flow that would have measured it was dropped as not worth a third browser. |
 
 ### Settled by this sitting but not on the original list
@@ -1198,7 +1198,7 @@ stock client hits routinely.
 ## Part 6 — The second sitting
 
 One step, one authentication, about fifteen minutes. Everything else in Part 5 stays as it
-is: the three behaviours still implemented from documentation would each cost their own
+is: the three behaviors still implemented from documentation would each cost their own
 authentication, and the `ssn.details_*` success branch needs an identity with a register entry
 behind it, which a test-tool CPR need not have. This sitting is
 [step 9b](#step-9b-the-transaction-token-with-a-transaction-text) and nothing else.

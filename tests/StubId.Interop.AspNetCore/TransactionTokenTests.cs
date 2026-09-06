@@ -166,7 +166,7 @@ public class TransactionTokenTests : IClassFixture<WebApplicationFactory<Program
         // not a choice made here: CAP-022 sends "mitid.login" and CAP-021 sends a two-element
         // array. Comparing the recorded ValueKind cannot see this - CAP-021's is an Array
         // whatever length StubID emits - so the bare-string form needs its own assertion, and
-        // building a list and serialising it is the mistake that would otherwise ship.
+        // building a list and serializing it is the mistake that would otherwise ship.
         var minimal = await TransactionToken("openid mitid transaction_token");
         var actions = minimal.GetProperty("transaction_actions");
 
@@ -581,7 +581,7 @@ public class TransactionTokenTests : IClassFixture<WebApplicationFactory<Program
     public async Task An_empty_text_is_no_text_at_all()
     {
         // The digest of nothing is a real-looking value, and a presence check written as a null
-        // check would emit it. A whitespace-only text is the neighbouring case: it decodes to
+        // check would emit it. A whitespace-only text is the neighboring case: it decodes to
         // zero bytes rather than failing, so the length guard alone does not cover it.
         foreach (var text in new[] { "", " " })
         {

@@ -3,7 +3,7 @@ using StubId.Abstractions;
 
 namespace StubId.Server;
 
-/// <summary>One annotated piece of emulated behaviour, as it appears in the ledger.</summary>
+/// <summary>One annotated piece of emulated behavior, as it appears in the ledger.</summary>
 public sealed record FidelityEntry(
     string Subject,
     string Tier,
@@ -17,7 +17,7 @@ public sealed record FidelityEntry(
 /// Everything StubID has said about its own fidelity, collected from the code that emits it.
 /// </summary>
 /// <remarks>
-/// The annotations live next to the behaviour they describe, so they cannot drift from it the
+/// The annotations live next to the behavior they describe, so they cannot drift from it the
 /// way a separate document would. Reading them back gives three things at once: a build check
 /// that every claim is complete, a served endpoint so a running instance can be asked what it
 /// does and does not reproduce, and the source for the generated broker reference.

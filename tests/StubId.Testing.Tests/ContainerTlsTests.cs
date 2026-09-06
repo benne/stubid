@@ -96,7 +96,7 @@ public class ContainerTlsTests : IAsyncLifetime
             new Client.CitizenSpec { Name = "Karen Refsgaard", DateOfBirth = new DateOnly(1979, 11, 2) },
             Ct);
 
-        await _stub.Behaviour.EnqueueAsync(
+        await _stub.Behavior.EnqueueAsync(
             Client.Decision.Approved(citizen.Id).ForClient(CodeClient), Ct);
 
         using var handler = _stub.CreateTrustingHandler();

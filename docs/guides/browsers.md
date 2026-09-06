@@ -32,7 +32,7 @@ page to drive and no second navigation, and it is the only way to get an outcome
 produce by clicking. So a browser test either leaves automatic approval on, or queues first:
 
 ```
-POST /_stubid/v1/behaviours/enqueue
+POST /_stubid/v1/behaviors/enqueue
 { "approve": false, "clientId": "…", "errorCode": "mitid_user_aborted" }
 ```
 

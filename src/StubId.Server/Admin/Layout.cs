@@ -65,7 +65,7 @@ internal static class Layout
     [
         ("/_stubid/admin", "Logins"),
         ("/_stubid/admin/citizens", "People"),
-        ("/_stubid/admin/behaviour", "Queue"),
+        ("/_stubid/admin/behavior", "Queue"),
         ("/_stubid/admin/issued", "Issued"),
         ("/_stubid/admin/emulated", "Emulated"),
         ("/_stubid/admin/controls", "Controls"),

@@ -56,9 +56,9 @@ internal static class AdminUi
         app.MapGet($"{Root}/citizens", (HttpContext http, Citizens citizens, string? problem) =>
             Layout.Page(http, "People", People(citizens, problem)));
 
-        app.MapGet($"{Root}/behaviour", (
+        app.MapGet($"{Root}/behavior", (
             HttpContext http, EnqueuedDecisions queue, Citizens citizens, string? problem) =>
-            Layout.Page(http, "Queued decisions", Behaviours(queue, citizens, problem)));
+            Layout.Page(http, "Queued decisions", Behaviors(queue, citizens, problem)));
 
         app.MapGet($"{Root}/controls", (
             HttpContext http, PublicBaseUrl address, TimeProvider clock,
@@ -71,12 +71,12 @@ internal static class AdminUi
 
             // The instance's own validation, so the page refuses exactly what the API refuses and
             // does not grow a second opinion about what an address may be.
-            if (!PublicBaseUrl.TryNormalise(Optional(form, "address"), out var normalised, out _))
+            if (!PublicBaseUrl.TryNormalize(Optional(form, "address"), out var normalized, out _))
             {
                 return See(http, $"{Root}/controls", "address");
             }
 
-            address.Set(normalised);
+            address.Set(normalized);
 
             return See(http, $"{Root}/controls");
         });
@@ -106,7 +106,7 @@ internal static class AdminUi
             var wanted = (await Submitted(http.Request))["enabled"].ToString();
 
             // No enabled field clears the override, which is the page's "back to how it started"
-            // button. Anything unrecognised does the same, because the honest answer to a value
+            // button. Anything unrecognized does the same, because the honest answer to a value
             // this does not understand is the setting the instance was given.
             approval.Set(wanted switch
             {
@@ -213,7 +213,7 @@ internal static class AdminUi
         app.MapPost($"{Root}/citizens/{{id}}/delete", (HttpContext http, Citizens citizens, string id) =>
             citizens.Remove(id) ? See(http, $"{Root}/citizens") : Results.NotFound());
 
-        app.MapPost($"{Root}/behaviour", async (HttpContext http, EnqueuedDecisions queue) =>
+        app.MapPost($"{Root}/behavior", async (HttpContext http, EnqueuedDecisions queue) =>
         {
             var form = await Submitted(http.Request);
             var approve = form["outcome"].ToString() == "approve";
@@ -226,7 +226,7 @@ internal static class AdminUi
                 queue.Enqueue(
                     Decision.Refused(Optional(form, "errorCode") ?? "mitid_user_aborted"), clientId);
 
-                return See(http, $"{Root}/behaviour");
+                return See(http, $"{Root}/behavior");
             }
 
             // Refused rather than falling back to "default". The form's own picker always sends
@@ -234,19 +234,19 @@ internal static class AdminUi
             // have been deleted queues an approval that fails later for a reason nobody can trace.
             if (citizen is null)
             {
-                return See(http, $"{Root}/behaviour", "citizen");
+                return See(http, $"{Root}/behavior", "citizen");
             }
 
             queue.Enqueue(Decision.Approved(citizen), clientId);
 
-            return See(http, $"{Root}/behaviour");
+            return See(http, $"{Root}/behavior");
         });
 
-        app.MapPost($"{Root}/behaviour/clear", (HttpContext http, EnqueuedDecisions queue) =>
+        app.MapPost($"{Root}/behavior/clear", (HttpContext http, EnqueuedDecisions queue) =>
         {
             queue.Clear();
 
-            return See(http, $"{Root}/behaviour");
+            return See(http, $"{Root}/behavior");
         });
     }
 
@@ -551,7 +551,7 @@ internal static class AdminUi
     /// next is the hardest kind of surprise to explain from the outside. Reading the queue does
     /// not consume it.
     /// </remarks>
-    private static Html Behaviours(EnqueuedDecisions queue, Citizens citizens, string? problem)
+    private static Html Behaviors(EnqueuedDecisions queue, Citizens citizens, string? problem)
     {
         var queued = queue.Snapshot();
 
@@ -570,7 +570,7 @@ internal static class AdminUi
                     </tr>
                     """))))}
                 </table>
-                <form method="post" action="{Root}/behaviour/clear">
+                <form method="post" action="{Root}/behavior/clear">
                 <p><button type="submit">Clear the queue</button></p>
                 </form>
                 """);
@@ -586,7 +586,7 @@ internal static class AdminUi
             {rows}
 
             <h2>Queueing one</h2>
-            <form method="post" action="{Root}/behaviour">
+            <form method="post" action="{Root}/behavior">
             <p><label>For <input name="clientId" placeholder="any client" size="38"></label></p>
             <p><label><input type="radio" name="outcome" value="approve" checked> approve as
             <select name="citizen">{people}</select></label></p>
@@ -712,15 +712,15 @@ internal static class AdminUi
             <table>
             <tr><th>What</th><th>For</th><th>As</th><th>Login</th><th>When</th><th>Until</th>
             <th>Scope</th></tr>
-            {Join(issued.Select(artefact => H($"""
+            {Join(issued.Select(artifact => H($"""
                 <tr>
-                <td>{artefact.Kind}</td>
-                <td><code>{Short(artefact.ClientId)}</code></td>
-                <td>{artefact.CitizenId ?? "-"}</td>
-                <td>{Login(artefact.LoginId)}</td>
-                <td class="dim">{(artefact.AuthenticatedAt is { } at ? Moment(at) : "-")}</td>
-                <td class="dim">{(artefact.Expires is { } until ? Moment(until) : "-")}</td>
-                <td class="dim">{artefact.Scope ?? "-"}</td>
+                <td>{artifact.Kind}</td>
+                <td><code>{Short(artifact.ClientId)}</code></td>
+                <td>{artifact.CitizenId ?? "-"}</td>
+                <td>{Login(artifact.LoginId)}</td>
+                <td class="dim">{(artifact.AuthenticatedAt is { } at ? Moment(at) : "-")}</td>
+                <td class="dim">{(artifact.Expires is { } until ? Moment(until) : "-")}</td>
+                <td class="dim">{artifact.Scope ?? "-"}</td>
                 </tr>
                 """)))}
             </table>
@@ -779,14 +779,14 @@ internal static class AdminUi
 
         var clients = H($"""
             <table>
-            <tr><th>Client</th><th>Asks for</th><th>Organisation</th></tr>
+            <tr><th>Client</th><th>Asks for</th><th>Organization</th></tr>
             {Join(state.Clients.Values
                 .OrderBy(client => client.ClientId, StringComparer.Ordinal)
                 .Select(client => H($"""
                     <tr>
                     <td><code>{client.ClientId}</code></td>
                     <td><code>{string.Join(", ", client.ResponseTypes)}</code></td>
-                    <td class="dim">{client.Organisation}</td>
+                    <td class="dim">{client.Organization}</td>
                     </tr>
                     """)))}
             </table>

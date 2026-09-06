@@ -74,7 +74,7 @@ public class CprTests
     }
 
     [Fact]
-    public void The_separated_form_is_recognised_too()
+    public void The_separated_form_is_recognized_too()
     {
         var cpr = Cpr.Generate(new DateOnly(1986, 8, 14), Gender.Male);
 
