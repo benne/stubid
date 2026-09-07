@@ -47,7 +47,7 @@ new recording.
 
 ## Where it is
 
-[The roadmap](roadmap.md) says what is done and what is not. [The releases](releases/2026.09.2.md)
+[The roadmap](roadmap.md) says what is done and what is not. [The releases](releases/2026.09.3.md)
 say what changed, and the version is a date for the reason the first one gives.
 
 StubID is not affiliated with, endorsed by, or connected to Nets, Signaturgruppen,
