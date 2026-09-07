@@ -843,13 +843,14 @@ internal static class AdminUi
     /// </remarks>
     private static Html Ledger()
     {
-        var entries = FidelityLedger.Read(typeof(Tokens).Assembly, typeof(JwsWriter).Assembly);
+        var entries = FidelityLedger.Read(FidelityLedger.Sources);
 
         return H($"""
             <table>
-            <tr><th>What</th><th>How close</th><th>On what evidence</th><th>Because</th></tr>
+            <tr><th>What</th><th>How close</th><th>On what evidence</th><th>Because</th>
+            <th>What would settle it</th></tr>
             {Join(entries
-                .OrderBy(entry => Weight(entry.Provenance))
+                .OrderBy(entry => FidelityLedger.ProvenanceWeight(entry.Provenance))
                 .ThenBy(entry => entry.Subject, StringComparer.Ordinal)
                 .Select(entry => H($"""
                     <tr>
@@ -857,22 +858,12 @@ internal static class AdminUi
                     <td>{entry.Tier}, {entry.Provenance}</td>
                     <td class="dim">{entry.Evidence ?? "-"}</td>
                     <td class="dim">{entry.Reason ?? "-"}</td>
+                    <td class="dim">{entry.AwaitingCapture ?? "-"}</td>
                     </tr>
                     """)))}
             </table>
             """);
     }
-
-    // What a reader needs to know about first, which is the opposite of alphabetical.
-    private static int Weight(string provenance) => provenance switch
-    {
-        "NotEmulated" => 0,
-        "Divergent" => 1,
-        "DocsConflict" => 2,
-        "Assumed" => 3,
-        "DocsConfirmed" => 4,
-        _ => 5,
-    };
 
     private static Html When(bool shown, Html markup) => shown ? markup : Html.Empty;
 

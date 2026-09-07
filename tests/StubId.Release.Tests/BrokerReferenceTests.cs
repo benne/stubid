@@ -34,8 +34,8 @@ public class BrokerReferenceTests
     /// </remarks>
     private const string Blob = "https://github.com/benne/stubid/blob/master/";
 
-    private static IReadOnlyList<FidelityEntry> Ledger() => FidelityLedger.Read(
-        typeof(Tokens).Assembly, typeof(StubId.Wire.JwsWriter).Assembly);
+    private static IReadOnlyList<FidelityEntry> Ledger() =>
+        FidelityLedger.Read(FidelityLedger.Sources);
 
     /// <summary>
     /// Every reference to an anchor names one that is actually there.
@@ -53,18 +53,18 @@ public class BrokerReferenceTests
 
         foreach (var (relative, full) in Referring())
         {
-            foreach (Match reference in References(full))
+            foreach (var (file, anchor, shown) in References(relative, full))
             {
-                var document = Resolve(relative, reference.Groups["file"].Value);
+                var document = Resolve(relative, file);
                 if (document is null || !File.Exists(Path.Combine(Repository.Root, document)))
                 {
-                    dangling.Add($"{relative}  {reference.Value}  (no such document)");
+                    dangling.Add($"{relative}  {shown}  (no such document)");
                     continue;
                 }
 
-                if (!AnchorsIn(document).Contains(reference.Groups["anchor"].Value))
+                if (!AnchorsIn(document).Contains(anchor))
                 {
-                    dangling.Add($"{relative}  {reference.Value}");
+                    dangling.Add($"{relative}  {shown}");
                 }
             }
         }
@@ -88,8 +88,8 @@ public class BrokerReferenceTests
     public void No_anchor_is_left_with_nothing_pointing_at_it()
     {
         var referenced = Referring()
-            .SelectMany(file => References(file.Full)
-                .Select(m => (Document: Resolve(file.Relative, m.Groups["file"].Value), Anchor: m.Groups["anchor"].Value)))
+            .SelectMany(file => References(file.Relative, file.Full)
+                .Select(r => (Document: Resolve(file.Relative, r.File), r.Anchor)))
             .Where(r => r.Document is not null)
             .Select(r => $"{r.Document}#{r.Anchor}")
             .ToHashSet(StringComparer.Ordinal);
@@ -401,12 +401,39 @@ public class BrokerReferenceTests
     /// The repository's own full URLs are reduced to the paths they name first, so a link written
     /// either way is checked the same. Anything still carrying a double slash after that belongs
     /// to somebody else's site and is not this build's to verify.
+    /// <para>
+    /// A document can also point at itself, and those links name no file at all: a bare fragment
+    /// rather than one qualified by a file name, which is how a Markdown page normally links
+    /// within itself. Reading only the qualified form would call an anchor orphaned while the
+    /// paragraph above it linked to the thing.
+    /// </para>
     /// </remarks>
-    private static IEnumerable<Match> References(string full) =>
-        Regex.Matches(
-                File.ReadAllText(full).Replace(Blob, "", StringComparison.Ordinal),
-                @"(?<file>[A-Za-z0-9_./-]+\.md)#(?<anchor>[a-z0-9-]+)")
-            .Where(m => !m.Value.Contains("//", StringComparison.Ordinal));
+    private static IEnumerable<(string File, string Anchor, string Text)> References(
+        string relative, string full)
+    {
+        var text = File.ReadAllText(full).Replace(Blob, "", StringComparison.Ordinal);
+
+        foreach (Match reference in Regex.Matches(
+            text, @"(?<file>[A-Za-z0-9_./-]+\.md)#(?<anchor>[a-z0-9-]+)"))
+        {
+            if (!reference.Value.Contains("//", StringComparison.Ordinal))
+            {
+                yield return (reference.Groups["file"].Value, reference.Groups["anchor"].Value,
+                    reference.Value);
+            }
+        }
+
+        if (!relative.EndsWith(".md", StringComparison.Ordinal))
+        {
+            yield break;
+        }
+
+        foreach (Match reference in Regex.Matches(text, @"\]\(#(?<anchor>[a-z0-9-]+)\)"))
+        {
+            yield return (Path.GetFileName(relative), reference.Groups["anchor"].Value,
+                reference.Value);
+        }
+    }
 
     /// <summary>Every anchor a document offers: the ones written out, and the ones headings get.</summary>
     private static HashSet<string> AnchorsIn(string relative)

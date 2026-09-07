@@ -24,6 +24,36 @@ public sealed record FidelityEntry(
 /// </remarks>
 public static class FidelityLedger
 {
+    /// <summary>
+    /// The assemblies whose annotations make up StubID's own ledger.
+    /// </summary>
+    /// <remarks>
+    /// One list because there were four, written out identically in the control API, the admin
+    /// page and two test projects. A fifth assembly annotated tomorrow would have had to be
+    /// remembered in all of them, and the one that forgot would have served a shorter ledger
+    /// than the others without saying so.
+    /// </remarks>
+    public static Assembly[] Sources => [typeof(Tokens).Assembly, typeof(Wire.JwsWriter).Assembly];
+
+    /// <summary>
+    /// What a reader needs to know about first, which is the opposite of alphabetical.
+    /// </summary>
+    /// <remarks>
+    /// What is not reproduced at all, then what diverges on purpose, then what rests on
+    /// documentation, and only then what a recording confirmed. Shared so the admin page and the
+    /// generated reference put things in the same order, because two orderings of one list is a
+    /// question a reader should never have to ask.
+    /// </remarks>
+    public static int ProvenanceWeight(string provenance) => provenance switch
+    {
+        "NotEmulated" => 0,
+        "Divergent" => 1,
+        "DocsConflict" => 2,
+        "Assumed" => 3,
+        "DocsConfirmed" => 4,
+        _ => 5,
+    };
+
     public static IReadOnlyList<FidelityEntry> Read(params Assembly[] assemblies) =>
         [.. assemblies
             .SelectMany(a => a.GetTypes())
