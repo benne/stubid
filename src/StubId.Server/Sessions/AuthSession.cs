@@ -15,7 +15,9 @@ public enum SessionState
     /// <summary>Refused, carrying the broker's own error code. Terminal.</summary>
     Failed,
 
-    /// <summary>Nobody decided it in time. Terminal.</summary>
+    /// <summary>
+    /// Nobody decided it in time, or nobody collected the code an approval issued. Terminal.
+    /// </summary>
     Expired,
 }
 

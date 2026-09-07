@@ -52,16 +52,23 @@ public sealed class StubIdHost : IAsyncDisposable
     /// <summary>The control API, over this instance.</summary>
     public StubIdClient Control => _control ?? throw NotStarted();
 
+    /// <summary>The people a login on this instance can resolve as.</summary>
     public CitizenApi Citizens => Control.Citizens;
 
+    /// <summary>The logins this instance has seen.</summary>
     public SessionApi Sessions => Control.Sessions;
 
+    /// <summary>Outcomes queued ahead of the logins they resolve.</summary>
     public BehaviorApi Behavior => Control.Behavior;
 
     /// <summary>The old spelling of <see cref="Behavior"/>.</summary>
     [Obsolete("Renamed to Behavior. This alias is removed in the next release.")]
     public BehaviorApi Behaviour => Behavior;
 
+    /// <summary>
+    /// The clock, over <see cref="Control" />. Readable always; movable when the host was built
+    /// with <see cref="StubIdHostBuilder.WithControllableClock"/>.
+    /// </summary>
     public ClockApi Time => Control.Time;
 
     /// <summary>
@@ -149,6 +156,7 @@ public sealed class StubIdHost : IAsyncDisposable
     /// </summary>
     public Task ResetAsync(CancellationToken ct = default) => Control.ResetAsync(ct);
 
+    /// <summary>Releases the instance and everything this host opened over it.</summary>
     public async ValueTask DisposeAsync()
     {
         _control?.Dispose();

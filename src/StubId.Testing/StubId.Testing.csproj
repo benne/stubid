@@ -4,7 +4,10 @@
     <Description>A Testcontainers module that runs StubID in Docker for a test suite.</Description>
     <PackageTags>stubid;mitid;oidc;testing;testcontainers;docker</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-  </PropertyGroup>
+      <!-- Held to CS1591: this is one of the four a reader installs, and its members become
+         pages in the published API reference. See Directory.Build.props. -->
+    <DocumentPublicApi>true</DocumentPublicApi>
+</PropertyGroup>
 
   <ItemGroup>
     <!-- The container lifecycle, and nothing else. This is the only reason this package needs a

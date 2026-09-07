@@ -3,6 +3,33 @@
 Notes accumulate here as changes land, and this file is renamed to the version when a release
 goes out. The dated files beside it are history and are never edited.
 
+## The four packages a reader installs document their whole public surface
+
+`StubId.Client`, `StubId.Testing`, `StubId.InProcess` and `StubId.Abstractions` had 54 public
+members with no documentation between them, including all five entry points on `StubIdClient` —
+`Citizens`, `Sessions`, `Behavior`, `Time` and `Runtime`, which are the first things anyone using
+the library touches. The obsolete British-spelling alias two lines from `Behavior` was documented;
+those five were not.
+
+They are now, and CS1591 is an error in those four projects rather than suppressed, so the gap
+cannot come back. It stays suppressed everywhere else: `StubId.Server`'s public surface is nearly
+all engine internals that are public only so `StubId.InProcess` can reach them.
+
+Two things the writing turned up, both fixed:
+
+`SessionState.Expired` said nobody decided the login in time. It also covers a login that *was*
+approved and whose code was never collected inside a second window of the same length, which is a
+different thing to debug. The server's own enum carried the same sentence and now says both.
+
+The clock is readable on every instance and movable only where the instance was started with a
+controllable one. Three properties described it as though the whole thing depended on that flag.
+
+What the gate does not cover, said plainly rather than implied: CS1591 does not fire on a record's
+positional parameters. The client's record types — `StubIdCitizen` and its neighbors — still carry
+about a hundred positional properties with no `<param>` tag, and nothing here changes that or
+stops the next one shipping the same way. They are a documentation gap the compiler cannot see,
+and the published API reference is where they will show as blank.
+
 ## The divergences carry the ledger itself, written out rather than typed up
 
 `docs/brokers/neb/divergences.md` now ends with the whole fidelity ledger as a table, and the

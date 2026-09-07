@@ -44,13 +44,19 @@
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
   </PropertyGroup>
 
-  <!-- Only two of the documentation diagnostics are suppressed, and only because a sweep of
-       roughly six hundred undocumented members is its own change rather than a release blocker.
+  <!-- CS1573 is suppressed everywhere, because a sweep of the param tags is its own change.
+       CS1591 is not: it is suppressed by Directory.Build.targets for projects that do not set
+       DocumentPublicApi, and the four a reader installs do set it - StubId.Client,
+       StubId.Testing, StubId.InProcess and StubId.Abstractions. An undocumented public member in
+       those is a build failure, because they are what the published API reference is generated
+       from and a blank description there is worse than no page. StubId.Server is deliberately not
+       among them: nearly all of its public surface is engine internals that are public only so
+       StubId.InProcess can reach them.
        Everything else the switch turns on stays an error: CS1572 caught a param tag naming a
        parameter that does not exist, which had silently dropped a paragraph of reasoning out of
        RouteDeclaration's documentation. Widening this list would have hidden it. -->
   <PropertyGroup>
-    <NoWarn>$(NoWarn);CS1591;CS1573</NoWarn>
+    <NoWarn>$(NoWarn);CS1573</NoWarn>
   </PropertyGroup>
 
   <!-- Normalizes source paths into the package, which only helps where the paths are a build

@@ -5,10 +5,22 @@ namespace StubId.Client;
     typeof(System.Text.Json.Serialization.JsonStringEnumConverter<SessionState>))]
 public enum SessionState
 {
+    /// <summary>Validated and parked, waiting for something to decide it.</summary>
     AwaitingApproval,
+
+    /// <summary>Decided in the caller's favor. The code has not been collected yet.</summary>
     Approved,
+
+    /// <summary>The code was collected. Terminal.</summary>
     Redeemed,
+
+    /// <summary>Refused, carrying the broker's own error code. Terminal.</summary>
     Failed,
+
+    /// <summary>
+    /// Nothing decided it before its deadline, or it was approved and the code was never
+    /// collected inside a second window of the same length. Terminal.
+    /// </summary>
     Expired,
 }
 
@@ -113,15 +125,31 @@ public sealed record SessionExplanation(
 /// <summary>An outcome to apply to a login: who it is, or why it fails.</summary>
 public sealed record Decision
 {
+    /// <summary>
+    /// Whether the login succeeds. <see cref="Approved" /> and <see cref="Refused" /> set it
+    /// along with the fields that outcome needs.
+    /// </summary>
     public required bool Approve { get; init; }
 
     /// <summary>Which client's logins this is for. Null takes the next one from any client.</summary>
     public string? ClientId { get; init; }
 
+    /// <summary>
+    /// Who an approval authenticates as, rule or no rule: a queued decision names an outcome
+    /// rather than a person, which makes it the way to approve a rule-bearing citizen anyway.
+    /// Null leaves the instance to pick, which is the citizen registered as the default one.
+    /// </summary>
     public string? CitizenId { get; init; }
 
+    /// <summary>
+    /// The broker's own code a refusal fails with, which a client reads from
+    /// <c>error_description</c>.
+    /// </summary>
     public string? ErrorCode { get; init; }
 
+    /// <summary>
+    /// The other half of a refusal, sent as <c>error</c>: which kind of failure it was.
+    /// </summary>
     public string? Error { get; init; }
 
     /// <summary>Approves as the named citizen, or as the default one.</summary>
@@ -156,6 +184,11 @@ public sealed record DecisionOutcome
     /// </summary>
     public SessionState? State { get; init; }
 
+    /// <summary>
+    /// Who the login was resolved as, including when that person's own rule turned the approval
+    /// into a failure. Null when the login was rejected outright, and after a lost race, where
+    /// <see cref="Outcome" /> carries the winner's.
+    /// </summary>
     public string? CitizenId { get; init; }
 
     /// <summary>Why not, when <see cref="Decided" /> is false.</summary>

@@ -16,8 +16,16 @@ public sealed class StubIdContainerException : Exception
         Stderr = stderr;
     }
 
+    /// <summary>Everything the container wrote to stdout before it was given up on.</summary>
+    /// <remarks>
+    /// Whole, where the message carries only the last forty lines of it: enough for a failure
+    /// somebody reads, and not enough for one a suite has to attach to a report.
+    /// </remarks>
     public string Stdout { get; }
 
+    /// <summary>
+    /// The same for stderr, and the place the reason lands when the logs could not be read at all.
+    /// </summary>
     public string Stderr { get; }
 
     internal static async Task<StubIdContainerException> DescribeAsync(

@@ -19,6 +19,7 @@ public sealed class StubIdBuilder : ContainerBuilder<StubIdBuilder, StubIdContai
     /// </remarks>
     public const string StubIdImage = "ghcr.io/benne/stubid:2026.09.2";
 
+    /// <summary>Answers on every instance, TLS or not, and carries the control API.</summary>
     public const ushort StubIdPort = 8080;
 
     /// <summary>Answers only when the instance was asked to serve TLS.</summary>
@@ -26,14 +27,24 @@ public sealed class StubIdBuilder : ContainerBuilder<StubIdBuilder, StubIdContai
 
     private const string ReadyPath = "/_stubid/health/ready";
 
+    /// <summary>
+    /// Runs <see cref="StubIdImage" />, the image this module is tested against.
+    /// </summary>
     public StubIdBuilder()
         : this(new StubIdConfiguration()) => DockerResourceConfiguration = Init().DockerResourceConfiguration;
 
+    /// <summary>
+    /// Runs an image other than <see cref="StubIdImage" />, named by repository and tag.
+    /// </summary>
     public StubIdBuilder(string image)
         : this(new DockerImage(image))
     {
     }
 
+    /// <summary>
+    /// Runs an image Testcontainers already holds a handle to, such as one built from a
+    /// Dockerfile in the same run.
+    /// </summary>
     public StubIdBuilder(IImage image)
         : this(new StubIdConfiguration()) =>
         DockerResourceConfiguration = Init().WithImage(image).DockerResourceConfiguration;
@@ -41,6 +52,7 @@ public sealed class StubIdBuilder : ContainerBuilder<StubIdBuilder, StubIdContai
     private StubIdBuilder(StubIdConfiguration resourceConfiguration)
         : base(resourceConfiguration) => DockerResourceConfiguration = resourceConfiguration;
 
+    /// <summary>The configuration this builder has accumulated.</summary>
     protected override StubIdConfiguration DockerResourceConfiguration { get; }
 
     /// <summary>
@@ -138,8 +150,10 @@ public sealed class StubIdBuilder : ContainerBuilder<StubIdBuilder, StubIdContai
     /// </remarks>
     public StubIdBuilder WithKeyVolume(string name) => WithVolumeMount(name, "/keys");
 
+    /// <summary>Takes a volume the caller already created, rather than a name.</summary>
     public StubIdBuilder WithKeyVolume(IVolume volume) => WithVolumeMount(volume, "/keys");
 
+    /// <summary>The container, once the configuration has been validated.</summary>
     public override StubIdContainer Build()
     {
         Validate();
@@ -147,6 +161,7 @@ public sealed class StubIdBuilder : ContainerBuilder<StubIdBuilder, StubIdContai
         return new StubIdContainer(DockerResourceConfiguration);
     }
 
+    /// <summary>The defaults every instance starts from.</summary>
     protected override StubIdBuilder Init() =>
         base.Init()
             .WithImage(StubIdImage)
@@ -163,12 +178,15 @@ public sealed class StubIdBuilder : ContainerBuilder<StubIdBuilder, StubIdContai
                     .WithInterval(TimeSpan.FromMilliseconds(100))
                     .WithTimeout(TimeSpan.FromSeconds(60))));
 
+    /// <summary>Keeps this module's own configuration through a base-class step.</summary>
     protected override StubIdBuilder Clone(IResourceConfiguration<CreateContainerParameters> resourceConfiguration) =>
         Merge(DockerResourceConfiguration, new StubIdConfiguration(resourceConfiguration));
 
+    /// <summary>Keeps this module's own configuration through a base-class step.</summary>
     protected override StubIdBuilder Clone(IContainerConfiguration resourceConfiguration) =>
         Merge(DockerResourceConfiguration, new StubIdConfiguration(resourceConfiguration));
 
+    /// <summary>Folds a change into the configuration this builder carries.</summary>
     protected override StubIdBuilder Merge(StubIdConfiguration oldValue, StubIdConfiguration newValue) =>
         new(new StubIdConfiguration(oldValue, newValue));
 

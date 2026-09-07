@@ -43,18 +43,25 @@ public sealed class StubIdClient : IDisposable
     /// <summary>The transport, for anything this surface does not cover yet.</summary>
     public HttpClient Http { get; }
 
+    /// <summary>The people a login signs in as.</summary>
     public CitizenApi Citizens { get; }
 
+    /// <summary>The logins in flight, and the ones already decided.</summary>
     public SessionApi Sessions { get; }
 
+    /// <summary>The outcomes queued ahead of the logins they will decide.</summary>
     public BehaviorApi Behavior { get; }
 
     /// <summary>The old spelling of <see cref="Behavior"/>.</summary>
     [Obsolete("Renamed to Behavior. This alias is removed in the next release.")]
     public BehaviorApi Behaviour => Behavior;
 
+    /// <summary>What the instance thinks the time is, and moving it where that is allowed.</summary>
     public ClockApi Time { get; }
 
+    /// <summary>
+    /// What the instance knows about itself, and the settings that can change while it runs.
+    /// </summary>
     public RuntimeApi Runtime { get; }
 
     /// <summary>
@@ -150,6 +157,7 @@ public sealed class StubIdClient : IDisposable
     public Task<bool> IsReadyAsync(CancellationToken ct = default) =>
         AnswersAsync("/_stubid/health/ready", ct);
 
+    /// <summary>Disposes the transport, unless the caller brought their own.</summary>
     public void Dispose()
     {
         if (_ownsHttp)

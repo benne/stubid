@@ -30,6 +30,14 @@ namespace StubId.Abstractions;
     AllowMultiple = true)]
 public sealed class FidelityAttribute : Attribute
 {
+    /// <summary>
+    /// Opens a claim, which is not yet a complete one.
+    /// </summary>
+    /// <remarks>
+    /// What still has to be said depends on what was just said: a provenance decides which of
+    /// <see cref="Evidence"/>, <see cref="Reason"/> and <see cref="AwaitingCapture"/> the build
+    /// insists on, and <see cref="IsComplete"/> is where that is settled.
+    /// </remarks>
     public FidelityAttribute(FidelityTier tier, FidelityProvenance provenance)
     {
         Tier = tier;

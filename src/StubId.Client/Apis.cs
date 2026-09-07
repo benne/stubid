@@ -8,6 +8,7 @@ namespace StubId.Client;
 /// <summary>The people a login can resolve as.</summary>
 public sealed class CitizenApi(HttpClient http)
 {
+    /// <summary>Everybody on this instance, in no particular order.</summary>
     public async Task<IReadOnlyList<StubIdCitizen>> ListAsync(CancellationToken ct = default)
     {
         using var response = await http.GetAsync("/_stubid/v1/citizens", ct);
