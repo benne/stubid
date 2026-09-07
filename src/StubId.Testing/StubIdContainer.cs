@@ -12,6 +12,9 @@ public sealed class StubIdContainer : DockerContainer
     private readonly Lock _gate = new();
     private StubIdClient? _control;
 
+    /// <summary>
+    /// A container over a configuration <see cref="StubIdBuilder.Build" /> has validated.
+    /// </summary>
     public StubIdContainer(StubIdConfiguration configuration)
         : base(configuration) => _configuration = configuration;
 
@@ -71,6 +74,13 @@ public sealed class StubIdContainer : DockerContainer
     /// Reached at <see cref="MappedAddress" /> rather than <see cref="BaseAddress" />: a pinned
     /// instance answers to a name this process may have no route to, and the control API is for
     /// this process.
+    /// <para>
+    /// The citizens, sessions, behavior and clock groups have shortcuts on this type;
+    /// <see cref="StubIdClient.Runtime" /> deliberately does not, and is reached here. It is also
+    /// what the module drives while the container starts, so republishing the address through it
+    /// moves the issuer out from under <see cref="BaseAddress" /> and <see cref="Authority" />,
+    /// which is a thing to do on purpose rather than by reaching for the nearest shortcut.
+    /// </para>
     /// </remarks>
     public StubIdClient Control
     {
@@ -84,16 +94,25 @@ public sealed class StubIdContainer : DockerContainer
         }
     }
 
+    /// <summary>The people a login can resolve as, over <see cref="Control" />.</summary>
     public CitizenApi Citizens => Control.Citizens;
 
+    /// <summary>The logins themselves, over <see cref="Control" />.</summary>
     public SessionApi Sessions => Control.Sessions;
 
+    /// <summary>
+    /// Outcomes queued ahead of the logins they resolve, over <see cref="Control" />.
+    /// </summary>
     public BehaviorApi Behavior => Control.Behavior;
 
     /// <summary>The old spelling of <see cref="Behavior"/>.</summary>
     [Obsolete("Renamed to Behavior. This alias is removed in the next release.")]
     public BehaviorApi Behaviour => Behavior;
 
+    /// <summary>
+    /// The clock, over <see cref="Control" />. Readable always; movable when the instance was
+    /// built with <see cref="StubIdBuilder.WithControllableClock" />.
+    /// </summary>
     public ClockApi Time => Control.Time;
 
     /// <summary>
@@ -131,6 +150,7 @@ public sealed class StubIdContainer : DockerContainer
         };
     }
 
+    /// <summary>Disposes the control client before the container goes away.</summary>
     protected override async ValueTask DisposeAsyncCore()
     {
         lock (_gate)

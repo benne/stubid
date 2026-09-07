@@ -20,6 +20,7 @@ public sealed class StubIdException : Exception
         Detail = detail;
     }
 
+    /// <summary>The status the refusal arrived as.</summary>
     public HttpStatusCode StatusCode { get; }
 
     /// <summary>What StubID called it, in its own words.</summary>

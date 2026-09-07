@@ -1,0 +1,6 @@
+<!-- Empty on purpose, for the same reason as the props file beside it. MSBuild searches for
+     Directory.Build.targets separately from Directory.Build.props and stops at the nearest one,
+     so without this the repository's root targets would reach a project that is meant to know
+     nothing about them - restoring the published packages the way a reader does, with none of
+     this repository's settings in scope. -->
+<Project />

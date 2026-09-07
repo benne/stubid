@@ -13,11 +13,21 @@ public sealed record StubIdCitizen(
     string Pid,
     string? Rule);
 
+/// <summary>
+/// Which gender the generated personal number encodes, in its last digit, as a real one does.
+/// </summary>
+/// <remarks>
+/// StubId.Wire has a gender of its own, which this is not: the client package references nothing
+/// at all, so it repeats the two values rather than pulling another assembly in behind them.
+/// </remarks>
 [System.Text.Json.Serialization.JsonConverter(
     typeof(System.Text.Json.Serialization.JsonStringEnumConverter<StubIdGender>))]
 public enum StubIdGender
 {
+    /// <summary>An even last digit on the generated personal number.</summary>
     Female,
+
+    /// <summary>An odd last digit on the generated personal number.</summary>
     Male,
 }
 
@@ -30,6 +40,9 @@ public enum StubIdGender
 /// </remarks>
 public sealed record CitizenSpec
 {
+    /// <summary>
+    /// The full name, which reaches a client as the <c>mitid.identity_name</c> claim.
+    /// </summary>
     public required string Name { get; init; }
 
     /// <summary>
@@ -41,8 +54,16 @@ public sealed record CitizenSpec
     /// <summary>Chosen, so a test can name its people. Generated when omitted.</summary>
     public string? Id { get; init; }
 
+    /// <summary>
+    /// Sets the last digit of the generated personal number, odd for male and even for female.
+    /// Omitted counts as female.
+    /// </summary>
     public StubIdGender? Gender { get; init; }
 
+    /// <summary>
+    /// What the simulation parameter's <c>username</c> directive resolves against. Omitted leaves
+    /// the person reachable by uuid or personal number.
+    /// </summary>
     public string? UserName { get; init; }
 
     /// <summary>

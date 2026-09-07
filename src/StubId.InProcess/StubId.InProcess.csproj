@@ -4,7 +4,10 @@
     <Description>Runs StubID inside your test process. No Docker, no listener, no browser.</Description>
     <PackageTags>stubid;mitid;oidc;testing;inprocess;testserver</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-  </PropertyGroup>
+      <!-- Held to CS1591: this is one of the four a reader installs, and its members become
+         pages in the published API reference. See Directory.Build.props. -->
+    <DocumentPublicApi>true</DocumentPublicApi>
+</PropertyGroup>
 
   <ItemGroup>
     <!-- A library rather than a web application, so the framework is referenced rather than the

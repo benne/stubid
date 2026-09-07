@@ -13,27 +13,37 @@ namespace StubId.Testing;
 /// </remarks>
 public sealed class StubIdConfiguration : ContainerConfiguration
 {
+    /// <summary>
+    /// What the builder records when a caller pins an address or asks for TLS, and the empty
+    /// configuration everything else starts from.
+    /// </summary>
     public StubIdConfiguration(Uri? publicBaseUrl = null, bool? tls = null)
     {
         PublicBaseUrl = publicBaseUrl;
         Tls = tls;
     }
 
+    /// <summary>Carries the Docker resource settings over when the builder clones itself.</summary>
     public StubIdConfiguration(IResourceConfiguration<CreateContainerParameters> resourceConfiguration)
         : base(resourceConfiguration)
     {
     }
 
+    /// <summary>Carries the container settings over when the builder clones itself.</summary>
     public StubIdConfiguration(IContainerConfiguration resourceConfiguration)
         : base(resourceConfiguration)
     {
     }
 
+    /// <summary>Copies one of these, by merging it onto an empty configuration.</summary>
     public StubIdConfiguration(StubIdConfiguration resourceConfiguration)
         : this(new StubIdConfiguration(), resourceConfiguration)
     {
     }
 
+    /// <summary>
+    /// Layers one configuration onto another, which is how each builder call adds to the last.
+    /// </summary>
     public StubIdConfiguration(StubIdConfiguration oldValue, StubIdConfiguration newValue)
         : base(oldValue, newValue)
     {

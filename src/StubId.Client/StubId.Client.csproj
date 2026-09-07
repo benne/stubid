@@ -4,7 +4,10 @@
     <Description>A typed client for StubID's control API. HttpClient only, no Docker.</Description>
     <PackageTags>stubid;mitid;oidc;testing</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-  </PropertyGroup>
+      <!-- Held to CS1591: this is one of the four a reader installs, and its members become
+         pages in the published API reference. See Directory.Build.props. -->
+    <DocumentPublicApi>true</DocumentPublicApi>
+</PropertyGroup>
 
   <!--
     No package reference at all: System.Text.Json and System.Net.Http.Json are both in the

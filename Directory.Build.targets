@@ -1,0 +1,10 @@
+<Project>
+
+  <!-- Imported after every project file, which is the whole reason this exists. Directory.Build.props
+       is imported before one, so a project cannot opt out there of a NoWarn it has not been given
+       yet. Here it can: a project sets DocumentPublicApi in its own body and this reads it. -->
+  <PropertyGroup Condition="'$(DocumentPublicApi)' != 'true'">
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+</Project>

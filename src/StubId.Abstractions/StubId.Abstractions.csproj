@@ -3,6 +3,9 @@
   <PropertyGroup>
     <Description>Contracts shared by StubID's broker profiles and host. Substrate: reference
       StubId.Testing or StubId.InProcess to run StubID from a test suite.</Description>
-  </PropertyGroup>
+      <!-- Held to CS1591: this is one of the four a reader installs, and its members become
+         pages in the published API reference. See Directory.Build.props. -->
+    <DocumentPublicApi>true</DocumentPublicApi>
+</PropertyGroup>
 
 </Project>
