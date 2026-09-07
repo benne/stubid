@@ -20,11 +20,16 @@
     "content": [
       { "files": [ "**/*.{md,yml}" ], "src": "docs", "dest": "." }
     ],
+    "resource": [
+      { "files": [ "favicon.ico", "logo.svg" ], "src": "docs", "dest": "." }
+    ],
     "output": "_site",
     "template": [ "default", "modern" ],
     "globalMetadata": {
       "_appTitle": "StubID",
       "_appName": "StubID",
+      "_appFaviconPath": "favicon.ico",
+      "_appLogoPath": "logo.svg",
       "_enableSearch": true,
       "_disableContribution": true
     }
