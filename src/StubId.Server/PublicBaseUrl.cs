@@ -77,14 +77,6 @@ public sealed class PublicBaseUrl
     /// accepted even though StubID serves plain HTTP, because a proxy in front of it is a
     /// deployment the compose sample already documents.
     /// </remarks>
-    /// <summary>The old spelling of <see cref="TryNormalize"/>.</summary>
-    [Obsolete("Renamed to TryNormalize. This alias is removed in the next release.")]
-    public static bool TryNormalise(
-        string? candidate,
-        out string normalised,
-        out (string Error, string Detail) fault) =>
-        TryNormalize(candidate, out normalised, out fault);
-
     public static bool TryNormalize(
         string? candidate,
         out string normalized,

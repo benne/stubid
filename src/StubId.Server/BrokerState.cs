@@ -257,10 +257,6 @@ public sealed class BrokerState
     public string OrganizationOf(string clientId) =>
         Clients.TryGetValue(clientId, out var client) ? client.Organization : clientId;
 
-    /// <summary>The old spelling of <see cref="OrganizationOf"/>.</summary>
-    [Obsolete("Renamed to OrganizationOf. This alias is removed in the next release.")]
-    public string OrganisationOf(string clientId) => OrganizationOf(clientId);
-
     /// <summary>A pushed request and the moment it stops being redeemable.</summary>
     private sealed record PushedRequest(AuthorizationRequest Request, DateTimeOffset Expires);
 
@@ -348,12 +344,7 @@ public sealed record IssuedArtifact(
 /// What the subject is scoped to. Two clients of one organization receive the same subject
 /// for the same person, which is what the id_token calls org_mapped.
 /// </param>
-public sealed record Client(string ClientId, string[] ResponseTypes, string Organization)
-{
-    /// <summary>The old spelling of <see cref="Organization"/>. Read-only, so `with` needs the new name.</summary>
-    [Obsolete("Renamed to Organization. This alias is removed in the next release.")]
-    public string Organisation => Organization;
-}
+public sealed record Client(string ClientId, string[] ResponseTypes, string Organization);
 
     /// <summary>
     /// Any non-empty secret is accepted. A stub cannot know the secret an existing

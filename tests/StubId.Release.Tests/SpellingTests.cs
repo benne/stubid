@@ -98,17 +98,12 @@ public class SpellingTests
     /// Words a sweep would otherwise flag, and why each one stays.
     /// </summary>
     /// <remarks>
-    /// Matched as whole words, not as substrings, so allowing <c>Organisation</c> does not also
-    /// allow <c>OrganisationalUnit</c>.
+    /// Matched as whole words, not as substrings: an entry allows the word it names and nothing
+    /// that merely contains it.
     /// <para>
-    /// The first group is Danish and the second is somebody else's identifier; both are permanent.
-    /// The third is the aliases kept for one release by the change that converted the tree. When
-    /// those are deleted these entries go dead, and this list is the reminder that they are due.
-    /// </para>
-    /// <para>
-    /// One thing this cannot tell apart, and it is worth naming rather than implying otherwise:
-    /// the alias entries are words, so a capitalised <c>Organisation</c> written in prose passes
-    /// too. It stops passing when the aliases go, which is the release after this one.
+    /// The first group is Danish and the second is somebody else's identifier. Both are permanent,
+    /// and after 2026.09.3 they are the whole list: the entries that were here for the aliases the
+    /// US-English conversion kept went with them.
     /// </para>
     /// </remarks>
     private static readonly string[] Allowed =
@@ -116,13 +111,6 @@ public class SpellingTests
         "Digitaliseringsstyrelsen",
         "kodeviser",
         "organizationIdentifier",
-
-        "Behaviour",
-        "behaviours",
-        "Organisation",
-        "OrganisationOf",
-        "TryNormalise",
-        "normalised",
     ];
 
     /// <summary>

@@ -3,6 +3,30 @@
 Notes accumulate here as changes land, and this file is renamed to the version when a release
 goes out. The dated files beside it are history and are never edited.
 
+## The aliases the US-English conversion kept are gone
+
+2026.09.2 renamed eight things on the public surface and kept seven of them answering as
+`[Obsolete]` forwarding aliases. Its notes said in print that those go away in the release after
+it, and the deprecation message on every one of them said the same. This is that release.
+
+| Removed | Use |
+| --- | --- |
+| `StubIdClient.Behaviour` | `StubIdClient.Behavior` |
+| `StubIdHost.Behaviour` | `StubIdHost.Behavior` |
+| `StubIdContainer.Behaviour` | `StubIdContainer.Behavior` |
+| `BrokerState.OrganisationOf` | `BrokerState.OrganizationOf` |
+| `Client.Organisation` | `Client.Organization` |
+| `PublicBaseUrl.TryNormalise` | `PublicBaseUrl.TryNormalize` |
+| `POST /_stubid/v1/behaviours/enqueue` | `POST /_stubid/v1/behaviors/enqueue` |
+
+They existed so that a suite written against 2026.09.1 would compile and keep answering across
+exactly one release. That release has shipped. Code naming one of the six members now fails to
+compile rather than warning, and the compiler names every site; the seventh, the route, answers
+404 where it accepted an enqueue.
+
+Nothing else changed with them. The new names have been there since 2026.09.2 and are untouched,
+so a suite that took the warning seriously when it appeared has nothing to do here.
+
 ## The documentation is published, at stubid.dev
 
 Every release now deploys the site as well, from the tag rather than from master, so what it
