@@ -16,7 +16,7 @@ Status of the first emulated surface, Signaturgruppen Broker ("Nets eID Broker")
 | M8 | Admin interface | done |
 | M9 | Transaction signing | done |
 | M10 | Release engineering | done |
-| M11 | Documentation site and generated broker reference | not started |
+| M11 | Documentation site and generated broker reference | done |
 | M12 | v1.0 | not started |
 
 Every instance serves an admin interface since 2026-09-05. It shows logins arriving and decides
@@ -35,6 +35,23 @@ sign-in moved out of `tests/` beside it, and [one guide](guides/signing-in.md) r
 whichever of the four client stacks is theirs. Spring and the browser matrix keep the checks they
 already had; neither needed a sample, and the guide says which of the two signs in and which only
 resolves metadata.
+
+There is a documentation site since 2026-09-07, at [stubid.dev](https://stubid.dev/). It carries
+the guides, the broker reference, the research notes and an API reference generated from the doc
+comments of the four packages a reader installs - and those four are now held to having them, so an
+undocumented public member fails their build. It is published from a tag rather than from master,
+so it describes the version on nuget.org rather than whatever master happens to be.
+
+The "generated broker reference" half turned out to mean something narrower than it sounds, and
+better. The reasoning in the divergences is not derivable from an annotation and stays hand-written;
+what is written out from the fidelity ledger is the index of which divergences exist and what each
+unsettled one is waiting for. Around that sit the guards this milestone was really about: every
+anchor a reason points at has to resolve, every capture the documentation cites has to be a
+recording that is there, the claims tables have to list members in the order the recording sends
+them, and every endpoint the discovery document advertises has to be answered or declared
+unemulated. That last one closed a contradiction the repository had been carrying - the README
+promised 501 for what is not emulated while the divergences said the CIBA endpoint 404s, and the
+divergences were right.
 
 Released since 2026-09-04. `StubId.Testing`, `StubId.InProcess` and `StubId.Client` are on
 nuget.org, and `ghcr.io/benne/stubid` is on GHCR for linux/amd64 and linux/arm64, carrying a

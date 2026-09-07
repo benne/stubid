@@ -3,6 +3,21 @@
 Notes accumulate here as changes land, and this file is renamed to the version when a release
 goes out. The dated files beside it are history and are never edited.
 
+## The documentation is published, at stubid.dev
+
+Every release now deploys the site as well, from the tag rather than from master, so what it
+describes is the version on nuget.org rather than whatever master happens to be. Between releases
+the two diverge, and that is the point: a reader who installed a package should not be reading
+about a route it does not have.
+
+A pull request still builds the site and deploys nothing, which is the rehearsal — the same reason
+the release workflow's dry run exists. The deploy sits on the same dependencies as the GitHub
+release, so the site goes live beside it and ahead of the NuGet push, which is the order this
+repository already accepts.
+
+`README.md` stops saying the documentation site is missing and names it. That README ships as the
+package page for four of the seven packages, so the link is a real one now rather than a promise.
+
 ## The documentation builds as a site
 
 `docfx.json` builds everything in `docs/` into a site, with an API reference generated from the
