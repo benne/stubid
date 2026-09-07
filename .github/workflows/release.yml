@@ -313,6 +313,48 @@ jobs:
     with:
       version: ${{ needs.verify.outputs.version }}
 
+  # The site, published from the tag rather than from master, so it describes the version on
+  # nuget.org rather than whatever master happens to be. Same dependencies as the release below,
+  # which puts it live alongside the GitHub release and ahead of the NuGet push - the order this
+  # repository already accepts, since the image and its attestation are public while nuget waits
+  # on the release environment's reviewer.
+  #
+  # The dispatch path skips this, so a rehearsal builds the site in ci.yml and deploys nothing.
+  # That is the rehearsal: a release cannot be rehearsed by releasing.
+  pages:
+    needs: [verify, verify-published]
+    if: needs.verify.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - run: dotnet tool restore
+
+      - run: dotnet docfx docfx.json --warningsAsErrors
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
+
   release:
     needs: [verify, verify-published]
     if: needs.verify.outputs.publish == 'true'
