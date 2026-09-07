@@ -32,8 +32,8 @@ public class FidelityLedgerTests : IClassFixture<WebApplicationFactory<Program>>
         return directory!.FullName;
     }
 
-    private static IReadOnlyList<FidelityEntry> Ledger() => FidelityLedger.Read(
-        typeof(Tokens).Assembly, typeof(StubId.Wire.JwsWriter).Assembly);
+    private static IReadOnlyList<FidelityEntry> Ledger() =>
+        FidelityLedger.Read(FidelityLedger.Sources);
 
     [Fact]
     public void The_ledger_is_not_empty()

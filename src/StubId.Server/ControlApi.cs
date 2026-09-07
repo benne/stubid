@@ -21,7 +21,7 @@ public static class ControlApi
 
         api.MapGet("/fidelity", () => Results.Json(new
         {
-            entries = FidelityLedger.Read(typeof(Tokens).Assembly, typeof(JwsWriter).Assembly),
+            entries = FidelityLedger.Read(FidelityLedger.Sources),
         }));
 
         // The three clients this broker publishes, which a reader currently finds by grepping the

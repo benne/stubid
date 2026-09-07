@@ -4,6 +4,11 @@ Every entry here is a deliberate decision, not an omission. A running instance s
 list at `GET /_stubid/v1/fidelity`, read from annotations next to the code that emits each
 behavior, so this document and the running system cannot disagree.
 
+The sections below explain the decisions in the order somebody meeting them needs them.
+[The whole ledger](#the-whole-ledger) is at the end, written out from those same annotations
+rather than typed up beside them, and [what a recording would settle](#awaiting-capture)
+collects the questions a future sitting could close.
+
 ## Client secrets are not checked
 
 <a id="client-secrets"></a>
@@ -145,6 +150,22 @@ recording, because reaching them needs something the unattended captures cannot 
 
 Each is marked in the fidelity ledger with the provenance it actually has, so
 `GET /_stubid/v1/fidelity` does not claim more than was checked.
+
+### What a recording would settle
+
+<a id="awaiting-capture"></a>
+
+Each of these names the sitting that would answer it, so the next capture session has a list to
+work from rather than a memory of what was doubted.
+
+<!-- generated:begin awaiting-capture -->
+| What | What would settle it |
+| --- | --- |
+| `BrokerState.PushRequest` | That the lifetime is 600 seconds is measured; that the broker enforces it is not. Reaching that needs a push left for ten minutes and then redeemed, which no capture step waits for. RFC 9126 2.2 says a request_uri expires, and the authorize endpoint already answered 'Unknown or expired request_uri' for a reference it could not find. |
+| `Tokens.TransactionActions` | The string-or-array form is recorded, and so is each action on its own. Two things are not. Deriving mitid.cpr_match from the ssn scope is inferred - CAP-021 asked for ssn and matched a CPR in the same sitting, so it cannot say which put the action there. And no recording carries more than two actions, so the order between mitid.cpr_match and mitid.transaction_signing is unobserved: a signing login that also asks for ssn would settle it. |
+| `Tokens.TransactionToken` | One slot in this sequence is a guess. The ssn consent pair and the six transaction-text members both land after mitid.geo_ip_distance_km, and no recording carries both: CAP-021 has the consent pair without a text, CAP-031 has the text without the ssn scope. The consent pair comes first here because that is the slot CAP-021 recorded for it. A signing login that also asks for ssn would settle it. Everything else in the order is forced by the three recordings together, which merge without a conflict. |
+| `Tokens.UserInfo` | The same unrecorded slot as the transaction token's: the ssn consent pair and the transaction text's type and digest both land after mitid.geo_ip_distance_km, and no recording carries both. A type standing here without a digest beside it is also StubID's own - it is what a text this cannot decode leaves behind, and CAP-031, the only recording, sent a text that decodes. |
+<!-- generated:end awaiting-capture -->
 
 ## Transaction signing
 
@@ -337,3 +358,50 @@ Infrastructure that belongs to the broker's hosting rather than its protocol: th
 header, `x-neb-site`, HSTS and CSP headers, the wording of the error page, and response
 timing. StubID emits an `X-StubID-Emulator` header of its own so an instance cannot be
 mistaken for the real thing.
+
+## The whole ledger
+
+<a id="the-whole-ledger"></a>
+
+Every annotation in the two assemblies that carry them, in the order a reader needs: what is not
+reproduced at all, then what diverges on purpose, then what rests on documentation, and only then
+what a recording confirmed. The same list a running instance serves at
+`GET /_stubid/v1/fidelity`, and the same order the admin pages put it in.
+
+<!-- generated:begin ledger-index -->
+| What | How close | On what evidence | Because |
+| --- | --- | --- | --- |
+| `Endpoints.Ciba` | OutOfContract, NotEmulated | fixtures/neb/pp/CAP-001 | [why](#ciba) |
+| `BrokerState.EndsSession` | Exact, Divergent | - | [why](#the-id-token-hint) |
+| `BrokerState.IsKnownClient` | Exact, Divergent | fixtures/neb/pp/CAP-014 | [why](#client-secrets) |
+| `Endpoints.Complete` | Shape, Divergent | - | [why](#resuming-a-parked-login) |
+| `Endpoints.TransactionTextPanel` | Shape, Divergent | - | [why](#the-login-page) |
+| `OcspWriter.Good` | Shape, Divergent | fixtures/neb/pp-session/CAP-021/token/response.raw, fixtures/neb/pp-session/CAP-022/token/response.raw, fixtures/neb/pp-session/CAP-031/token/response.raw | [why](#the-oces3-certificate-chain) |
+| `StubId.Server.RequestObject` | Shape, Divergent | - | [why](#request-objects) |
+| `StubIdApplication.AnnounceTheEmulator` | Exact, Divergent | - | [why](#emulator-header) |
+| `Tokens.TransactionTokenOcspResponse` | Shape, Divergent | fixtures/neb/pp-session/CAP-021/token/response.raw, fixtures/neb/pp-session/CAP-022/token/response.raw, fixtures/neb/pp-session/CAP-031/token/response.raw | [why](#the-oces3-certificate-chain) |
+| `BrokerState.PushRequest` | Exact, Assumed | - | - |
+| `Tokens.TransactionActions` | Exact, Assumed | fixtures/neb/pp-session/CAP-021/token/transaction_token.payload.json, fixtures/neb/pp-session/CAP-022/token/transaction_token.payload.json, fixtures/neb/pp-session/CAP-031/token/transaction_token.payload.json | - |
+| `Tokens.TransactionToken` | Exact, Assumed | - | - |
+| `Tokens.UserInfo` | Exact, Assumed | - | - |
+| `CprMatch.Exceeded` | Exact, DocsConfirmed | Unrecorded: reaching it needs a fourth call inside one authenticated session. | - |
+| `Endpoints.Matched` | Exact, DocsConfirmed | The pre-production swagger. Unrecorded: no capture reached a successful match. | - |
+| `Endpoints.SilentLoginImpossible` | Exact, DocsConfirmed | OpenID Connect Core 3.1.2.6. Unrecorded: needs an established SSO session. | - |
+| `StubId.Wire.Cpr` | Shape, DocsConfirmed | https://www.cpr.dk/media/12068/erstatningspersonnummerets-opbygning.pdf | - |
+| `BrokerState.PushRequest` | Exact, VerifiedLive | docs/research/signed-requests.md | - |
+| `Endpoints.EndSession` | Exact, VerifiedLive | fixtures/neb/pp/CAP-044, fixtures/neb/pp/CAP-045 | - |
+| `JwsWriter.Sign` | Exact, VerifiedLive | fixtures/neb/pp-session/CAP-024/token/id_token.header.json | - |
+| `RequestGrammar.Fault` | Exact, VerifiedLive | fixtures/neb/pp/CAP-009, fixtures/neb/pp/CAP-040, fixtures/neb/pp/CAP-043 | - |
+| `RequestGrammar.IdentityProviderParameters` | Exact, VerifiedLive | fixtures/neb/pp/CAP-010/response.head, fixtures/neb/pp-session/CAP-022/callback/meta.json | - |
+| `RequestObject.Fault` | Exact, VerifiedLive | fixtures/neb/pp/CAP-046, docs/research/signed-requests.md | - |
+| `RequestObject.TryMerge` | Exact, VerifiedLive | fixtures/neb/pp-session/CAP-031/callback/meta.json, fixtures/neb/pp-session/CAP-031/callback/request_object.payload.json | - |
+| `StubId.Wire.JwksWriter` | Exact, VerifiedLive | fixtures/neb/pp/CAP-002 | - |
+| `StubId.Wire.Pkce` | Exact, VerifiedLive | fixtures/neb/pp/CAP-001 | - |
+| `StubId.Wire.SigningKey` | Exact, VerifiedLive | fixtures/neb/pp/CAP-002 | - |
+| `Tokens.IdToken` | Exact, VerifiedLive | fixtures/neb/pp-session/CAP-024/token/id_token.payload.json | - |
+| `Tokens.Subject` | Exact, VerifiedLive | fixtures/neb/pp-session/CAP-029/token/id_token.payload.json | - |
+| `Tokens.TransactionText` | Exact, VerifiedLive | fixtures/neb/pp-session/CAP-031/token/transaction_token.payload.json | - |
+| `Tokens.TransactionToken` | Exact, VerifiedLive | fixtures/neb/pp-session/CAP-021/token/transaction_token.payload.json, fixtures/neb/pp-session/CAP-022/token/transaction_token.payload.json, fixtures/neb/pp-session/CAP-031/token/transaction_token.payload.json | - |
+| `Tokens.UserInfo` | Exact, VerifiedLive | fixtures/neb/pp-session/CAP-021/userinfo/response.raw, fixtures/neb/pp-session/CAP-022/userinfo/response.raw, fixtures/neb/pp-session/CAP-031/userinfo/response.raw | - |
+| `Tokens.UserInfoToken` | Exact, VerifiedLive | fixtures/neb/pp-session/CAP-024/token/userinfo_token.payload.json | - |
+<!-- generated:end ledger-index -->

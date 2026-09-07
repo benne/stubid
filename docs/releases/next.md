@@ -3,6 +3,25 @@
 Notes accumulate here as changes land, and this file is renamed to the version when a release
 goes out. The dated files beside it are history and are never edited.
 
+## The divergences carry the ledger itself, written out rather than typed up
+
+`docs/brokers/neb/divergences.md` now ends with the whole fidelity ledger as a table, and the
+section on what no recording settled carries a second table saying what each of those is waiting
+for. Both are generated from the annotations, in the same order the admin pages use: what is not
+reproduced at all, then what diverges on purpose, then what rests on documentation, and only then
+what a recording confirmed.
+
+The prose around them is unchanged and stays hand-written. What a divergence costs somebody is not
+derivable from an annotation; which divergences exist is, and that was the half that could drift.
+
+There is no tool to remember to run. A test composes the tables and compares them to what is
+committed, so a stale one is a failing build, and `STUBID_UPDATE_DOCS=1` makes the same test
+rewrite them.
+
+`AwaitingCapture` now appears somewhere a person can read it. It carries the longest prose in the
+ledger — which recording would settle an assumed member's slot — and until now it was served in
+JSON and shown nowhere. It is a fifth column on the admin page's fidelity table as well.
+
 ## The endpoint discovery advertises and this build skips now answers 501
 
 `/op/connect/ciba` answered 404. The discovery document is served from a recording rather than
