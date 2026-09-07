@@ -3,6 +3,27 @@
 Notes accumulate here as changes land, and this file is renamed to the version when a release
 goes out. The dated files beside it are history and are never edited.
 
+## The documentation builds as a site
+
+`docfx.json` builds everything in `docs/` into a site, with an API reference generated from the
+doc comments of the four packages a reader installs. It is pinned as a local tool, so nothing new
+had to be installed in CI beyond what a .NET repository already has.
+
+Nothing publishes yet — that is the next change. What this one buys is that every pull request
+builds the site with `--warningsAsErrors`, which makes docfx the first thing in this repository
+that has ever resolved a link. It checks both files and anchors, and it found three links that
+reached out of `docs/` into `samples/` and `.github/`: those resolve on a repository page and
+resolve nowhere on a site of their own, and they were already rewritten as full URLs.
+
+`docs/index.md` is new and is deliberately not the README. The README's links are absolute GitHub
+URLs because four packages ship it as their NuGet page, so rendering it as the site's front page
+would send every visitor straight back to GitHub.
+
+`docs/brokers/neb/index.md` is new too, and it fixes something older than the site: the broker's
+errors and request parameters had nothing linking to them anywhere, and were reachable only by
+someone who already knew the path. A test now fails if a page under `docs/` is in no table of
+contents, or if the navigation names a page that is not there.
+
 ## The four packages a reader installs document their whole public surface
 
 `StubId.Client`, `StubId.Testing`, `StubId.InProcess` and `StubId.Abstractions` had 54 public
