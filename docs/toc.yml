@@ -52,6 +52,8 @@
       href: roadmap.md
     - name: Unreleased
       href: releases/next.md
+    - name: "2026.09.3"
+      href: releases/2026.09.3.md
     - name: "2026.09.2"
       href: releases/2026.09.2.md
     - name: "2026.09.1"

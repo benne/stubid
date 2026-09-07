@@ -131,6 +131,34 @@ public class VersionTests
             + string.Join(Environment.NewLine, wrong));
     }
 
+    /// <summary>
+    /// The notes for this version exist, and the landing page points a reader at them.
+    /// </summary>
+    /// <remarks>
+    /// Two things that only ever break while a release is being cut. The release workflow
+    /// requires <c>docs/releases/&lt;version&gt;.md</c> to exist, but that check sits behind
+    /// <c>ref_type = tag</c>, so the dry run skips it and a missing or misnamed file surfaces
+    /// only once a signed tag is public. And one line on <c>docs/index.md</c> sends a reader to
+    /// what changed, which has to be the newest notes rather than whichever release was current
+    /// when the line was written - nothing else catches that, because a link to an older note
+    /// still resolves and every note stays in the table of contents forever.
+    /// </remarks>
+    [Fact]
+    public void The_notes_for_this_version_exist_and_the_landing_page_names_them()
+    {
+        var declared = Declared();
+
+        Assert.True(
+            File.Exists(Path.Combine(Repository.Root, "docs", "releases", $"{declared}.md")),
+            $"docs/releases/{declared}.md is not there. The release workflow requires it, but "
+            + "only once the tag is pushed.");
+
+        Assert.Contains(
+            $"releases/{declared}.md",
+            File.ReadAllText(Path.Combine(Repository.Root, "docs", "index.md")),
+            StringComparison.Ordinal);
+    }
+
     /// <summary>Every package the documentation tells a reader to install is one we publish.</summary>
     /// <remarks>
     /// The guides named three packages as things a reader uses and gave no way to obtain any of
