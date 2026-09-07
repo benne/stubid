@@ -52,10 +52,6 @@ public sealed class StubIdClient : IDisposable
     /// <summary>The outcomes queued ahead of the logins they will decide.</summary>
     public BehaviorApi Behavior { get; }
 
-    /// <summary>The old spelling of <see cref="Behavior"/>.</summary>
-    [Obsolete("Renamed to Behavior. This alias is removed in the next release.")]
-    public BehaviorApi Behaviour => Behavior;
-
     /// <summary>What the instance thinks the time is, and moving it where that is allowed.</summary>
     public ClockApi Time { get; }
 

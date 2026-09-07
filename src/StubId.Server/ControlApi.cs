@@ -135,11 +135,6 @@ public static class ControlApi
 
         api.MapPost("/behaviors/enqueue", Enqueue);
 
-        // The spelling this route shipped under in 2026.09.1, kept working for one release so a
-        // suite pinned to the published client does not 404 against a newer image. The other two
-        // queue routes need no alias: they arrived with the admin interface and have never shipped.
-        api.MapPost("/behaviours/enqueue", Enqueue);
-
         // Citizens
         api.MapGet("/citizens", (Citizens citizens) => Results.Json(citizens.All));
 

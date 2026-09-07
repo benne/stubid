@@ -61,10 +61,6 @@ public sealed class StubIdHost : IAsyncDisposable
     /// <summary>Outcomes queued ahead of the logins they resolve.</summary>
     public BehaviorApi Behavior => Control.Behavior;
 
-    /// <summary>The old spelling of <see cref="Behavior"/>.</summary>
-    [Obsolete("Renamed to Behavior. This alias is removed in the next release.")]
-    public BehaviorApi Behaviour => Behavior;
-
     /// <summary>
     /// The clock, over <see cref="Control" />. Readable always; movable when the host was built
     /// with <see cref="StubIdHostBuilder.WithControllableClock"/>.
