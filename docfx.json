@@ -1,0 +1,32 @@
+{
+  "metadata": [
+    {
+      "src": [
+        {
+          "files": [
+            "src/StubId.Abstractions/StubId.Abstractions.csproj",
+            "src/StubId.Client/StubId.Client.csproj",
+            "src/StubId.InProcess/StubId.InProcess.csproj",
+            "src/StubId.Testing/StubId.Testing.csproj"
+          ]
+        }
+      ],
+      "dest": "docs/api",
+      "namespaceLayout": "flattened",
+      "memberLayout": "samePage"
+    }
+  ],
+  "build": {
+    "content": [
+      { "files": [ "**/*.{md,yml}" ], "src": "docs", "dest": "." }
+    ],
+    "output": "_site",
+    "template": [ "default", "modern" ],
+    "globalMetadata": {
+      "_appTitle": "StubID",
+      "_appName": "StubID",
+      "_enableSearch": true,
+      "_disableContribution": true
+    }
+  }
+}

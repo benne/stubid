@@ -114,6 +114,31 @@ jobs:
   # the change. They check what .NET forgives: openid-client compares the discovered issuer
   # with the configured authority character for character, and Spring derives candidate
   # metadata locations from a path-bearing issuer and asserts the issuer it finds.
+  # The documentation site, built and thrown away. Nothing deploys from here - release.yml
+  # does that on a tag, so the site describes the version on nuget.org rather than whatever
+  # master happens to be. What this catches is the site failing to build at all, and every
+  # broken link and dead anchor in it: docfx resolves both, and --warningsAsErrors makes them
+  # stop a pull request instead of appearing on a published page.
+  #
+  # On both runners, because a docs build has no business being platform-sensitive and this
+  # repository has twice now been told otherwise about things that had no business being it.
+  docs:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - run: dotnet tool restore
+
+      - run: dotnet docfx docfx.json --warningsAsErrors
+
   interop:
     runs-on: ubuntu-latest
     steps:

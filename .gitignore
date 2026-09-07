@@ -22,3 +22,9 @@ capture-scratch/
 
 # The manual sitting writes here. Committed deliberately, after review.
 !fixtures/neb/pp-session/
+
+# The documentation site, and the API pages docfx writes from the doc comments. The landing page
+# beside them is written by hand and is committed; everything else in there is output.
+_site/
+docs/api/*.yml
+docs/api/.manifest

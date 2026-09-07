@@ -170,7 +170,10 @@ public class SpellingTests
     /// MANIFEST.json that covers it rather than by the fixtures/ prefix, because not everything
     /// in that directory is a recording: fixtures/README.md and fixtures/neb/certificates.md are
     /// the project's own writing and are held to the same rule as the rest of it. Skipping by
-    /// prefix hid them through the conversion. The release notes, because naming what changed is
+    /// prefix hid them through the conversion. The built site and the API pages docfx writes from
+    /// the doc comments, because both are output - the site carries a template's own JavaScript,
+    /// and sweeping generated files means sweeping somebody else's spelling; docs/api/index.md is
+    /// written by hand and is still read. The release notes, because naming what changed is
     /// the point of them and one of the things that changed was the spelling, so a note about a
     /// rename has to be able to write both. And this file, which cannot sweep for words it is
     /// obliged to contain.
@@ -201,11 +204,13 @@ public class SpellingTests
             var relative = Path.GetRelativePath(Repository.Root, full).Replace('\\', '/');
             var segments = relative.Split('/');
 
-            if (segments.Any(s => s is ".git" or "bin" or "obj" or "node_modules" or "target")
+            if (segments.Any(s => s is ".git" or "bin" or "obj" or "node_modules" or "target" or "_site")
                 || Packs.Any(pack => relative.StartsWith(pack, StringComparison.Ordinal))
                 || relative.StartsWith("docs/releases/", StringComparison.Ordinal)
                 || segments[^1] == "SpellingTests.cs"
-                || segments[^1] == "capture.local.json")
+                || segments[^1] == "capture.local.json"
+                || (relative.StartsWith("docs/api/", StringComparison.Ordinal)
+                    && Path.GetExtension(full) == ".yml"))
             {
                 continue;
             }

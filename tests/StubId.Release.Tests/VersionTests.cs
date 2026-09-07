@@ -198,10 +198,12 @@ public class VersionTests
             var relative = Path.GetRelativePath(Repository.Root, full).Replace('\\', '/');
             var segments = relative.Split('/');
 
-            if (segments.Any(s => s is ".git" or "bin" or "obj" or "node_modules" or "target")
+            if (segments.Any(s => s is ".git" or "bin" or "obj" or "node_modules" or "target" or "_site")
                 || relative.StartsWith("docs/releases/", StringComparison.Ordinal)
                 || relative == ".github/workflows/release.yml"
-                || segments[^1] == "capture.local.json")
+                || segments[^1] == "capture.local.json"
+                || (relative.StartsWith("docs/api/", StringComparison.Ordinal)
+                    && Path.GetExtension(full) == ".yml"))
             {
                 continue;
             }

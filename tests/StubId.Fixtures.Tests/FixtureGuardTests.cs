@@ -25,6 +25,13 @@ public class FixtureGuardTests
             .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}.git{Path.DirectorySeparatorChar}")
                         && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")
                         && !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
+
+                        // The built site and the API pages docfx writes. This guard is about what
+                        // reaches the repository, and neither of these does - both are ignored
+                        // output. Scanning them checks a template's own files for our mistakes.
+                        && !f.Contains($"{Path.DirectorySeparatorChar}_site{Path.DirectorySeparatorChar}")
+                        && !(f.Contains($"{Path.DirectorySeparatorChar}docs{Path.DirectorySeparatorChar}api{Path.DirectorySeparatorChar}")
+                             && Path.GetExtension(f) == ".yml")
                         && Path.GetFileName(f) != "capture.local.json");
 
     public static TheoryData<string> TextFiles()
