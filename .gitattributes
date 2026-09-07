@@ -4,3 +4,9 @@
 # member order and whitespace of a captured document are part of what they pin. Git must
 # not translate anything inside them, on any platform.
 fixtures/** -text
+
+# The site's mark. text=auto classifies these correctly today; saying it outright means a
+# later change to the rule above cannot corrupt them on a CRLF checkout, which is the one
+# platform difference this repository has already been caught by.
+*.ico -text
+*.png -text
