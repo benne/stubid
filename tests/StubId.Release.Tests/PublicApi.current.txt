@@ -1,0 +1,802 @@
+# StubId.Abstractions
+
+type public sealed class StubId.Abstractions.FidelityAttribute : System.Attribute
+  ctor (StubId.Abstractions.FidelityTier tier, StubId.Abstractions.FidelityProvenance provenance)
+  property string? AwaitingCapture { get; init; }
+  property string? Evidence { get; init; }
+  property bool IsComplete { get; }
+  property StubId.Abstractions.FidelityProvenance Provenance { get; }
+  property string? Reason { get; init; }
+  property StubId.Abstractions.FidelityTier Tier { get; }
+
+type public enum StubId.Abstractions.FidelityProvenance : int
+  enum VerifiedLive = 0
+  enum DocsConfirmed = 1
+  enum DocsConflict = 2
+  enum Assumed = 3
+  enum Divergent = 4
+  enum NotEmulated = 5
+
+type public enum StubId.Abstractions.FidelityTier : int
+  enum Exact = 0
+  enum Shape = 1
+  enum OutOfContract = 2
+
+# StubId.Client
+
+type public sealed class StubId.Client.BehaviorApi
+  ctor (System.Net.Http.HttpClient http)
+  method System.Threading.Tasks.Task ClearAsync (System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task EnqueueAsync (StubId.Client.Decision decision, System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<StubId.Client.QueuedDecision>> ListAsync (System.Threading.CancellationToken ct = default)
+
+type public sealed class StubId.Client.CitizenApi
+  ctor (System.Net.Http.HttpClient http)
+  method System.Threading.Tasks.Task<StubId.Client.StubIdCitizen> CreateAsync (StubId.Client.CitizenSpec spec, System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task<bool> DeleteAsync (string id, System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task<StubId.Client.StubIdCitizen> FindAsync (string id, System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<StubId.Client.StubIdCitizen>> ListAsync (System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task<StubId.Client.StubIdCitizen> SetRuleAsync (string id, string? rule, System.Threading.CancellationToken ct = default)
+
+type public sealed record StubId.Client.CitizenSpec : System.IEquatable<StubId.Client.CitizenSpec>
+  property required System.DateOnly DateOfBirth { get; init; }
+  property StubId.Client.StubIdGender? Gender { get; init; }
+  property string? Id { get; init; }
+  property required string Name { get; init; }
+  property string? Rule { get; init; }
+  property string? UserName { get; init; }
+
+type public sealed class StubId.Client.ClockApi
+  ctor (System.Net.Http.HttpClient http)
+  method System.Threading.Tasks.Task<System.DateTimeOffset> AdvanceAsync (System.TimeSpan by, System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task<StubId.Client.StubIdClock> ReadAsync (System.Threading.CancellationToken ct = default)
+
+type public sealed record StubId.Client.Decision : System.IEquatable<StubId.Client.Decision>
+  method static StubId.Client.Decision Approved (string? citizenId = null)
+  method StubId.Client.Decision ForClient (string clientId)
+  method static StubId.Client.Decision Refused (string errorCode = "mitid_user_aborted", string error = "access_denied")
+  property required bool Approve { get; init; }
+  property string? CitizenId { get; init; }
+  property string? ClientId { get; init; }
+  property string? ErrorCode { get; init; }
+  property string? Error { get; init; }
+
+type public sealed record StubId.Client.DecisionOutcome : System.IEquatable<StubId.Client.DecisionOutcome>
+  property string? CitizenId { get; init; }
+  property required bool Decided { get; init; }
+  property string? Detail { get; init; }
+  property StubId.Client.StubIdSession? Outcome { get; init; }
+  property StubId.Client.SessionState? State { get; init; }
+
+type public sealed record StubId.Client.EmulatedRoute : System.IEquatable<StubId.Client.EmulatedRoute>
+  ctor (string Pattern, System.Collections.Generic.IReadOnlyList<string> Methods, string? Role)
+  property bool Emulated { get; init; }
+  property System.Collections.Generic.IReadOnlyList<string> Methods { get; init; }
+  property string Pattern { get; init; }
+  property string? Role { get; init; }
+
+type public sealed record StubId.Client.FidelityEntry : System.IEquatable<StubId.Client.FidelityEntry>
+  ctor (string Subject, string Tier, string Provenance, string? Evidence, string? Reason, string? AwaitingCapture, bool Complete)
+  property string? AwaitingCapture { get; init; }
+  property bool Complete { get; init; }
+  property string? Evidence { get; init; }
+  property string Provenance { get; init; }
+  property string? Reason { get; init; }
+  property string Subject { get; init; }
+  property string Tier { get; init; }
+
+type public sealed record StubId.Client.IssuedArtifact : System.IEquatable<StubId.Client.IssuedArtifact>
+  ctor (string Kind, string ClientId, string? CitizenId, string? LoginId, System.DateTimeOffset? AuthenticatedAt, System.DateTimeOffset? Expires, string? Scope)
+  property System.DateTimeOffset? AuthenticatedAt { get; init; }
+  property string? CitizenId { get; init; }
+  property string ClientId { get; init; }
+  property System.DateTimeOffset? Expires { get; init; }
+  property string Kind { get; init; }
+  property string? LoginId { get; init; }
+  property string? Scope { get; init; }
+
+type public sealed record StubId.Client.LadderStep : System.IEquatable<StubId.Client.LadderStep>
+  ctor (int? Tier, string Name, string Outcome, string Reason)
+  property string Name { get; init; }
+  property string Outcome { get; init; }
+  property string Reason { get; init; }
+  property int? Tier { get; init; }
+
+type public sealed record StubId.Client.QueuedDecision : System.IEquatable<StubId.Client.QueuedDecision>
+  ctor (string ClientId, int Position, bool Approve, string? CitizenId, string? ErrorCode, string? Error)
+  property bool Approve { get; init; }
+  property string? CitizenId { get; init; }
+  property string ClientId { get; init; }
+  property string? ErrorCode { get; init; }
+  property string? Error { get; init; }
+  property int Position { get; init; }
+
+type public sealed record StubId.Client.RegisteredClient : System.IEquatable<StubId.Client.RegisteredClient>
+  ctor (string ClientId, System.Collections.Generic.IReadOnlyList<string> ResponseTypes, string Organization)
+  property string ClientId { get; init; }
+  property string Organization { get; init; }
+  property System.Collections.Generic.IReadOnlyList<string> ResponseTypes { get; init; }
+
+type public sealed class StubId.Client.RuntimeApi
+  ctor (System.Net.Http.HttpClient http)
+  method System.Threading.Tasks.Task<StubId.Client.StubIdApproval> GetAutomaticApprovalAsync (System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task<System.Uri> GetPublicBaseUrlAsync (System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task<System.Security.Cryptography.X509Certificates.X509Certificate2> GetTlsCertificateAsync (System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task<StubId.Client.StubIdApproval> SetAutomaticApprovalAsync (bool? enabled, System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task<System.Uri> SetPublicBaseUrlAsync (System.Uri value, System.Threading.CancellationToken ct = default)
+
+type public sealed class StubId.Client.SessionApi
+  ctor (System.Net.Http.HttpClient http)
+  method System.Threading.Tasks.Task<StubId.Client.DecisionOutcome> ApproveAsync (string id, string? citizenId = null, System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task<StubId.Client.SessionExplanation> ExplainAsync (string id, System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task<StubId.Client.StubIdSession> FindAsync (string id, System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<StubId.Client.StubIdSession>> ListAsync (StubId.Client.SessionState? state = null, string? clientId = null, System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task<StubId.Client.DecisionOutcome> RejectAsync (string id, string errorCode = "mitid_user_aborted", string error = "access_denied", System.Threading.CancellationToken ct = default)
+
+type public sealed record StubId.Client.SessionExplanation : System.IEquatable<StubId.Client.SessionExplanation>
+  ctor (string Session, StubId.Client.SessionState Outcome, System.Collections.Generic.IReadOnlyList<StubId.Client.LadderStep> Ladder)
+  property System.Collections.Generic.IReadOnlyList<StubId.Client.LadderStep> Ladder { get; init; }
+  property StubId.Client.SessionState Outcome { get; init; }
+  property string Session { get; init; }
+
+type public enum StubId.Client.SessionState : int
+  enum AwaitingApproval = 0
+  enum Approved = 1
+  enum Redeemed = 2
+  enum Failed = 3
+  enum Expired = 4
+
+type public sealed record StubId.Client.StubIdApproval : System.IEquatable<StubId.Client.StubIdApproval>
+  ctor (bool Enabled, bool Configured, bool? Overridden)
+  property bool Configured { get; init; }
+  property bool Enabled { get; init; }
+  property bool? Overridden { get; init; }
+
+type public sealed record StubId.Client.StubIdCitizen : System.IEquatable<StubId.Client.StubIdCitizen>
+  ctor (string Id, string Uuid, string Name, string DateOfBirth, string Cpr, string? UserName, string Amr, string Loa, string Pid, string? Rule)
+  property string Amr { get; init; }
+  property string Cpr { get; init; }
+  property string DateOfBirth { get; init; }
+  property string Id { get; init; }
+  property string Loa { get; init; }
+  property string Name { get; init; }
+  property string Pid { get; init; }
+  property string? Rule { get; init; }
+  property string? UserName { get; init; }
+  property string Uuid { get; init; }
+
+type public sealed class StubId.Client.StubIdClient : System.IDisposable
+  ctor (System.Net.Http.HttpClient http)
+  ctor (System.Uri baseAddress)
+  method System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<StubId.Client.RegisteredClient>> ClientsAsync (System.Threading.CancellationToken ct = default)
+  method void Dispose ()
+  method System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<StubId.Client.FidelityEntry>> FidelityAsync (System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task<bool> IsLiveAsync (System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task<bool> IsReadyAsync (System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<StubId.Client.IssuedArtifact>> IssuedAsync (System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task ResetAsync (System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<StubId.Client.EmulatedRoute>> RoutesAsync (System.Threading.CancellationToken ct = default)
+  property StubId.Client.BehaviorApi Behavior { get; }
+  property StubId.Client.CitizenApi Citizens { get; }
+  property System.Net.Http.HttpClient Http { get; }
+  property StubId.Client.RuntimeApi Runtime { get; }
+  property StubId.Client.SessionApi Sessions { get; }
+  property StubId.Client.ClockApi Time { get; }
+
+type public sealed record StubId.Client.StubIdClock : System.IEquatable<StubId.Client.StubIdClock>
+  ctor (System.DateTimeOffset Now, bool Controllable)
+  property bool Controllable { get; init; }
+  property System.DateTimeOffset Now { get; init; }
+
+type public sealed class StubId.Client.StubIdException : System.Exception
+  property string? Detail { get; }
+  property string? Error { get; }
+  property System.Net.HttpStatusCode StatusCode { get; }
+
+type public enum StubId.Client.StubIdGender : int
+  enum Female = 0
+  enum Male = 1
+
+type public sealed record StubId.Client.StubIdSession : System.IEquatable<StubId.Client.StubIdSession>
+  ctor (string Id, string ClientId, StubId.Client.SessionState State, string? CitizenId, string? ErrorCode, System.DateTimeOffset CreatedAt, System.DateTimeOffset Deadline, System.DateTimeOffset? DecidedAt, string? OauthError = null, int Version = 0)
+  property string? CitizenId { get; init; }
+  property string ClientId { get; init; }
+  property System.DateTimeOffset CreatedAt { get; init; }
+  property System.DateTimeOffset Deadline { get; init; }
+  property System.DateTimeOffset? DecidedAt { get; init; }
+  property string? ErrorCode { get; init; }
+  property string Id { get; init; }
+  property string? OauthError { get; init; }
+  property StubId.Client.SessionState State { get; init; }
+  property int Version { get; init; }
+
+# StubId.InProcess
+
+type public sealed class StubId.InProcess.StubIdHost : System.IAsyncDisposable
+  method System.Net.Http.HttpClient CreateClient ()
+  method System.Net.Http.HttpMessageHandler CreateHandler ()
+  method System.Threading.Tasks.ValueTask DisposeAsync ()
+  method System.Threading.Tasks.Task ResetAsync (System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task StartAsync (System.Threading.CancellationToken ct = default)
+  property System.Uri Authority { get; }
+  property System.Uri BaseAddress { get; }
+  property StubId.Client.BehaviorApi Behavior { get; }
+  property StubId.Client.CitizenApi Citizens { get; }
+  property StubId.Client.StubIdClient Control { get; }
+  property System.IServiceProvider Services { get; }
+  property StubId.Client.SessionApi Sessions { get; }
+  property StubId.Client.ClockApi Time { get; }
+
+type public sealed class StubId.InProcess.StubIdHostBuilder
+  ctor ()
+  field const string DefaultPublicBaseUrl = "https://stubid-inprocess.invalid"
+  method StubId.InProcess.StubIdHost Build ()
+  method StubId.InProcess.StubIdHostBuilder WithAutomaticApproval (bool automatic)
+  method StubId.InProcess.StubIdHostBuilder WithControllableClock (bool controllable = true)
+  method StubId.InProcess.StubIdHostBuilder WithKeyPath (string path)
+  method StubId.InProcess.StubIdHostBuilder WithLogging (System.Action<Microsoft.Extensions.Logging.ILoggingBuilder> configure)
+  method StubId.InProcess.StubIdHostBuilder WithPublicBaseUrl (System.Uri publicBaseUrl)
+  method StubId.InProcess.StubIdHostBuilder WithSetting (string key, string value)
+
+# StubId.Profiles.Abstractions
+
+type public interface StubId.Profiles.IBrokerProfile
+  method abstract System.Collections.Generic.IReadOnlyList<StubId.Profiles.RouteDeclaration> DeclareRoutes (StubId.Profiles.ProfileContext context)
+  property StubId.Profiles.ProfileId Id { get; }
+
+type public static class StubId.Profiles.NotEmulated
+  method static Microsoft.AspNetCore.Http.IResult Answer (Microsoft.AspNetCore.Http.HttpContext http, string reason, string? what = null)
+
+type public sealed record StubId.Profiles.ProfileContext : System.IEquatable<StubId.Profiles.ProfileContext>
+  ctor (string Issuer, string PublicBaseUrl)
+  property string Issuer { get; init; }
+  property string PublicBaseUrl { get; init; }
+
+type public record struct StubId.Profiles.ProfileId : System.IEquatable<StubId.Profiles.ProfileId>
+  ctor (string Broker, string Version)
+  property string Broker { get; init; }
+  property string Version { get; init; }
+
+type public sealed record StubId.Profiles.RouteDeclaration : System.IEquatable<StubId.Profiles.RouteDeclaration>
+  ctor (string Pattern, System.Collections.Generic.IReadOnlyList<string> Methods, StubId.Profiles.RouteRole Role, System.Delegate Handler)
+  property StubId.Profiles.SegmentExactness Exactness { get; init; }
+  property StubId.Abstractions.FidelityAttribute? Fidelity { get; init; }
+  property System.Delegate Handler { get; init; }
+  property System.Collections.Generic.IReadOnlyList<string> Methods { get; init; }
+  property System.Collections.Generic.IReadOnlyDictionary<string, Microsoft.AspNetCore.Routing.IParameterPolicy> ParameterPolicies { get; init; }
+  property string Pattern { get; init; }
+  property StubId.Profiles.RouteRole Role { get; init; }
+  property StubId.Profiles.WrongMethod WrongMethod { get; init; }
+
+type public record struct StubId.Profiles.RouteRole : System.IEquatable<StubId.Profiles.RouteRole>
+  ctor (string Name)
+  field static StubId.Profiles.RouteRole Authorize
+  field static StubId.Profiles.RouteRole Discovery
+  field static StubId.Profiles.RouteRole ErrorPage
+  field static StubId.Profiles.RouteRole Jwks
+  field static StubId.Profiles.RouteRole Par
+  field static StubId.Profiles.RouteRole Token
+  field static StubId.Profiles.RouteRole UserInfo
+  method static StubId.Profiles.RouteRole Extra (string name)
+  property string Name { get; init; }
+
+type public sealed record StubId.Profiles.SegmentExactness : System.IEquatable<StubId.Profiles.SegmentExactness>
+  ctor (System.Collections.Generic.IReadOnlyList<System.StringComparison> LiteralSegments, StubId.Profiles.TrailingSlash TrailingSlash)
+  method static StubId.Profiles.SegmentExactness FirstOrdinalThenInsensitive (StubId.Profiles.TrailingSlash trailingSlash)
+  method System.StringComparison For (int literalIndex)
+  method static StubId.Profiles.SegmentExactness Uniform (System.StringComparison comparison, StubId.Profiles.TrailingSlash trailingSlash)
+  property System.StringComparison Fallback { get; init; }
+  property System.Collections.Generic.IReadOnlyList<System.StringComparison> LiteralSegments { get; init; }
+  property StubId.Profiles.TrailingSlash TrailingSlash { get; init; }
+
+type public enum StubId.Profiles.TrailingSlash : int
+  enum Refuse = 0
+  enum Tolerate = 1
+
+type public abstract record StubId.Profiles.WrongMethod : System.IEquatable<StubId.Profiles.WrongMethod>
+  ctor ()
+  field static StubId.Profiles.WrongMethod HandledByRoute
+  field static StubId.Profiles.WrongMethod Standard
+
+type public sealed record StubId.Profiles.WrongMethod+Default : StubId.Profiles.WrongMethod, System.IEquatable<StubId.Profiles.WrongMethod+Default>
+  ctor ()
+
+type public sealed record StubId.Profiles.WrongMethod+RouteAnyway : StubId.Profiles.WrongMethod, System.IEquatable<StubId.Profiles.WrongMethod+RouteAnyway>
+  ctor ()
+
+# StubId.Server
+
+type public class Program
+  ctor ()
+
+type public sealed record StubId.Server.AuthorizationRequest : System.IEquatable<StubId.Server.AuthorizationRequest>
+  ctor (string ClientId, string RedirectUri, string ResponseType, string ResponseMode, string Scope, string? State, string? Nonce, string? CodeChallenge, string? CodeChallengeMethod, System.Collections.Generic.IReadOnlyDictionary<string, string>? MitIdParameters = null)
+  method static byte[]? DecodeTransactionText (string? value)
+  property string ClientId { get; init; }
+  property string? CodeChallengeMethod { get; init; }
+  property string? CodeChallenge { get; init; }
+  property byte[]? DecodedTransactionText { get; }
+  property System.Collections.Generic.IReadOnlyDictionary<string, string>? MitIdParameters { get; init; }
+  property string? Nonce { get; init; }
+  property string RedirectUri { get; init; }
+  property string? ReferenceText { get; }
+  property string ResponseMode { get; init; }
+  property string ResponseType { get; init; }
+  property string Scope { get; init; }
+  property string? State { get; init; }
+  property string? TransactionTextSha256 { get; }
+  property string? TransactionTextType { get; }
+  property string? TransactionText { get; }
+
+type public sealed class StubId.Server.AutomaticApproval
+  ctor (Microsoft.Extensions.Configuration.IConfiguration configuration)
+  method void Set (bool? enabled)
+  property bool Configured { get; }
+  property bool Enabled { get; }
+  property bool? Overridden { get; }
+
+type public sealed class StubId.Server.BrokerState
+  ctor ()
+  field const int PushedRequestLifetimeSeconds = 600
+  method bool Allows (string clientId, string responseType)
+  method void EndSession (string sessionId)
+  method bool EndsSession (string idTokenHint)
+  method void Forget ()
+  method bool IsKnownClient (string? clientId)
+  method string IssueAccessToken (StubId.Server.IssuedCode code)
+  method string IssueCode (StubId.Server.AuthorizationRequest request, StubId.Server.Sessions.Citizen citizen, System.DateTimeOffset now, string clientIp, string loginId)
+  method System.Collections.Generic.IReadOnlyList<StubId.Server.BrokerState+IssuedArtifact> Issued ()
+  method string OrganizationOf (string clientId)
+  method StubId.Server.IssuedCode? PeekCode (string code)
+  method string PushRequest (StubId.Server.AuthorizationRequest request, System.DateTimeOffset now)
+  method StubId.Server.IssuedAccessToken? ReadAccessToken (string token)
+  method StubId.Server.IssuedCode? RedeemCode (string code)
+  method StubId.Server.AuthorizationRequest? RedeemPushedRequest (string requestUri, System.DateTimeOffset now)
+  property System.Collections.Generic.IReadOnlyDictionary<string, StubId.Server.BrokerState+Client> Clients { get; }
+
+type public sealed record StubId.Server.BrokerState+Client : System.IEquatable<StubId.Server.BrokerState+Client>
+  ctor (string ClientId, string[] ResponseTypes, string Organization)
+  property string ClientId { get; init; }
+  property string Organization { get; init; }
+  property string[] ResponseTypes { get; init; }
+
+type public sealed record StubId.Server.BrokerState+IssuedArtifact : System.IEquatable<StubId.Server.BrokerState+IssuedArtifact>
+  ctor (string Kind, string ClientId, string? CitizenId, string? LoginId, System.DateTimeOffset? AuthenticatedAt, System.DateTimeOffset? Expires, string? Scope)
+  property System.DateTimeOffset? AuthenticatedAt { get; init; }
+  property string? CitizenId { get; init; }
+  property string ClientId { get; init; }
+  property System.DateTimeOffset? Expires { get; init; }
+  property string Kind { get; init; }
+  property string? LoginId { get; init; }
+  property string? Scope { get; init; }
+
+type public static class StubId.Server.ControlApi
+  method static void MapControlApi (Microsoft.AspNetCore.Builder.WebApplication app)
+
+type public sealed record StubId.Server.ControlApi+AdvanceRequest : System.IEquatable<StubId.Server.ControlApi+AdvanceRequest>
+  ctor (double Seconds)
+  property double Seconds { get; init; }
+
+type public sealed record StubId.Server.ControlApi+ApproveRequest : System.IEquatable<StubId.Server.ControlApi+ApproveRequest>
+  ctor (string? CitizenId)
+  property string? CitizenId { get; init; }
+
+type public sealed record StubId.Server.ControlApi+AutomaticApprovalRequest : System.IEquatable<StubId.Server.ControlApi+AutomaticApprovalRequest>
+  ctor (bool? Enabled)
+  property bool? Enabled { get; init; }
+
+type public sealed record StubId.Server.ControlApi+CreateCitizenRequest : System.IEquatable<StubId.Server.ControlApi+CreateCitizenRequest>
+  ctor (string Name, string DateOfBirth, string? Gender, string? Id, string? UserName, string? Rule)
+  property string DateOfBirth { get; init; }
+  property string? Gender { get; init; }
+  property string? Id { get; init; }
+  property string Name { get; init; }
+  property string? Rule { get; init; }
+  property string? UserName { get; init; }
+
+type public sealed record StubId.Server.ControlApi+EnqueueRequest : System.IEquatable<StubId.Server.ControlApi+EnqueueRequest>
+  ctor (bool Approve, string? ClientId, string? CitizenId, string? ErrorCode, string? Error)
+  property bool Approve { get; init; }
+  property string? CitizenId { get; init; }
+  property string? ClientId { get; init; }
+  property string? ErrorCode { get; init; }
+  property string? Error { get; init; }
+
+type public sealed record StubId.Server.ControlApi+PublicBaseUrlRequest : System.IEquatable<StubId.Server.ControlApi+PublicBaseUrlRequest>
+  ctor (string? PublicBaseUrl)
+  property string? PublicBaseUrl { get; init; }
+
+type public sealed record StubId.Server.ControlApi+RejectRequest : System.IEquatable<StubId.Server.ControlApi+RejectRequest>
+  ctor (string? ErrorCode, string? Error)
+  property string? ErrorCode { get; init; }
+  property string? Error { get; init; }
+
+type public sealed record StubId.Server.ControlApi+SetRuleRequest : System.IEquatable<StubId.Server.ControlApi+SetRuleRequest>
+  ctor (string? Rule)
+  property string? Rule { get; init; }
+
+type public sealed class StubId.Server.CprMatch
+  ctor (System.TimeProvider clock)
+  field const int Allowed = 3
+  field const string Exceeded = "Cpr Match exceeded. Only 3 tries is allowed within a session."
+  field static System.TimeSpan Window
+  method void Clear ()
+  method void Forget (string sessionId)
+  method bool TryAttempt (string sessionId)
+
+type public sealed class StubId.Server.Documents
+  ctor ()
+  method string Discovery (string baseUrl)
+
+type public static class StubId.Server.Endpoints
+  method static System.Collections.Generic.IReadOnlyList<StubId.Profiles.RouteDeclaration> Declare ()
+
+type public sealed record StubId.Server.FidelityEntry : System.IEquatable<StubId.Server.FidelityEntry>
+  ctor (string Subject, string Tier, string Provenance, string? Evidence, string? Reason, string? AwaitingCapture, bool Complete)
+  property string? AwaitingCapture { get; init; }
+  property bool Complete { get; init; }
+  property string? Evidence { get; init; }
+  property string Provenance { get; init; }
+  property string? Reason { get; init; }
+  property string Subject { get; init; }
+  property string Tier { get; init; }
+
+type public static class StubId.Server.FidelityLedger
+  method static int ProvenanceWeight (string provenance)
+  method static System.Collections.Generic.IReadOnlyList<StubId.Server.FidelityEntry> Read (System.Reflection.Assembly[] assemblies)
+  property System.Reflection.Assembly[] Sources { get; }
+
+type public sealed record StubId.Server.IssuedAccessToken : System.IEquatable<StubId.Server.IssuedAccessToken>
+  ctor (string ClientId, StubId.Server.Sessions.Citizen Citizen, string Scope, string SessionId, string LoginId, string IdpTransactionId, System.DateTimeOffset AuthenticatedAt, string? ReferenceText = null, string? TransactionTextType = null, string? TransactionTextSha256 = null)
+  property System.DateTimeOffset AuthenticatedAt { get; init; }
+  property StubId.Server.Sessions.Citizen Citizen { get; init; }
+  property string ClientId { get; init; }
+  property string IdpTransactionId { get; init; }
+  property string LoginId { get; init; }
+  property string? ReferenceText { get; init; }
+  property string Scope { get; init; }
+  property string SessionId { get; init; }
+  property string? TransactionTextSha256 { get; init; }
+  property string? TransactionTextType { get; init; }
+
+type public sealed record StubId.Server.IssuedCode : System.IEquatable<StubId.Server.IssuedCode>
+  ctor (StubId.Server.AuthorizationRequest Request, StubId.Server.Sessions.Citizen Citizen, System.DateTimeOffset AuthenticatedAt, string SessionId, string LoginId, string TransactionId, string IdpTransactionId, string ClientIp)
+  property System.DateTimeOffset AuthenticatedAt { get; init; }
+  property StubId.Server.Sessions.Citizen Citizen { get; init; }
+  property string ClientIp { get; init; }
+  property string IdpTransactionId { get; init; }
+  property string LoginId { get; init; }
+  property StubId.Server.AuthorizationRequest Request { get; init; }
+  property string SessionId { get; init; }
+  property string TransactionId { get; init; }
+
+type public sealed class StubId.Server.Keys : System.IDisposable
+  ctor (Microsoft.Extensions.Configuration.IConfiguration configuration)
+  method void Dispose ()
+  property System.Security.Cryptography.X509Certificates.X509Certificate2 OcspResponder { get; }
+  property StubId.Wire.KeyRing Ring { get; }
+  property StubId.Wire.SigningKey TokenSigning { get; }
+  property StubId.Wire.SigningKey TransactionSigning { get; }
+
+type public sealed class StubId.Server.NetsEidBrokerProfile : StubId.Profiles.IBrokerProfile
+  ctor ()
+  method System.Collections.Generic.IReadOnlyList<StubId.Profiles.RouteDeclaration> DeclareRoutes (StubId.Profiles.ProfileContext context)
+  property StubId.Profiles.ProfileId Id { get; }
+
+type public sealed class StubId.Server.PathRules
+  ctor (string pathBase)
+  method bool Accepts (Microsoft.AspNetCore.Http.PathString path)
+
+type public sealed class StubId.Server.ProfileEndpointDataSource : Microsoft.AspNetCore.Routing.EndpointDataSource
+  ctor (System.IServiceProvider services)
+  method virtual Microsoft.Extensions.Primitives.IChangeToken GetChangeToken ()
+  method void Load (System.Collections.Generic.IEnumerable<System.ValueTuple<StubId.Profiles.IBrokerProfile, StubId.Profiles.ProfileContext, string>> tenants)
+  property System.Collections.Generic.IReadOnlyList<Microsoft.AspNetCore.Http.Endpoint> Endpoints { get; }
+
+type public sealed class StubId.Server.PublicBaseUrl
+  ctor (Microsoft.Extensions.Configuration.IConfiguration configuration)
+  field const string NotSetDetail = "Start with StubId__PublicBaseUrl=http://host:port, or PUT it to /_stubid/v1/runtime/public-base-url."
+  method void Set (string normalized)
+  method static bool TryNormalize (string? candidate, out string& normalized, out System.ValueTuple<string, string>& fault)
+  property bool IsSet { get; }
+  property string? Value { get; }
+
+type public sealed class StubId.Server.PublicBaseUrlNotSetException : System.InvalidOperationException
+  ctor ()
+
+type public static class StubId.Server.RequestGrammar
+  method static System.ValueTuple<string, string>? Fault (StubId.Server.AuthorizationRequest request, System.Collections.Generic.IReadOnlyDictionary<string, string> parameters)
+  method static System.Collections.Generic.IReadOnlyDictionary<string, string> IdentityProviderParameters (System.Collections.Generic.IReadOnlyDictionary<string, string> parameters, string idp)
+  method static System.Collections.Generic.IReadOnlyList<string> IdentityProviders (System.Collections.Generic.IReadOnlyDictionary<string, string> parameters)
+
+type public static class StubId.Server.RequestObject
+  field const string FaultDescription = "Invalid JWT request"
+  field const string Fault = "invalid_request_object"
+  method static bool TryMerge (System.Collections.Generic.IDictionary<string, string> parameters)
+
+type public static class StubId.Server.RouteCollisionScan
+  method static void Verify (System.Collections.Generic.IReadOnlyList<Microsoft.AspNetCore.Http.Endpoint> endpoints)
+
+type public sealed record StubId.Server.RouteRules : System.IEquatable<StubId.Server.RouteRules>
+  ctor (StubId.Profiles.SegmentExactness Exactness, StubId.Profiles.RouteRole Role)
+  property StubId.Profiles.SegmentExactness Exactness { get; init; }
+  property StubId.Profiles.RouteRole Role { get; init; }
+
+type public sealed class StubId.Server.ServerCertificate : System.IDisposable
+  method void Dispose ()
+  method static StubId.Server.ServerCertificate? Load (Microsoft.Extensions.Configuration.IConfiguration configuration)
+  property System.Security.Cryptography.X509Certificates.X509Certificate2 Certificate { get; }
+
+type public sealed class StubId.Server.Sessions.AuthSession
+  method bool TryDecide (StubId.Server.Sessions.Decision decision, System.DateTimeOffset now, System.Collections.Generic.IReadOnlyList<StubId.Server.Sessions.LadderStep> explanation)
+  method bool TryExpireUncollected (System.DateTimeOffset now, System.TimeSpan window)
+  method bool TryExpire (System.DateTimeOffset now)
+  method bool TryRedeem ()
+  property string? CitizenId { get; }
+  property required string ClientId { get; init; }
+  property required System.DateTimeOffset CreatedAt { get; init; }
+  property required System.DateTimeOffset Deadline { get; init; }
+  property System.DateTimeOffset? DecidedAt { get; }
+  property string? ErrorCode { get; }
+  property System.Collections.Generic.IReadOnlyList<StubId.Server.Sessions.LadderStep> Explanation { get; }
+  property required string Id { get; init; }
+  property bool IsDecided { get; }
+  property bool IsTerminal { get; }
+  property string? OAuthError { get; }
+  property required StubId.Server.AuthorizationRequest Request { get; init; }
+  property StubId.Server.Sessions.SessionState State { get; }
+  property string? TransactionText { get; }
+  property int Version { get; }
+
+type public sealed record StubId.Server.Sessions.Citizen : System.IEquatable<StubId.Server.Sessions.Citizen>
+  ctor (string Id, string Uuid, string Name, string DateOfBirth, string Cpr, string? UserName = null, string Amr = "code_app", string Loa = "Substantial", string Pid = "9208-2002-2-000000000001", string? Rule = null)
+  method int Age (System.DateTimeOffset now)
+  method StubId.Server.Sessions.Decision Outcome ()
+  property string Amr { get; init; }
+  property string Cpr { get; init; }
+  property string DateOfBirth { get; init; }
+  property string Id { get; init; }
+  property string Loa { get; init; }
+  property string Name { get; init; }
+  property string Pid { get; init; }
+  property string? Rule { get; init; }
+  property string? UserName { get; init; }
+  property string Uuid { get; init; }
+
+type public sealed class StubId.Server.Sessions.CitizenRules : StubId.Server.Sessions.ISessionDecider
+  ctor (StubId.Server.Sessions.Citizens citizens)
+  method StubId.Server.Sessions.Decision? Decide (StubId.Server.Sessions.SessionContext context, out string& reason)
+  property string Name { get; }
+  property int Tier { get; }
+
+type public sealed class StubId.Server.Sessions.Citizens
+  ctor ()
+  method StubId.Server.Sessions.Citizen Add (StubId.Server.Sessions.Citizen citizen)
+  method StubId.Server.Sessions.Citizen? ByCpr (string cpr)
+  method StubId.Server.Sessions.Citizen? ById (string id)
+  method StubId.Server.Sessions.Citizen? ByUserName (string userName)
+  method StubId.Server.Sessions.Citizen? ByUuid (string uuid)
+  method StubId.Server.Sessions.Citizen Create (string? id, string name, System.DateOnly dateOfBirth, StubId.Wire.Gender gender, string? userName = null, string? rule = null)
+  method bool Remove (string id)
+  method StubId.Server.Sessions.Citizen? SetRule (string id, string? rule)
+  property System.Collections.Generic.IReadOnlyCollection<StubId.Server.Sessions.Citizen> All { get; }
+  property StubId.Server.Sessions.Citizen? Default { get; }
+
+type public sealed record StubId.Server.Sessions.Decision : System.IEquatable<StubId.Server.Sessions.Decision>
+  ctor (bool Approve, string? CitizenId = null, string? ErrorCode = null, string? OAuthError = null, System.TimeSpan? Delay = null)
+  method static StubId.Server.Sessions.Decision Approved (string citizenId)
+  method static StubId.Server.Sessions.Decision Refused (string errorCode, string oauthError = "access_denied")
+  method static StubId.Server.Sessions.Decision Selecting (string citizenId)
+  property bool Approve { get; init; }
+  property string? CitizenId { get; init; }
+  property System.TimeSpan? Delay { get; init; }
+  property string? ErrorCode { get; init; }
+  property string? OAuthError { get; init; }
+  property bool Selects { get; init; }
+
+type public sealed class StubId.Server.Sessions.DefaultOutcome : StubId.Server.Sessions.ISessionDecider
+  ctor (StubId.Server.Sessions.Citizens citizens, System.Func<bool> approveAutomatically)
+  method StubId.Server.Sessions.Decision? Decide (StubId.Server.Sessions.SessionContext context, out string& reason)
+  property string Name { get; }
+  property int Tier { get; }
+
+type public sealed class StubId.Server.Sessions.EnqueuedDecisions : StubId.Server.Sessions.ISessionDecider
+  ctor ()
+  method void Clear ()
+  method StubId.Server.Sessions.Decision? Decide (StubId.Server.Sessions.SessionContext context, out string& reason)
+  method void Enqueue (StubId.Server.Sessions.Decision decision, string? clientId = null)
+  method System.Collections.Generic.IReadOnlyList<System.ValueTuple<string, System.Collections.Generic.IReadOnlyList<StubId.Server.Sessions.Decision>>> Snapshot ()
+  property string Name { get; }
+  property int Tier { get; }
+
+type public interface StubId.Server.Sessions.ISessionDecider
+  method abstract StubId.Server.Sessions.Decision? Decide (StubId.Server.Sessions.SessionContext context, out string& reason)
+  property string Name { get; }
+  property int Tier { get; }
+
+type public sealed class StubId.Server.Sessions.Ladder
+  ctor (System.Collections.Generic.IEnumerable<StubId.Server.Sessions.ISessionDecider> deciders)
+  method System.ValueTuple<StubId.Server.Sessions.Decision, System.Collections.Generic.IReadOnlyList<StubId.Server.Sessions.LadderStep>> Resolve (StubId.Server.Sessions.SessionContext context)
+
+type public sealed record StubId.Server.Sessions.LadderStep : System.IEquatable<StubId.Server.Sessions.LadderStep>
+  ctor (int Tier, string Name, string Outcome, string Reason)
+  property string Name { get; init; }
+  property string Outcome { get; init; }
+  property string Reason { get; init; }
+  property int Tier { get; init; }
+
+type public sealed record StubId.Server.Sessions.SessionContext : System.IEquatable<StubId.Server.Sessions.SessionContext>
+  ctor (string SessionId, string ClientId, string Scope, System.Collections.Generic.IReadOnlyDictionary<string, string> Parameters, System.DateTimeOffset Now)
+  property string ClientId { get; init; }
+  property System.DateTimeOffset Now { get; init; }
+  property System.Collections.Generic.IReadOnlyDictionary<string, string> Parameters { get; init; }
+  property string Scope { get; init; }
+  property string? SelectedCitizenId { get; init; }
+  property string SessionId { get; init; }
+
+type public enum StubId.Server.Sessions.SessionState : int
+  enum AwaitingApproval = 0
+  enum Approved = 1
+  enum Redeemed = 2
+  enum Failed = 3
+  enum Expired = 4
+
+type public sealed class StubId.Server.Sessions.SessionStore
+  ctor (System.TimeProvider clock, StubId.Server.Sessions.Ladder ladder)
+  method void Clear ()
+  method bool Decide (string id, StubId.Server.Sessions.Decision decision, string by)
+  method StubId.Server.Sessions.AuthSession? Find (string id)
+  method System.Collections.Generic.IReadOnlyList<StubId.Server.Sessions.AuthSession> Matching (string? state, string? clientId)
+  method StubId.Server.Sessions.AuthSession Park (StubId.Server.AuthorizationRequest request, StubId.Server.Sessions.SessionContext context)
+  property System.Collections.Generic.IReadOnlyCollection<StubId.Server.Sessions.AuthSession> All { get; }
+  property System.TimeSpan Timeout { get; init; }
+
+type public sealed class StubId.Server.Sessions.SimulationParameter : StubId.Server.Sessions.ISessionDecider
+  ctor (StubId.Server.Sessions.Citizens citizens)
+  method StubId.Server.Sessions.Decision? Decide (StubId.Server.Sessions.SessionContext context, out string& reason)
+  property string Name { get; }
+  property int Tier { get; }
+
+type public static class StubId.Server.StubIdApplication
+  method static Microsoft.Extensions.DependencyInjection.IServiceCollection AddStubId (Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Configuration.IConfiguration configuration)
+  method static Microsoft.AspNetCore.Builder.WebApplication UseStubId (Microsoft.AspNetCore.Builder.WebApplication app)
+
+type public sealed class StubId.Server.Tokens
+  ctor (StubId.Server.Keys keys, System.TimeProvider clock)
+  field const int AccessTokenLifetimeSeconds = 10800
+  field const int IdTokenLifetimeSeconds = 300
+  field const int SessionLifetimeSeconds = 16200
+  field const int TransactionTokenLifetimeSeconds = 189388800
+  method string IdToken (string issuer, StubId.Server.IssuedCode code, string? accessToken, string organization, string? authorizationCode = null)
+  method static string Subject (string organization, StubId.Server.Sessions.Citizen citizen)
+  method string TransactionTokenOcspResponse ()
+  method string TransactionToken (string issuer, StubId.Server.IssuedCode code, string organization)
+  method string UserInfoToken (string issuer, StubId.Server.IssuedCode code, string organization)
+  method System.Collections.Generic.IReadOnlyList<StubId.Wire.JsonClaim> UserInfo (string organization, StubId.Server.IssuedAccessToken token)
+
+# StubId.Testing
+
+type public sealed class StubId.Testing.StubIdBuilder : DotNet.Testcontainers.Builders.ContainerBuilder<StubId.Testing.StubIdBuilder, StubId.Testing.StubIdContainer, StubId.Testing.StubIdConfiguration>
+  ctor ()
+  ctor (DotNet.Testcontainers.Images.IImage image)
+  ctor (string image)
+  field const string StubIdImage = "ghcr.io/benne/stubid:2026.09.3"
+  field const ushort StubIdPort = 8080
+  field const ushort StubIdTlsPort = 8443
+  method virtual StubId.Testing.StubIdContainer Build ()
+  method virtual StubId.Testing.StubIdBuilder Clone (DotNet.Testcontainers.Configurations.IContainerConfiguration resourceConfiguration)
+  method virtual StubId.Testing.StubIdBuilder Clone (DotNet.Testcontainers.Configurations.IResourceConfiguration<Docker.DotNet.Models.CreateContainerParameters> resourceConfiguration)
+  method virtual StubId.Testing.StubIdBuilder Init ()
+  method virtual StubId.Testing.StubIdBuilder Merge (StubId.Testing.StubIdConfiguration oldValue, StubId.Testing.StubIdConfiguration newValue)
+  method StubId.Testing.StubIdBuilder WithAutomaticApproval (bool automatic)
+  method StubId.Testing.StubIdBuilder WithControllableClock (bool controllable = true)
+  method StubId.Testing.StubIdBuilder WithKeyVolume (DotNet.Testcontainers.Volumes.IVolume volume)
+  method StubId.Testing.StubIdBuilder WithKeyVolume (string name)
+  method StubId.Testing.StubIdBuilder WithPublicBaseUrl (System.Uri publicBaseUrl)
+  method StubId.Testing.StubIdBuilder WithTlsCertificate (byte[] pkcs12, string? password = null)
+  method StubId.Testing.StubIdBuilder WithTls (bool tls = true)
+  property StubId.Testing.StubIdConfiguration DockerResourceConfiguration { get; }
+
+type public sealed class StubId.Testing.StubIdConfiguration : DotNet.Testcontainers.Configurations.ContainerConfiguration
+  ctor (DotNet.Testcontainers.Configurations.IContainerConfiguration resourceConfiguration)
+  ctor (DotNet.Testcontainers.Configurations.IResourceConfiguration<Docker.DotNet.Models.CreateContainerParameters> resourceConfiguration)
+  ctor (StubId.Testing.StubIdConfiguration oldValue, StubId.Testing.StubIdConfiguration newValue)
+  ctor (StubId.Testing.StubIdConfiguration resourceConfiguration)
+  ctor (System.Uri? publicBaseUrl = null, bool? tls = null)
+  property System.Uri? PublicBaseUrl { get; }
+  property bool? Tls { get; }
+
+type public sealed class StubId.Testing.StubIdContainer : DotNet.Testcontainers.Containers.DockerContainer
+  ctor (StubId.Testing.StubIdConfiguration configuration)
+  method System.Net.Http.HttpClientHandler CreateTrustingHandler ()
+  method virtual System.Threading.Tasks.ValueTask DisposeAsyncCore ()
+  method System.Threading.Tasks.Task ResetAsync (System.Threading.CancellationToken ct = default)
+  property System.Uri Authority { get; }
+  property System.Uri BaseAddress { get; }
+  property StubId.Client.BehaviorApi Behavior { get; }
+  property StubId.Client.CitizenApi Citizens { get; }
+  property StubId.Client.StubIdClient Control { get; }
+  property System.Uri MappedAddress { get; }
+  property System.Security.Cryptography.X509Certificates.X509Certificate2? ServerCertificate { get; }
+  property StubId.Client.SessionApi Sessions { get; }
+  property StubId.Client.ClockApi Time { get; }
+
+type public sealed class StubId.Testing.StubIdContainerException : System.Exception
+  property string Stderr { get; }
+  property string Stdout { get; }
+
+# StubId.Wire
+
+type public static class StubId.Wire.Base64Url
+  method static byte[] Decode (string text)
+  method static string Encode (System.ReadOnlySpan<byte> bytes)
+  method static string Encode (string text)
+
+type public static class StubId.Wire.CertificateFactory
+  method static System.Security.Cryptography.X509Certificates.X509Certificate2 CreateOcspResponder (string commonName, System.DateTimeOffset notBefore, System.DateTimeOffset notAfter)
+  method static System.Security.Cryptography.X509Certificates.X509Certificate2 CreateServerCertificate (string commonName, System.Collections.Generic.IEnumerable<string> subjectAlternativeNames, System.DateTimeOffset notBefore, System.DateTimeOffset notAfter, int keySizeBits = 2048)
+  method static System.Security.Cryptography.X509Certificates.X509Certificate2 Create (string commonName, System.DateTimeOffset notBefore, System.DateTimeOffset notAfter, int keySizeBits = 2048)
+
+type public static class StubId.Wire.Cpr
+  method static string Generate (System.DateOnly dateOfBirth, StubId.Wire.Gender gender, int sequence = 0)
+  method static bool IsReplacementNumber (string cpr)
+
+type public enum StubId.Wire.Gender : int
+  enum Female = 0
+  enum Male = 1
+
+type public static class StubId.Wire.HashClaims
+  method static string Compute (string value)
+
+type public record struct StubId.Wire.JsonClaim : System.IEquatable<StubId.Wire.JsonClaim>
+  ctor (string Name, string RawJson)
+  method static StubId.Wire.JsonClaim Boolean (string name, bool value)
+  method static StubId.Wire.JsonClaim Number (string name, long value)
+  method static StubId.Wire.JsonClaim Raw (string name, string rawJson)
+  method static StubId.Wire.JsonClaim Strings (string name, string[] values)
+  method static StubId.Wire.JsonClaim String (string name, string value)
+  property string Name { get; init; }
+  property string RawJson { get; init; }
+
+type public static class StubId.Wire.JwksWriter
+  method static string Write (System.Collections.Generic.IEnumerable<StubId.Wire.SigningKey> keys)
+
+type public sealed class StubId.Wire.JwsWriter
+  ctor ()
+  method string Sign (System.Collections.Generic.IReadOnlyList<StubId.Wire.JsonClaim> claims, StubId.Wire.SigningKey key, string type = "JWT")
+
+type public sealed class StubId.Wire.KeyRing : System.IDisposable
+  ctor (System.Collections.Generic.IEnumerable<StubId.Wire.SigningKey> keys)
+  method StubId.Wire.SigningKey ByKid (string kid)
+  method void Dispose ()
+  method static StubId.Wire.KeyRing Load (System.Collections.Generic.IEnumerable<System.ValueTuple<byte[], string, StubId.Wire.KeyUse>> material)
+  method string ToJwks ()
+  property System.Collections.Generic.IReadOnlyList<StubId.Wire.SigningKey> Keys { get; }
+  property StubId.Wire.SigningKey Signing { get; }
+
+type public enum StubId.Wire.KeyUse : int
+  enum Signing = 0
+  enum Encryption = 1
+
+type public static class StubId.Wire.OcspWriter
+  field static System.TimeSpan Validity
+  method static byte[] Good (System.Security.Cryptography.X509Certificates.X509Certificate2 certificate, System.Security.Cryptography.X509Certificates.X509Certificate2 responder, System.DateTimeOffset producedAt)
+  method static byte[] KeyHash (System.Security.Cryptography.X509Certificates.X509Certificate2 certificate)
+
+type public static class StubId.Wire.Pkce
+  method static bool Verify (string verifier, string challenge, string method)
+
+type public sealed class StubId.Wire.SigningKey : System.IDisposable
+  ctor (System.Security.Cryptography.X509Certificates.X509Certificate2 certificate, StubId.Wire.KeyUse use)
+  method void Dispose ()
+  property System.Security.Cryptography.X509Certificates.X509Certificate2 Certificate { get; }
+  property string Kid { get; }
+  property System.Security.Cryptography.RSA PrivateKey { get; }
+  property System.Security.Cryptography.RSA PublicKey { get; }
+  property string UseValue { get; }
+  property StubId.Wire.KeyUse Use { get; }
+  property string X5c { get; }
+  property string X5t { get; }
+
+type public static class StubId.Wire.Uuid5
+  method static System.Guid Create (System.Guid namespace, string name)

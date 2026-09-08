@@ -12,9 +12,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Both ends of the agreement these tests check, and the only pairing that sees them: the
-         Testcontainers module names the image tag, the server's profile names the recording.
-         No other test project references both. -->
+    <!-- Every package this repository publishes, because PublicApiTests reflects over all seven
+         and a surface nothing references cannot be read. Server and Testing between them reach
+         Client, Wire, Abstractions and Profiles.Abstractions; InProcess is reachable from neither
+         and is named here for that reason alone. The pairing also carries the version agreement
+         these tests started with: the Testcontainers module names the image tag, the server's
+         profile names the recording. -->
+    <ProjectReference Include="../../src/StubId.InProcess/StubId.InProcess.csproj" />
     <ProjectReference Include="../../src/StubId.Server/StubId.Server.csproj" />
     <ProjectReference Include="../../src/StubId.Testing/StubId.Testing.csproj" />
   </ItemGroup>
