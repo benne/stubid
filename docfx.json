@@ -18,7 +18,12 @@
   ],
   "build": {
     "content": [
-      { "files": [ "**/*.{md,yml}" ], "src": "docs", "dest": "." }
+      {
+        "files": [ "**/*.{md,yml}" ],
+        "src": "docs",
+        "dest": ".",
+        "exclude": [ "research/**" ]
+      }
     ],
     "resource": [
       { "files": [ "favicon.ico", "logo.svg" ], "src": "docs", "dest": "." }

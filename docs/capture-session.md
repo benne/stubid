@@ -737,7 +737,7 @@ step 9 settles the reference-text naming and cannot touch this. The harness buil
 itself: everything above travels inside a JWT signed HS256 with the client secret, and the query
 carries only `client_id`, `response_type` and `request`. What the broker accepts here was
 measured rather than assumed — [what the broker does with a signed request
-object](research/signed-requests.md) — including that the object **must** carry `exp`, whose
+object](https://github.com/benne/stubid/blob/master/docs/research/signed-requests.md) — including that the object **must** carry `exp`, whose
 absence is refused with bytes identical to a forged signature.
 
 **Then stop and look at the token response before anything else: are the transaction-text claims
@@ -1212,7 +1212,7 @@ The harness could not send a signed request when Part 3 was written, so step 9b 
 unrunnable rather than skipped. It can now: the object is built HS256 over the client secret,
 the query keeps `client_id`, `response_type` and `request`, and what the broker does with one
 was measured rather than assumed —
-[what the broker does with a signed request object](research/signed-requests.md).
+[what the broker does with a signed request object](https://github.com/benne/stubid/blob/master/docs/research/signed-requests.md).
 
 Four things were fixed for this sitting specifically, each because it could have cost the
 authentication or the evidence:
@@ -1271,7 +1271,7 @@ beside the first.
 Take the step. The transaction text is on the broker's page, in a panel beside the MitID
 widget — read it there and check it word for word. Then expand the simulator's flow values and
 note what they say: on CAP-031 the text was not among them
-([what the screens showed](research/transaction-screens.md)), and a second look is what turns
+([what the screens showed](https://github.com/benne/stubid/blob/master/docs/research/transaction-screens.md)), and a second look is what turns
 one observation into a rule. Approve with the app simulator.
 
 Then stop, before anything else, and read the token response at `/staged`. Reaching the login

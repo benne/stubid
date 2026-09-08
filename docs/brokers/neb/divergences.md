@@ -85,7 +85,7 @@ which until it was taken was an inference from RFC 9126 and from CAP-019's other
 
 Three further causes earn the identical answer and stay a measurement rather than a recording:
 a flipped signature byte, a random key, and a missing `exp`, each on two clients and two runs
-([what the broker does with a signed request object](../../research/signed-requests.md)).
+([what the broker does with a signed request object](https://github.com/benne/stubid/blob/master/docs/research/signed-requests.md)).
 Recording one would mean committing a request object signed HS256 with the client secret, and a
 compact JWS like that is a known-plaintext HMAC tag over the secret that signed it — an offline
 oracle for it, in a public repository. The manual sitting reached the same conclusion from the
@@ -231,7 +231,7 @@ The broker's authorize page is built out of the request. Its MitID widget is hea
 hos` the relying party's registered display name, and on a signing request the transaction text
 stands in a panel beside the widget. StubID's login page carries the text — decoded, on
 StubID's own page rather than behind a simulated authenticator, which is where the broker put it
-too ([what the screens showed](../../research/transaction-screens.md)). It carries nothing else
+too ([what the screens showed](https://github.com/benne/stubid/blob/master/docs/research/transaction-screens.md)). It carries nothing else
 the request sent: no client name, no `client_id`, none of MitID's furniture.
 
 **Why the text and not the rest.** A person is being asked to approve something, and the text is

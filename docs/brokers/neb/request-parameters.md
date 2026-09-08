@@ -85,7 +85,7 @@ different: that fails with `mitid_simulation_unknown_user`.
 An authorization request packed into a JWT, which is how the broker wants a transaction text
 sent. There is no row for it in the table above, because the table's rows come from recordings
 and this one's refusals come from a measurement instead —
-[what the broker does with a signed request object](../../research/signed-requests.md), taken on
+[what the broker does with a signed request object](https://github.com/benne/stubid/blob/master/docs/research/signed-requests.md), taken on
 two clients and two runs.
 
 The broker verifies the signature: HS256 over the client secret, which is what discovery's
