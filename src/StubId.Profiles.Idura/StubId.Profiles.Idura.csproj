@@ -5,7 +5,7 @@
     <RootNamespace>StubId.Profiles.Idura</RootNamespace>
     <!-- Not published. Every route but the SDK's configuration probe answers 501, so a package
          would promise a broker it does not emulate. It exists to prove the seam can express a
-         second broker, and docs/roadmap.md defers the profile itself past 1.0. -->
+         second broker, and docs/roadmap.md lists the profile itself as out of scope. -->
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 

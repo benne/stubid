@@ -38,6 +38,8 @@
       href: capture-session.md
 - name: Releases
   items:
+    - name: What stays compatible
+      href: compatibility.md
     - name: Roadmap
       href: roadmap.md
     - name: Unreleased

@@ -8,7 +8,7 @@ Status of the first emulated surface, Signaturgruppen Broker ("Nets eID Broker")
 | M1 | Recordings that need no login (discovery, JWKS, error shapes) | done |
 | M1.5 | The manual recording pass (one login, signing, error paths) | done |
 | M2 | Token writer, keys, JWKS | done |
-| M3 | First working login: a stock ASP.NET Core app signs in — **v0.1** | done |
+| M3 | First working login: a stock ASP.NET Core app signs in | done |
 | M4 | Broker profile seam, routing, fidelity ledger | routes and ledger done; claims, errors and keys stay in the engine until a second broker is recorded, [on purpose](explanation/profile-seam.md) |
 | M5 | Sessions, approval resolution, citizens | done |
 | M6 | Full request surface, error fidelity, logout | done |
@@ -17,7 +17,7 @@ Status of the first emulated surface, Signaturgruppen Broker ("Nets eID Broker")
 | M9 | Transaction signing | done |
 | M10 | Release engineering | done |
 | M11 | Documentation site and generated broker reference | done |
-| M12 | v1.0 | not started |
+| M12 | A compatibility statement, and a public surface the build holds to it | done |
 
 Every instance serves an admin interface since 2026-09-05. It shows logins arriving and decides
 them, manages the people they sign in as and the decisions queued for them, and reads what the build
@@ -35,6 +35,21 @@ sign-in moved out of `tests/` beside it, and [one guide](guides/signing-in.md) r
 whichever of the four client stacks is theirs. Spring and the browser matrix keep the checks they
 already had; neither needed a sample, and the guide says which of the two signs in and which only
 resolves metadata.
+
+What a suite may rely on is written down since 2026-09-08, at
+[what stays compatible](compatibility.md). It names four surfaces that do not move together — the
+.NET API of the packages you install, the control API, the emulated broker's bytes, and the
+configuration and container contract — and says which of them carries a promise and which
+deliberately does not. The .NET half is enforced rather than asserted: the public surface of every
+published package is composed by reflection into a committed file, and a member that the last
+release published, that is gone now, and that did not carry `[Obsolete]` when it shipped fails the
+build. Before this nothing noticed a removed public member at all.
+
+That milestone was called "v1.0" from the scaffolding commit until somebody asked what it would
+mean. It turned out to be the wrong shape of question: the version here is a date, argued for in
+print in the first release notes, and a tag that is not the version the build declares is refused.
+What a 1.0 is normally for is the page above, so the number is gone from the roadmap rather than
+deferred again.
 
 There is a documentation site since 2026-09-07, at [stubid.dev](https://stubid.dev/). It carries
 the guides, the broker reference, the research notes and an API reference generated from the doc
@@ -64,7 +79,7 @@ browser to the client with a code, and so does a decision made through the contr
 browser comes back for it. Until then a parked login was a dead end, and every guide told readers
 to queue an outcome rather than click through.
 
-Deferred past 1.0 on purpose: hosted multi-tenant service and its accounts, CIBA, PAdES
+Out of scope on purpose: hosted multi-tenant service and its accounts, CIBA, PAdES
 document wrapping, the Idura profile, and NemLog-in / OIOSAML.
 
 The transaction token's text claims are recorded. A second sitting on 2026-09-02 sent a signed
