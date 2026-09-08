@@ -101,9 +101,12 @@ public class SpellingTests
     /// Matched as whole words, not as substrings: an entry allows the word it names and nothing
     /// that merely contains it.
     /// <para>
-    /// The first group is Danish and the second is somebody else's identifier. Both are permanent,
-    /// and after 2026.09.3 they are the whole list: the entries that were here for the aliases the
-    /// US-English conversion kept went with them.
+    /// The first group is Danish and the second is somebody else's identifier. The third is the
+    /// name of a type that existed and was deleted: a page describing what a release removed has
+    /// to be able to say what it was called, and the compatibility statement names this one
+    /// because it is the counterexample to the deprecation promise rather than an illustration of
+    /// it. All three are permanent. The entries that were here for the aliases the US-English
+    /// conversion kept are not among them - those went with the aliases in 2026.09.3.
     /// </para>
     /// </remarks>
     private static readonly string[] Allowed =
@@ -111,6 +114,8 @@ public class SpellingTests
         "Digitaliseringsstyrelsen",
         "kodeviser",
         "organizationIdentifier",
+
+        "BehaviourApi",
     ];
 
     /// <summary>

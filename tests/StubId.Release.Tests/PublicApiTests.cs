@@ -1,3 +1,5 @@
+using System.Reflection;
+
 namespace StubId.Release.Tests;
 
 /// <summary>
@@ -135,6 +137,47 @@ public class PublicApiTests
             + string.Join(Environment.NewLine, gone)
             + $"{Environment.NewLine}{Environment.NewLine}"
             + "Deprecate them for a release, or record the break in Allowed with the reason.");
+    }
+
+    /// <summary>A deprecation says which one it is, and where the reason is written.</summary>
+    /// <remarks>
+    /// The one deprecation this project has performed did not do this, and the omission mattered.
+    /// A bare <c>[Obsolete]</c> raises CS0618, which is the same diagnostic every other
+    /// deprecation in a consumer's tree raises - so a consumer building with warnings as errors,
+    /// as this repository itself does, could only suppress all of them or none. For them the
+    /// release that was supposed to be a grace period was already a hard break, and the promise
+    /// made on the compatibility page would have been one they could not act on.
+    /// <para>
+    /// A <c>DiagnosticId</c> makes the warning suppressible on its own, and a <c>UrlFormat</c>
+    /// puts the reason one click away. Nothing is deprecated today, so this passes with nothing
+    /// to check - it exists to bind the next one, which is the only time it can be got wrong.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void Every_deprecation_can_be_suppressed_on_its_own()
+    {
+        var bare = PublicSurface.Published
+            .SelectMany(assembly => assembly.GetTypes())
+            .SelectMany(type => type.GetMembers(
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance
+                | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.DeclaredOnly))
+            .Select(member => (member, obsolete: member.GetCustomAttribute<ObsoleteAttribute>()))
+            .Where(found => found.obsolete is not null)
+            // The compiler puts one of these on the parameterless constructor of a record with a
+            // required member, to keep an older compiler away. It is not a deprecation of ours.
+            .Where(found => found.member
+                .GetCustomAttribute<System.Runtime.CompilerServices
+                    .CompilerFeatureRequiredAttribute>() is null)
+            .Where(found => string.IsNullOrEmpty(found.obsolete!.DiagnosticId)
+                || string.IsNullOrEmpty(found.obsolete.UrlFormat))
+            .Select(found => $"{found.member.DeclaringType?.FullName}.{found.member.Name}")
+            .ToList();
+
+        Assert.True(bare.Count == 0,
+            "These are deprecated without a DiagnosticId or a UrlFormat, so a consumer building "
+            + "with warnings as errors cannot suppress this one deprecation for the release it is "
+            + $"meant to give them:{Environment.NewLine}"
+            + string.Join(Environment.NewLine, bare));
     }
 
     /// <summary>The shipped surface is the one this version is going to publish.</summary>

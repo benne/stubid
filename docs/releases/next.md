@@ -55,3 +55,41 @@ so an exemption cannot outlive what it excused. The door is empty today.
 
 None of this changes what any package does. What it changes is that the next time this project
 breaks something, it will be on purpose.
+
+## There is a compatibility statement, and no 1.0
+
+The roadmap promised a 1.0 from the scaffolding commit onward, and nobody had asked what it would
+mean. It turns out to be the wrong shape of question: this project's version is a date, argued for
+in print in the first release notes, and the release workflow refuses a tag that is not the version
+the build declares. What a 1.0 is normally *for* — telling somebody what they may depend on — is
+now [a page of its own](https://stubid.dev/compatibility.html), and the number is gone from the
+roadmap and the README rather than deferred again.
+
+It names four surfaces that do not move together: the .NET API of the packages you install, which
+is stable and enforced by the surface baseline; the control API under `/_stubid/v1`, which is
+stable; the emulated broker under `/op`, which is deliberately not, because getting closer to the
+broker changes bytes and that is the point of the project rather than a regression in it; and the
+configuration and container contract. It is equally explicit about what carries no promise — the
+substrate packages, the admin pages, and the two escape hatches, `StubIdHost.Services` and
+`StubIdClient.Http`, named outright, because a boundary that excludes `StubId.Server` while a
+documented property hands you every type in it is not a boundary.
+
+Three things it says that are worth repeating here.
+
+**No fidelity correction has shipped yet.** The argument the dated version scheme rests on is the
+reason for the scheme, not a description of anything that has happened: across three releases the
+recordings have not moved.
+
+**The one deprecation this project has performed is a counterexample as well as an example.** The
+US-English conversion renamed eight surfaces; seven got a release of notice and the eighth,
+`BehaviourApi`, was deleted outright from `StubId.Client` with none. The rule added alongside this
+page would have failed the build on it.
+
+**A bare `[Obsolete]` was never a grace period for everyone.** It raises the same diagnostic as
+every other deprecation in a consumer's tree, so anyone building with warnings as errors — as this
+repository does — could suppress all of them or none. A test now fails on a deprecation carrying no
+identifier and no link, so the next one is suppressible on its own.
+
+The page also carries a correction the dated notes cannot: the first release said the floating
+`2026.09` tag moves to the next release *recorded* in the same month. 2026.09.2 recorded nothing
+and the tag moved anyway. It moves to the next release in the same month, recorded or not.

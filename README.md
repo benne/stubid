@@ -12,7 +12,9 @@ it is strictest about. Tests can create citizens, decide how each login resolves
 clock to force a timeout, and a .NET suite can drive all of that from code — against a container,
 or against an instance hosted inside the test process with no Docker at all. Every instance also
 serves pages that show logins arriving, decide them by hand, and say what the build emulates. What
-is missing is a 1.0. The documentation is at [stubid.dev](https://stubid.dev/), and
+a suite may rely on, and what will move under it, is written down at
+[what stays compatible](https://stubid.dev/compatibility.html). The documentation is at
+[stubid.dev](https://stubid.dev/), and
 [the roadmap](https://github.com/benne/stubid/blob/master/docs/roadmap.md) says what is left.
 
 ## The problem
