@@ -36,9 +36,7 @@ tokens, the refusals, the request parameters, and every place StubID differs on 
 here belong to nobody by construction. [The profile seam](explanation/profile-seam.md) explains
 what is behind the broker abstraction and what deliberately is not yet.
 
-The [research notes](research/day-zero-probes.md) are the measurements the reference is built on,
-dated and kept as written. [The capture session](capture-session.md) is the runbook for taking a
-new recording.
+[The capture session](capture-session.md) is the runbook for taking a new recording.
 
 ## The API
 

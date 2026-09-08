@@ -47,6 +47,69 @@ public class SiteTests
             + $"Nothing is at docs/{named}, so it resolves to nothing and docfx will not say so.");
     }
 
+    /// <summary>The globs docfx is told not to build, as path prefixes under <c>docs/</c>.</summary>
+    /// <remarks>
+    /// Read out of <c>docfx.json</c> rather than listed here, so the navigation guard and the site
+    /// build cannot disagree about which pages the site has. A page excluded from the build is not
+    /// on the site at all, so requiring it in a table of contents would demand a navigation entry
+    /// that resolves to nothing.
+    /// <para>
+    /// What is excluded is <c>research/</c>: the measurements the broker reference was built from,
+    /// which are working notes rather than documentation for somebody using the emulator. They stay
+    /// in the repository, and cannot leave it - the fidelity ledger names
+    /// <c>docs/research/signed-requests.md</c> as evidence on two annotations, and that string is
+    /// served at <c>GET /_stubid/v1/fidelity</c>, so moving the file would change an answer on the
+    /// wire. The pages that still cite them link by full URL.
+    /// </para>
+    /// <para>
+    /// Only the trailing <c>/**</c> form is understood, because it is the only form used. A glob
+    /// this cannot read fails here rather than being quietly ignored, which would turn an exclusion
+    /// into a way of losing a page.
+    /// </para>
+    /// </remarks>
+    private static string[] NotBuilt()
+    {
+        using var config = JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(Repository.Root, "docfx.json")));
+
+        var globs = config.RootElement
+            .GetProperty("build").GetProperty("content").EnumerateArray()
+            .SelectMany(entry => entry.TryGetProperty("exclude", out var exclude)
+                ? exclude.EnumerateArray().Select(glob => glob.GetString()!)
+                : Enumerable.Empty<string>())
+            .ToArray();
+
+        foreach (var glob in globs)
+        {
+            Assert.True(glob.EndsWith("/**", StringComparison.Ordinal),
+                $"docfx.json excludes \"{glob}\", which this guard cannot read. Only a trailing "
+                + "/** is understood; widen it here before widening it there.");
+        }
+
+        return [.. globs.Select(glob => glob[..^2])];
+    }
+
+    /// <summary>Nothing is excluded from the site that is not there to exclude.</summary>
+    /// <remarks>
+    /// The other direction. An exclusion outliving the pages it was written for is an instruction
+    /// nobody is following, and the next person to add a page under that prefix loses it silently.
+    /// </remarks>
+    [Fact]
+    public void Every_exclusion_still_covers_pages_that_exist()
+    {
+        var docs = Path.Combine(Repository.Root, "docs");
+
+        foreach (var prefix in NotBuilt())
+        {
+            Assert.True(
+                Directory.Exists(Path.Combine(docs, prefix))
+                && Directory.EnumerateFiles(
+                    Path.Combine(docs, prefix), "*.md", SearchOption.AllDirectories).Any(),
+                $"docfx.json excludes docs/{prefix} from the site and there is nothing there. "
+                + "Drop the exclusion rather than leaving it to catch a page somebody adds later.");
+        }
+    }
+
     /// <summary>Every page under <c>docs/</c> is somewhere in the navigation.</summary>
     /// <remarks>
     /// The API pages are the exception and are not listed here: docfx writes them from the doc
@@ -62,10 +125,13 @@ public class SiteTests
             Directory.EnumerateFiles(docs, "toc.yml", SearchOption.AllDirectories)
                 .Select(File.ReadAllText));
 
+        var notBuilt = NotBuilt();
+
         var unreachable = Directory
             .EnumerateFiles(docs, "*.md", SearchOption.AllDirectories)
             .Select(full => Path.GetRelativePath(docs, full).Replace('\\', '/'))
             .Where(page => !page.StartsWith("api/", StringComparison.Ordinal))
+            .Where(page => !notBuilt.Any(prefix => page.StartsWith(prefix, StringComparison.Ordinal)))
             .Where(page => !navigation.Contains($"href: {page}", StringComparison.Ordinal))
             .OrderBy(page => page, StringComparer.Ordinal)
             .ToList();

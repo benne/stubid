@@ -147,7 +147,7 @@ either spelling works and one matching both sees each value twice.
 Six member names in the token, and none among the flow values MitID held for the same
 transaction — those carried the service provider's name, a reference text and a reference text
 header, not this text. The broker rendered it on its own page instead:
-[what the screens showed](../../research/transaction-screens.md).
+[what the screens showed](https://github.com/benne/stubid/blob/master/docs/research/transaction-screens.md).
 
 The digest is over the **decoded** text rather than the base64 that was sent, and it is base64
 of the hash — standard alphabet, padded — not hex.

@@ -34,16 +34,6 @@
       href: explanation/cpr-and-test-data.md
     - name: The broker profile seam
       href: explanation/profile-seam.md
-- name: Research
-  items:
-    - name: Day-zero probes
-      href: research/day-zero-probes.md
-    - name: Observed tokens
-      href: research/observed-tokens.md
-    - name: Signed requests
-      href: research/signed-requests.md
-    - name: Transaction screens
-      href: research/transaction-screens.md
     - name: The capture session
       href: capture-session.md
 - name: Releases

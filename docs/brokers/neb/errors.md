@@ -74,7 +74,7 @@ recorded — a flipped signature byte, a random key, and a missing `exp` claim, 
 a probe that omits `exp` fails its own negative control and reads as "signed requests do not work
 here". They stay a measurement because recording one means committing a request object signed
 HS256 with the client secret, and such a token is a known-plaintext HMAC tag over that secret:
-[what the broker does with a signed request object](../../research/signed-requests.md).
+[what the broker does with a signed request object](https://github.com/benne/stubid/blob/master/docs/research/signed-requests.md).
 
 StubID checks that the object can be read and not who signed it, so it answers this for a
 malformed object and accepts a forged one. See
