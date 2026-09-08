@@ -70,6 +70,17 @@ jobs:
               echo "::error::${notes} does not exist, and the GitHub release is written from it"
               exit 1; }
 
+            # The surface this tag publishes has to be the one recorded as shipped, because the
+            # next release compares against it to decide whether something went without notice.
+            # PublicApiTests already fails in the release pull request when the header names an
+            # older version; this is the narrower case of a header rewritten while the body was
+            # left behind, which nothing before the tag would see.
+            surface=tests/StubId.Release.Tests/PublicApi
+            diff <(tail -n +3 "${surface}.shipped.txt") "${surface}.current.txt" || {
+              echo "::error::${surface}.shipped.txt is not the surface being released. Rewrite it:"
+              echo "::error::  STUBID_UPDATE_API=1 dotnet test tests/StubId.Release.Tests"
+              exit 1; }
+
             [ "${{ inputs.dry_run }}" = true ] || publish=true
           fi
 

@@ -35,3 +35,23 @@ shorter.
 
 The runbook for taking a recording stays on the site, under Explanation rather than beside the
 notes it is not one of.
+
+## The public surface is written down, and the build holds it
+
+Every package this repository publishes now has its public API recorded as text, and a test that
+fails when the assemblies and the file disagree. Until now nothing noticed a removed public
+member: the six spelling aliases deleted in 2026.09.3 went without a single test failing, because
+the only code that had used them was deleted in the same commit.
+
+There are two files rather than one. One is the surface as it stands, rewritten whenever it
+changes. The other is the surface the last release published, rewritten only when a release is
+cut. Comparing them is what turns "deprecated for one release before removal" from a sentence
+into a rule: a member that the last release published, that is gone now, and that did not carry
+`[Obsolete]` when it shipped, fails the build and is named.
+
+There is a door for a break that is decided rather than accidental — it takes an entry carrying
+its reason, and a second test fails when an entry stops describing a break that really happened,
+so an exemption cannot outlive what it excused. The door is empty today.
+
+None of this changes what any package does. What it changes is that the next time this project
+breaks something, it will be on purpose.
