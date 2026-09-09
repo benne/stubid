@@ -232,10 +232,16 @@ different substring and there is nothing stable to search for. The scrubber deco
 base64, applies the same redactions, and encodes it again. Base64 that is not text — a signature,
 a hash, a key — is left byte for byte alone.
 
+**Two claims are blanked by name**, with nothing configured and nothing to remember:
+`transaction_client_ip` and `mitid.geo_ip_distance_km`. Both describe the client rather than the
+broker, and neither value can be known before a sitting starts — one is handed out by a router, the
+other computed per login — so a redaction keyed on the value would be correct once and silent
+afterwards. Blanking by name is safe because StubID reproduces neither: it serves the address the
+calling request arrived from, and a constant for the distance. What a recording has to preserve is
+that the claim is there, in that slot, as a string.
+
 The scrubber also resolves the single sign-on and hybrid client registrations from their own
-settings, which it did not before. And `mitid.geo_ip_distance_km` is emitted as zero rather than a
-recorded distance: the claim is derived from the client's connection, and what this reproduces is
-that it is present, in that slot, as a string.
+settings, which it did not before.
 
 **What this changes for a consumer: nothing.** No claim was added or removed, no key moved, and no
 type changed.
