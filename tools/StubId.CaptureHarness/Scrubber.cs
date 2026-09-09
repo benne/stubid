@@ -39,6 +39,27 @@ public static partial class Scrubber
     ];
 
     /// <summary>
+    /// Claims that describe the client rather than the broker, blanked wherever they appear.
+    /// </summary>
+    /// <remarks>
+    /// By name and not by value, which is what makes these different from everything else here.
+    /// A redaction keyed on a value needs somebody to know the value first, and neither of these
+    /// is knowable in advance: an address can be handed out fresh by a router, and the distance is
+    /// computed per sitting. A rule written against either would be right once.
+    /// <para>
+    /// Blanking by name is safe precisely because StubID reproduces neither. The address it serves
+    /// is the one the calling request arrived from, and the distance is a constant, so no recorded
+    /// value is load-bearing - what a recording has to preserve is that the claim is there, in that
+    /// slot, as a string.
+    /// </para>
+    /// </remarks>
+    private static readonly (string Claim, string Placeholder)[] ClientClaims =
+    [
+        ("transaction_client_ip", "{{CLIENT_IP}}"),
+        ("mitid.geo_ip_distance_km", "{{GEO_IP_DISTANCE_KM}}"),
+    ];
+
+    /// <summary>
     /// Substitutes real credentials into a value about to be sent. Throws rather than
     /// sending a placeholder to the broker, which would record a confusing 400 instead of
     /// the exchange the case is meant to capture.
@@ -101,6 +122,16 @@ public static partial class Scrubber
         Func<string, string?> resolve,
         IEnumerable<(string Placeholder, string Value)> redactions)
     {
+        // First, and without consulting any configuration: these two are blanked by name.
+        text = ClientClaimPattern().Replace(text, match =>
+        {
+            var placeholder = ClientClaims
+                .First(claim => claim.Claim == match.Groups[1].Value)
+                .Placeholder;
+
+            return $"\"{match.Groups[1].Value}\":\"{placeholder}\"";
+        });
+
         foreach (var (placeholder, setting) in Credentials)
         {
             var value = resolve(setting);
@@ -202,6 +233,17 @@ public static partial class Scrubber
     /// </summary>
     public static Match FindUnscrubbedCredential(string candidate) =>
         UnscrubbedCredentialPattern().Match(candidate);
+
+    /// <summary>
+    /// Either claim that describes the client, with whatever value it was given.
+    /// </summary>
+    /// <remarks>
+    /// The value alternative accepts a number as well as a string, because a broker that stopped
+    /// quoting one of these would otherwise slip through a pattern written for the form it happens
+    /// to send today.
+    /// </remarks>
+    [GeneratedRegex("\"(transaction_client_ip|mitid\\.geo_ip_distance_km)\"\\s*:\\s*(\"[^\"]*\"|[-0-9.]+)")]
+    private static partial Regex ClientClaimPattern();
 
     /// <summary>A JSON string value that is entirely base64, which is how a claim carries text.</summary>
     [GeneratedRegex("\"([A-Za-z0-9+/]{16,}={0,2})\"")]

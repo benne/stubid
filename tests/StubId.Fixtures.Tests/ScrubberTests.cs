@@ -143,6 +143,44 @@ public class ScrubberTests
         Assert.Contains("modtager dit CPR-nummer.", Decode(scrubbed), StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The two claims that describe the client are blanked with nothing configured.
+    /// </summary>
+    /// <remarks>
+    /// The resolver returns nothing and the redact list is empty on purpose: these are the only
+    /// redactions that hold on a machine nobody has configured. Both values are unknowable in
+    /// advance - a router hands out one, the broker computes the other per sitting - so a rule
+    /// keyed on the value would be right once and silent afterwards.
+    /// </remarks>
+    [Theory]
+    [InlineData("""{"transaction_client_ip":"198.51.100.7"}""", "{{CLIENT_IP}}", "198.51.100.7")]
+    [InlineData("""{"mitid.geo_ip_distance_km":"8396"}""", "{{GEO_IP_DISTANCE_KM}}", "8396")]
+    // Unquoted, in case a broker ever stops sending the distance as a string.
+    [InlineData("""{"mitid.geo_ip_distance_km":8396}""", "{{GEO_IP_DISTANCE_KM}}", "8396")]
+    public void A_claim_describing_the_client_is_blanked_with_nothing_configured(
+        string body, string placeholder, string original)
+    {
+        var scrubbed = Scrubber.Scrub(body, _ => null, []);
+
+        Assert.Contains(placeholder, scrubbed, StringComparison.Ordinal);
+        Assert.DoesNotContain(original, scrubbed, StringComparison.Ordinal);
+    }
+
+    /// <summary>A signed token is not rewritten on its way past.</summary>
+    /// <remarks>
+    /// The claim lives inside the transaction token too, and that token is signed. Decoding it to
+    /// blank a claim would leave a signature over bytes that are no longer there - a recording
+    /// that cannot be verified is worse than one that carries a value. The signed form is replaced
+    /// whole, elsewhere; this only has to leave it alone.
+    /// </remarks>
+    [Fact]
+    public void A_signed_token_carrying_the_claim_is_left_alone()
+    {
+        const string token = "eyJhbGciOiJSUzI1NiJ9.eyJ0cmFuc2FjdGlvbl9jbGllbnRfaXAiOiIxOTguNTEuMTAwLjcifQ.c2ln";
+
+        Assert.Equal(token, Scrubber.Scrub(token, _ => null, []));
+    }
+
     /// <summary>Base64 that is not readable text is left exactly as it was.</summary>
     /// <remarks>
     /// A signature, a hash and a key are all base64 and none of them is a sentence. Decoding and
