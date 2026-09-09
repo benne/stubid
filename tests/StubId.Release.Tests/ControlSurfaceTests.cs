@@ -6,7 +6,8 @@ namespace StubId.Release.Tests;
 /// The control API's own field names, held to a file, because nothing else held them.
 /// </summary>
 /// <remarks>
-/// The .NET surface has had a baseline since 2026.09.3 and the JSON one had nothing. Field names
+/// The .NET surface got a baseline in the same release as this one, and the JSON one had none.
+/// Field names
 /// are derived from property names by a naming policy and almost every test reads them back
 /// through the typed client's own records, so renaming a property renamed both sides at once and
 /// the suite stayed green - while a caller written in anything but .NET broke. That gap was

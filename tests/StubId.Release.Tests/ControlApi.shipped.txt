@@ -1,4 +1,4 @@
-# shipped 2026.09.3
+# shipped 2026.09.4
 
 GET /_stubid/health/live -> 200 (no body)
 
@@ -81,6 +81,8 @@ GET /_stubid/v1/fidelity -> 200
   entries[].reason
   entries[].subject
   entries[].tier
+  profile.broker
+  profile.version
 
 GET /_stubid/v1/issued -> 200
   issued[].authenticatedAt

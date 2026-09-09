@@ -156,7 +156,7 @@ waited on it.
 The module runs the published image by default. Point it somewhere else with the constructor:
 
 ```csharp
-new StubIdBuilder("ghcr.io/benne/stubid:2026.09.3")
+new StubIdBuilder("ghcr.io/benne/stubid:2026.09.4")
 ```
 
 Pin a version. Fidelity corrections change what StubID puts on the wire, and a suite asserting on
@@ -164,8 +164,8 @@ those bytes is a suite a floating tag can break.
 
 The same release is spelled two ways, and both are correct. The container tag keeps its padding,
 because tags sort as text and `2026.09` precedes `2026.10` where `2026.9` would not. NuGet reads a
-version as numbers and drops the zero, so the package is `2026.9.3` — which is what a bare
-`dotnet add package` writes into a project file. Asking for `--version 2026.09.3` resolves the same
+version as numbers and drops the zero, so the package is `2026.9.4` — which is what a bare
+`dotnet add package` writes into a project file. Asking for `--version 2026.09.4` resolves the same
 package and is written back the way you typed it.
 
 ## What a test run costs

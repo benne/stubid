@@ -47,7 +47,7 @@ what is behind the broker abstraction and what deliberately is not yet.
 
 [What stays compatible](compatibility.md) says what a suite can rely on, what will move, and what
 happens before it moves. [The roadmap](roadmap.md) says what is done and what is not.
-[The releases](releases/2026.09.3.md) say what changed, and the version is a date for the reason
+[The releases](releases/2026.09.4.md) say what changed, and the version is a date for the reason
 the first one gives.
 
 StubID is not affiliated with, endorsed by, or connected to Nets, Signaturgruppen,

@@ -160,7 +160,7 @@ public class FixtureGuardTests
     private static readonly Dictionary<string, string> MayContainObjectIdentifiers = new()
     {
         ["tools/StubId.CaptureHarness/Ocsp.cs"] =
-            "X.509 object identifiers for the OCSP request it builds, one of which - the "
+            "X.509 object identifiers for the OCSP responses it decodes, one of which - the "
             + "authority key identifier - has four arcs and so reads as an address.",
     };
 

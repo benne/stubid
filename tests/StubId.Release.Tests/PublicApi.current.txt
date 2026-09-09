@@ -687,7 +687,7 @@ type public sealed class StubId.Testing.StubIdBuilder : DotNet.Testcontainers.Bu
   ctor ()
   ctor (DotNet.Testcontainers.Images.IImage image)
   ctor (string image)
-  field const string StubIdImage = "ghcr.io/benne/stubid:2026.09.3"
+  field const string StubIdImage = "ghcr.io/benne/stubid:2026.09.4"
   field const ushort StubIdPort = 8080
   field const ushort StubIdTlsPort = 8443
   method virtual StubId.Testing.StubIdContainer Build ()
