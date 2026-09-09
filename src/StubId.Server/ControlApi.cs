@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Time.Testing;
 using StubId.Abstractions;
+using StubId.Profiles;
 using StubId.Server.Sessions;
 using StubId.Wire;
 
@@ -19,8 +20,17 @@ public static class ControlApi
     {
         var api = app.MapGroup("/_stubid/v1");
 
-        api.MapGet("/fidelity", () => Results.Json(new
+        // Which recording is being served, ahead of the ledger of what it admits to: the same
+        // question at a coarser grain. A suite told to pin a version because it asserts on
+        // recorded bytes is pinning this one, and until now no running instance would say which
+        // one it had - the build version it could get from the image tag, and this from nowhere.
+        api.MapGet("/fidelity", (IBrokerProfile profile) => Results.Json(new
         {
+            profile = new
+            {
+                broker = profile.Id.Broker,
+                version = profile.Id.Version,
+            },
             entries = FidelityLedger.Read(FidelityLedger.Sources),
         }));
 

@@ -34,9 +34,9 @@ type public sealed class StubId.Client.CitizenApi
   ctor (System.Net.Http.HttpClient http)
   method System.Threading.Tasks.Task<StubId.Client.StubIdCitizen> CreateAsync (StubId.Client.CitizenSpec spec, System.Threading.CancellationToken ct = default)
   method System.Threading.Tasks.Task<bool> DeleteAsync (string id, System.Threading.CancellationToken ct = default)
-  method System.Threading.Tasks.Task<StubId.Client.StubIdCitizen> FindAsync (string id, System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task<StubId.Client.StubIdCitizen?> FindAsync (string id, System.Threading.CancellationToken ct = default)
   method System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<StubId.Client.StubIdCitizen>> ListAsync (System.Threading.CancellationToken ct = default)
-  method System.Threading.Tasks.Task<StubId.Client.StubIdCitizen> SetRuleAsync (string id, string? rule, System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task<StubId.Client.StubIdCitizen?> SetRuleAsync (string id, string? rule, System.Threading.CancellationToken ct = default)
 
 type public sealed record StubId.Client.CitizenSpec : System.IEquatable<StubId.Client.CitizenSpec>
   property required System.DateOnly DateOfBirth { get; init; }
@@ -120,16 +120,16 @@ type public sealed record StubId.Client.RegisteredClient : System.IEquatable<Stu
 type public sealed class StubId.Client.RuntimeApi
   ctor (System.Net.Http.HttpClient http)
   method System.Threading.Tasks.Task<StubId.Client.StubIdApproval> GetAutomaticApprovalAsync (System.Threading.CancellationToken ct = default)
-  method System.Threading.Tasks.Task<System.Uri> GetPublicBaseUrlAsync (System.Threading.CancellationToken ct = default)
-  method System.Threading.Tasks.Task<System.Security.Cryptography.X509Certificates.X509Certificate2> GetTlsCertificateAsync (System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task<System.Uri?> GetPublicBaseUrlAsync (System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task<System.Security.Cryptography.X509Certificates.X509Certificate2?> GetTlsCertificateAsync (System.Threading.CancellationToken ct = default)
   method System.Threading.Tasks.Task<StubId.Client.StubIdApproval> SetAutomaticApprovalAsync (bool? enabled, System.Threading.CancellationToken ct = default)
   method System.Threading.Tasks.Task<System.Uri> SetPublicBaseUrlAsync (System.Uri value, System.Threading.CancellationToken ct = default)
 
 type public sealed class StubId.Client.SessionApi
   ctor (System.Net.Http.HttpClient http)
   method System.Threading.Tasks.Task<StubId.Client.DecisionOutcome> ApproveAsync (string id, string? citizenId = null, System.Threading.CancellationToken ct = default)
-  method System.Threading.Tasks.Task<StubId.Client.SessionExplanation> ExplainAsync (string id, System.Threading.CancellationToken ct = default)
-  method System.Threading.Tasks.Task<StubId.Client.StubIdSession> FindAsync (string id, System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task<StubId.Client.SessionExplanation?> ExplainAsync (string id, System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task<StubId.Client.StubIdSession?> FindAsync (string id, System.Threading.CancellationToken ct = default)
   method System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<StubId.Client.StubIdSession>> ListAsync (StubId.Client.SessionState? state = null, string? clientId = null, System.Threading.CancellationToken ct = default)
   method System.Threading.Tasks.Task<StubId.Client.DecisionOutcome> RejectAsync (string id, string errorCode = "mitid_user_aborted", string error = "access_denied", System.Threading.CancellationToken ct = default)
 
@@ -174,6 +174,7 @@ type public sealed class StubId.Client.StubIdClient : System.IDisposable
   method System.Threading.Tasks.Task<bool> IsLiveAsync (System.Threading.CancellationToken ct = default)
   method System.Threading.Tasks.Task<bool> IsReadyAsync (System.Threading.CancellationToken ct = default)
   method System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<StubId.Client.IssuedArtifact>> IssuedAsync (System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task<StubId.Client.StubIdProfile?> ProfileAsync (System.Threading.CancellationToken ct = default)
   method System.Threading.Tasks.Task ResetAsync (System.Threading.CancellationToken ct = default)
   method System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<StubId.Client.EmulatedRoute>> RoutesAsync (System.Threading.CancellationToken ct = default)
   property StubId.Client.BehaviorApi Behavior { get; }
@@ -196,6 +197,11 @@ type public sealed class StubId.Client.StubIdException : System.Exception
 type public enum StubId.Client.StubIdGender : int
   enum Female = 0
   enum Male = 1
+
+type public sealed record StubId.Client.StubIdProfile : System.IEquatable<StubId.Client.StubIdProfile>
+  ctor (string Broker, string Version)
+  property string Broker { get; init; }
+  property string Version { get; init; }
 
 type public sealed record StubId.Client.StubIdSession : System.IEquatable<StubId.Client.StubIdSession>
   ctor (string Id, string ClientId, StubId.Client.SessionState State, string? CitizenId, string? ErrorCode, System.DateTimeOffset CreatedAt, System.DateTimeOffset Deadline, System.DateTimeOffset? DecidedAt, string? OauthError = null, int Version = 0)
@@ -616,7 +622,7 @@ type public interface StubId.Server.Sessions.ISessionDecider
 
 type public sealed class StubId.Server.Sessions.Ladder
   ctor (System.Collections.Generic.IEnumerable<StubId.Server.Sessions.ISessionDecider> deciders)
-  method System.ValueTuple<StubId.Server.Sessions.Decision, System.Collections.Generic.IReadOnlyList<StubId.Server.Sessions.LadderStep>> Resolve (StubId.Server.Sessions.SessionContext context)
+  method System.ValueTuple<StubId.Server.Sessions.Decision?, System.Collections.Generic.IReadOnlyList<StubId.Server.Sessions.LadderStep>> Resolve (StubId.Server.Sessions.SessionContext context)
 
 type public sealed record StubId.Server.Sessions.LadderStep : System.IEquatable<StubId.Server.Sessions.LadderStep>
   ctor (int Tier, string Name, string Outcome, string Reason)
@@ -769,7 +775,7 @@ type public sealed class StubId.Wire.KeyRing : System.IDisposable
   ctor (System.Collections.Generic.IEnumerable<StubId.Wire.SigningKey> keys)
   method StubId.Wire.SigningKey ByKid (string kid)
   method void Dispose ()
-  method static StubId.Wire.KeyRing Load (System.Collections.Generic.IEnumerable<System.ValueTuple<byte[], string, StubId.Wire.KeyUse>> material)
+  method static StubId.Wire.KeyRing Load (System.Collections.Generic.IEnumerable<System.ValueTuple<byte[], string?, StubId.Wire.KeyUse>> material)
   method string ToJwks ()
   property System.Collections.Generic.IReadOnlyList<StubId.Wire.SigningKey> Keys { get; }
   property StubId.Wire.SigningKey Signing { get; }

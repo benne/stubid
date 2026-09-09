@@ -97,11 +97,16 @@ They are told apart nowhere else, and confusing them is the easiest mistake to m
   collected, timing out undecided, and expiring after approval without collection each move it. It
   has nothing to do with either version above.
 
-Two gaps worth knowing about. **Nothing over HTTP reports the profile version**, so if you are
-pinning because you assert on recorded bytes, the thing you actually care about is not something a
-running instance will tell you. And the profile version is a hand-maintained literal: what keeps
-it honest is a test pinning it and the rule that it may not lead the build, not a derivation from
-the recordings themselves.
+An instance will tell you which recording it is serving. `GET /_stubid/v1/fidelity` names it
+ahead of the ledger, as `profile.broker` and `profile.version`, and `StubIdClient.ProfileAsync()`
+reads it; an instance older than the release that added the key sends nothing, and the typed
+client answers null rather than failing. Read it from the instance rather than inferring it from
+the image tag, because the two move on different occasions and that difference is the whole point
+of telling them apart.
+
+One gap is left. The profile version is a hand-maintained literal: what keeps it honest is a test
+pinning it and the rule that it may not lead the build, not a derivation from the recordings
+themselves.
 
 ## What pinning a version pins
 

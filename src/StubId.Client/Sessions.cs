@@ -201,6 +201,18 @@ public sealed record DecisionOutcome
     public StubIdSession? Outcome { get; init; }
 }
 
+/// <summary>Which broker an instance emulates, and which recording of it.</summary>
+/// <remarks>
+/// Not the version of the package or the image, which move on every release. This one moves only
+/// when a release carries a new capture, and it is the version a suite is pinning when it asserts
+/// on bytes StubID reproduces rather than composes.
+/// </remarks>
+public sealed record StubIdProfile(string Broker, string Version)
+{
+    /// <summary>The form the ledger and the release notes write it in.</summary>
+    public override string ToString() => $"{Broker}@{Version}";
+}
+
 /// <summary>One annotated piece of emulated behavior, as the running instance reports it.</summary>
 public sealed record FidelityEntry(
     string Subject,

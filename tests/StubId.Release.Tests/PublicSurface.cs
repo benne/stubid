@@ -129,19 +129,41 @@ internal static class PublicSurface
             && (type.IsNestedFamily || type.IsNestedFamORAssem)
             && Visible(type.DeclaringType!));
 
-    private static string Render(Type type)
+    private static string Render(Type type) => Render(type, nullability: null, write: false);
+
+    /// <summary>A type as C# spells it, with reference nullability at every depth it applies.</summary>
+    /// <remarks>
+    /// The annotation travels beside the type rather than in it, so it arrives as a parallel tree
+    /// from <see cref="NullabilityInfoContext" /> and is walked in step: an argument's state comes
+    /// from the matching branch of that tree, never from the type. Reading only the outermost
+    /// state - which is what this did first - renders <c>Task&lt;Foo?&gt;</c> as
+    /// <c>Task&lt;Foo&gt;</c>, so dropping the annotation from a returned element would have been
+    /// a change the baseline could not show.
+    /// </remarks>
+    private static string Render(Type type, NullabilityInfo? nullability, bool write)
     {
+        // A value type carries its own "?" through Nullable.GetUnderlyingType below, so only a
+        // reference type takes one from here.
+        var mark = nullability is not null
+                   && !type.IsValueType
+                   && (write ? nullability.WriteState : nullability.ReadState)
+                       == NullabilityState.Nullable
+            ? "?"
+            : "";
+
         if (type.IsGenericParameter)
         {
-            return type.Name;
+            return type.Name + mark;
         }
 
         if (type.HasElementType)
         {
-            var element = Render(type.GetElementType()!);
+            var element = Render(type.GetElementType()!, nullability?.ElementType, write);
 
+            // A by-ref or pointer type is not itself nullable - what it refers to is, and that
+            // is the element rendered above.
             return type.IsArray
-                ? element + "[" + new string(',', type.GetArrayRank() - 1) + "]"
+                ? element + "[" + new string(',', type.GetArrayRank() - 1) + "]" + mark
                 : element + (type.IsByRef ? "&" : "*");
         }
 
@@ -152,7 +174,7 @@ internal static class PublicSurface
 
         if (Keywords.TryGetValue(type, out var keyword))
         {
-            return keyword;
+            return keyword + mark;
         }
 
         var name = type.Name;
@@ -168,10 +190,16 @@ internal static class PublicSurface
             : string.IsNullOrEmpty(type.Namespace) ? "" : type.Namespace + ".";
 
         var arguments = type.IsGenericType ? type.GetGenericArguments() : [];
+        var annotations = nullability?.GenericTypeArguments;
 
         return arguments.Length == 0
-            ? prefix + name
-            : prefix + name + "<" + string.Join(", ", arguments.Select(Render)) + ">";
+            ? prefix + name + mark
+            : prefix + name + "<"
+              + string.Join(", ", arguments.Select((argument, index) => Render(
+                  argument,
+                  annotations is not null && index < annotations.Length ? annotations[index] : null,
+                  write)))
+              + ">" + mark;
     }
 
     private static string Declaration(Type type)
@@ -437,22 +465,18 @@ internal static class PublicSurface
         };
 
     // Reference-type nullability lives in attributes rather than in the type, so it is read
-    // through NullabilityInfoContext and appended. The context is not thread-safe and xUnit runs
-    // classes in parallel, so one is made per composition and never shared.
+    // through NullabilityInfoContext and rendered beside it. The context is not thread-safe and
+    // xUnit runs classes in parallel, so one is made per composition and never shared.
     private static string Returned(MethodInfo method, NullabilityInfoContext nullability) =>
-        Annotate(method.ReturnType, nullability.Create(method.ReturnParameter).ReadState);
+        Render(method.ReturnType, nullability.Create(method.ReturnParameter), write: false);
 
+    // A parameter is written to, so its write state is the one a caller has to satisfy.
     private static string Annotated(ParameterInfo parameter, NullabilityInfoContext nullability) =>
-        Annotate(parameter.ParameterType, nullability.Create(parameter).WriteState);
+        Render(parameter.ParameterType, nullability.Create(parameter), write: true);
 
     private static string Annotated(PropertyInfo property, NullabilityInfoContext nullability) =>
-        Annotate(property.PropertyType, nullability.Create(property).ReadState);
+        Render(property.PropertyType, nullability.Create(property), write: false);
 
     private static string Annotated(FieldInfo field, NullabilityInfoContext nullability) =>
-        Annotate(field.FieldType, nullability.Create(field).ReadState);
-
-    // A value type already renders its own "?" through Nullable.GetUnderlyingType; only a
-    // reference type needs the annotation appending, and only at the outermost level.
-    private static string Annotate(Type type, NullabilityState state) =>
-        Render(type) + (state == NullabilityState.Nullable && !type.IsValueType ? "?" : "");
+        Render(field.FieldType, nullability.Create(field), write: false);
 }
