@@ -176,3 +176,41 @@ two are easy to get the wrong way round — one is seconds since the epoch, the 
 The notice is attached to the endpoint as metadata as well as written to the response, so the
 build can see it too, and a deprecation whose link points at a page that has since been renamed
 fails a test rather than reaching a caller.
+
+## The control API's field names are written down too
+
+The .NET surface has had a baseline since 2026.09.3. The JSON one had nothing, and that gap was
+listed on the compatibility page under what is deliberately not enforced: field names come from
+property names by a naming policy, and almost every test reads them back through the typed client's
+own records. Renaming a property renamed both sides at once and the whole suite stayed green — while
+a suite written in Node, Spring or anything else reading the bytes broke.
+
+There are now two more files beside the .NET pair, recorded the same way. They are composed by
+starting an instance, driving it through enough states that every route answers, and writing down
+the key path of every field in the response it actually sent — the refusals as well as the
+successes, since `{error, detail}` is a shape somebody parses too:
+
+```
+GET /_stubid/v1/fidelity -> 200
+  entries[].subject
+  entries[].tier
+  ...
+  profile.broker
+  profile.version
+```
+
+Both directions are checked. A route this build registers that the script never reached fails,
+because a baseline that looks complete and quietly omits a route is worse than none. A route in the
+file that this build no longer registers fails too — that one is what a caller meets as a 404.
+
+And a field the last release answered with, gone from this one, fails unless the route said on the
+wire that it was going away. That is the `Deprecation` header doing the job it was added for: the
+baseline carries the mark forward, so the promise made to a .NET caller by `[Obsolete]` and the one
+made to everybody else by a header are now enforced by the same kind of rule.
+
+What is recorded is paths, not types. A nullable field's JSON kind depends on which state the
+fixture had the instance in, and a baseline that moves with its fixture is one nobody can trust. A
+rename or a removal is caught; a string becoming a number is not. Three response branches the
+in-process host cannot produce — the readiness probe's refusal, the certificate routes with a
+certificate, and the clock's refusal — are named in the composer rather than left to be discovered.
+

@@ -75,11 +75,14 @@ jobs:
             # PublicApiTests already fails in the release pull request when the header names an
             # older version; this is the narrower case of a header rewritten while the body was
             # left behind, which nothing before the tag would see.
-            surface=tests/StubId.Release.Tests/PublicApi
-            diff <(tail -n +3 "${surface}.shipped.txt") "${surface}.current.txt" || {
-              echo "::error::${surface}.shipped.txt is not the surface being released. Rewrite it:"
-              echo "::error::  STUBID_UPDATE_API=1 dotnet test tests/StubId.Release.Tests"
-              exit 1; }
+            # Both surfaces: the .NET one a consumer compiles against, and the JSON one a
+            # consumer reads. They are recorded the same way and rot the same way.
+            for surface in tests/StubId.Release.Tests/PublicApi tests/StubId.Release.Tests/ControlApi; do
+              diff <(tail -n +3 "${surface}.shipped.txt") "${surface}.current.txt" || {
+                echo "::error::${surface}.shipped.txt is not the surface being released. Rewrite it:"
+                echo "::error::  STUBID_UPDATE_API=1 dotnet test tests/StubId.Release.Tests"
+                exit 1; }
+            done
 
             [ "${{ inputs.dry_run }}" = true ] || publish=true
           fi

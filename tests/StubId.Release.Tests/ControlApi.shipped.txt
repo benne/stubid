@@ -1,0 +1,196 @@
+# shipped 2026.09.3
+
+GET /_stubid/health/live -> 200 (no body)
+
+GET /_stubid/health/ready -> 200 (no body)
+
+DELETE /_stubid/v1/behaviors -> 204 (no body)
+
+GET /_stubid/v1/behaviors -> 200
+  queued[].approve
+  queued[].citizenId
+  queued[].clientId
+  queued[].error
+  queued[].errorCode
+  queued[].position
+
+POST /_stubid/v1/behaviors/enqueue -> 202 (no body)
+
+GET /_stubid/v1/citizens -> 200
+  [].amr
+  [].cpr
+  [].dateOfBirth
+  [].id
+  [].loa
+  [].name
+  [].pid
+  [].rule
+  [].userName
+  [].uuid
+
+POST /_stubid/v1/citizens -> 201
+  amr
+  cpr
+  dateOfBirth
+  id
+  loa
+  name
+  pid
+  rule
+  userName
+  uuid
+
+DELETE /_stubid/v1/citizens/{id} -> 204 (no body)
+
+GET /_stubid/v1/citizens/{id} -> 200
+  amr
+  cpr
+  dateOfBirth
+  id
+  loa
+  name
+  pid
+  rule
+  userName
+  uuid
+
+GET /_stubid/v1/citizens/{id} -> 404 (no body)
+
+PATCH /_stubid/v1/citizens/{id} -> 200
+  amr
+  cpr
+  dateOfBirth
+  id
+  loa
+  name
+  pid
+  rule
+  userName
+  uuid
+
+GET /_stubid/v1/clients -> 200
+  clients[].clientId
+  clients[].organization
+  clients[].responseTypes[]
+
+GET /_stubid/v1/fidelity -> 200
+  entries[].awaitingCapture
+  entries[].complete
+  entries[].evidence
+  entries[].provenance
+  entries[].reason
+  entries[].subject
+  entries[].tier
+
+GET /_stubid/v1/issued -> 200
+  issued[].authenticatedAt
+  issued[].citizenId
+  issued[].clientId
+  issued[].expires
+  issued[].kind
+  issued[].loginId
+  issued[].scope
+
+POST /_stubid/v1/reset -> 204 (no body)
+
+GET /_stubid/v1/routes -> 200
+  routes[].emulated
+  routes[].methods[]
+  routes[].pattern
+  routes[].role
+
+GET /_stubid/v1/runtime/automatic-approval -> 200
+  configured
+  enabled
+  overridden
+
+PUT /_stubid/v1/runtime/automatic-approval -> 200
+  configured
+  enabled
+  overridden
+
+GET /_stubid/v1/runtime/public-base-url -> 200
+  publicBaseUrl
+
+PUT /_stubid/v1/runtime/public-base-url -> 200
+  publicBaseUrl
+
+PUT /_stubid/v1/runtime/public-base-url -> 400
+  detail
+  error
+
+GET /_stubid/v1/runtime/tls-certificate -> 200
+  certificate
+  thumbprint
+
+GET /_stubid/v1/runtime/tls-certificate.pem -> 404
+  detail
+  error
+
+GET /_stubid/v1/sessions -> 200
+  [].citizenId
+  [].clientId
+  [].createdAt
+  [].deadline
+  [].decidedAt
+  [].errorCode
+  [].id
+  [].oauthError
+  [].state
+  [].version
+
+GET /_stubid/v1/sessions/{id} -> 200
+  citizenId
+  clientId
+  createdAt
+  deadline
+  decidedAt
+  errorCode
+  id
+  oauthError
+  state
+  version
+
+GET /_stubid/v1/sessions/{id} -> 404 (no body)
+
+POST /_stubid/v1/sessions/{id}/approve -> 200
+  citizen
+  decided
+  state
+
+POST /_stubid/v1/sessions/{id}/approve -> 400
+  error
+
+GET /_stubid/v1/sessions/{id}/explain -> 200
+  ladder[].name
+  ladder[].outcome
+  ladder[].reason
+  ladder[].tier
+  outcome
+  session
+
+GET /_stubid/v1/sessions/{id}/explain -> 404 (no body)
+
+POST /_stubid/v1/sessions/{id}/reject -> 200
+  decided
+
+POST /_stubid/v1/sessions/{id}/reject -> 409
+  decided
+  detail
+  outcome.citizenId
+  outcome.clientId
+  outcome.createdAt
+  outcome.deadline
+  outcome.decidedAt
+  outcome.errorCode
+  outcome.id
+  outcome.oauthError
+  outcome.state
+  outcome.version
+
+GET /_stubid/v1/time -> 200
+  controllable
+  now
+
+POST /_stubid/v1/time/advance -> 200
+  now
