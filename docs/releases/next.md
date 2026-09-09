@@ -214,3 +214,35 @@ rename or a removal is caught; a string becoming a number is not. Three response
 in-process host cannot produce — the readiness probe's refusal, the certificate routes with a
 certificate, and the clock's refusal — are named in the composer rather than left to be discovered.
 
+## The recordings no longer name the machine that made them
+
+An audit of everything this repository publishes found four things in the committed recordings that
+belong to whoever took the sitting rather than to the broker being emulated. All four are redacted,
+and each one now has a guard or a rule behind it so the next sitting cannot reintroduce it.
+
+**The address a sitting was taken from.** The broker reports it as `transaction_client_ip`, so it
+arrived in three transaction tokens without anyone writing it down. The scrubber had replaced the
+signed token with a placeholder; the decoded payload written beside it for readability kept the
+address in plain sight. A test now fails on any routable address anywhere in the repository —
+loopback, the private ranges and the documentation blocks still pass, so an example may still name
+one.
+
+**The organization receiving a CPR number.** The consent sentence a transaction token carries is
+base64, and it named a real company. The redact block has carried an entry for exactly this since
+the first sitting and it never matched: base64 encodes three bytes at a time, so the same name at a
+different offset is a different substring and a plain string replace cannot reach it. The scrubber
+now decodes readable base64, scrubs it and encodes it again. Base64 that is not text — a signature,
+a hash, a key — is left byte for byte alone.
+
+**Three private client registrations.** The single sign-on and hybrid clients were recorded raw
+while the identifier from the setting listed directly above them was replaced thirty times over.
+They were simply missing from the scrubber's list; they are on it now, along with their secrets.
+
+**A geolocation-derived distance.** `mitid.geo_ip_distance_km` is computed from the same connection
+as the address, so it is redacted with it. StubID emits zero for it — the one value that asserts
+nothing, since what is emulated is that the claim is present, in that slot, as a string.
+
+**What this changes for a consumer: nothing.** No claim was added or removed, no key moved, and no
+type changed. The fixtures carry placeholders where they carried values that were never the
+broker's to publish.
+

@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace StubId.CaptureHarness;
@@ -25,6 +26,17 @@ public static partial class Scrubber
         ("{{NEB_PP_OPEN_CLIENT_CODE_SECRET}}", "STUBID_NEB_PP_CODE_CLIENT_SECRET"),
         ("{{NEB_PP_CLIENT_ID}}", "STUBID_NEB_PP_CLIENT_ID"),
         ("{{NEB_PP_CLIENT_SECRET}}", "STUBID_NEB_PP_CLIENT_SECRET"),
+
+        // The single sign-on and hybrid registrations. They were missing until 2026-09-09, and
+        // three sittings recorded their client identifiers raw while the identifier from the
+        // setting directly above them was placeholdered thirty times over - the same private
+        // registrations, told apart only by which line of this list somebody had written.
+        ("{{NEB_PP_SSO_A_CLIENT_ID}}", "STUBID_NEB_PP_SSO_A_CLIENT_ID"),
+        ("{{NEB_PP_SSO_A_CLIENT_SECRET}}", "STUBID_NEB_PP_SSO_A_CLIENT_SECRET"),
+        ("{{NEB_PP_SSO_B_CLIENT_ID}}", "STUBID_NEB_PP_SSO_B_CLIENT_ID"),
+        ("{{NEB_PP_SSO_B_CLIENT_SECRET}}", "STUBID_NEB_PP_SSO_B_CLIENT_SECRET"),
+        ("{{NEB_PP_SSO_C_CLIENT_ID}}", "STUBID_NEB_PP_SSO_C_CLIENT_ID"),
+        ("{{NEB_PP_SSO_C_CLIENT_SECRET}}", "STUBID_NEB_PP_SSO_C_CLIENT_SECRET"),
     ];
 
     /// <summary>
@@ -75,7 +87,20 @@ public static partial class Scrubber
     public static string Scrub(string text) => Scrub(text, LocalSettings.Get);
 
     /// <inheritdoc cref="Scrub(string)"/>
-    public static string Scrub(string text, Func<string, string?> resolve)
+    public static string Scrub(string text, Func<string, string?> resolve) =>
+        Scrub(text, resolve, LocalSettings.Redactions().Select(e => (e.Key, e.Value)));
+
+    /// <summary>
+    /// With the redactions passed in rather than read from the machine.
+    /// </summary>
+    /// <remarks>
+    /// The same reason the resolver is injected: a test that reads the local configuration passes
+    /// on a fresh checkout and fails once somebody configures their machine to actually record.
+    /// </remarks>
+    public static string Scrub(
+        string text,
+        Func<string, string?> resolve,
+        IEnumerable<(string Placeholder, string Value)> redactions)
     {
         foreach (var (placeholder, setting) in Credentials)
         {
@@ -87,7 +112,9 @@ public static partial class Scrubber
             }
         }
 
-        foreach (var (placeholder, value) in LocalSettings.Redactions())
+        var redacting = redactions as (string Placeholder, string Value)[] ?? [.. redactions];
+
+        foreach (var (placeholder, value) in redacting)
         {
             if (!string.IsNullOrEmpty(value))
             {
@@ -96,7 +123,77 @@ public static partial class Scrubber
             }
         }
 
+        return ScrubEncoded(text, resolve, redacting);
+    }
+
+    /// <summary>
+    /// The same replacements again, inside base64 the broker sends as a claim value.
+    /// </summary>
+    /// <remarks>
+    /// A plain string replace cannot reach these. Base64 encodes three bytes at a time, so the
+    /// same name sitting at a different offset in a sentence produces a different substring, and
+    /// there is nothing stable to search for. The value has to be decoded, scrubbed and encoded
+    /// again.
+    /// <para>
+    /// This is not hypothetical either. The CPR consent text is a base64 sentence naming the
+    /// organization that receives the number, and the redact block has carried an entry for the
+    /// organization's name from the beginning - it simply never matched, so a real company was
+    /// named in a committed recording through three releases while the rule meant to prevent it
+    /// sat one encoding away.
+    /// </para>
+    /// </remarks>
+    private static string ScrubEncoded(
+        string text,
+        Func<string, string?> resolve,
+        (string Placeholder, string Value)[] redactions)
+    {
+        foreach (Match match in Base64ValuePattern().Matches(text))
+        {
+            var encoded = match.Groups[1].Value;
+
+            if (!TryDecodeText(encoded, out var decoded))
+            {
+                continue;
+            }
+
+            // Recurses once: the inner call has nothing base64 left to find, because a decoded
+            // sentence is plain text.
+            var scrubbed = Scrub(decoded, resolve, redactions);
+
+            if (scrubbed != decoded)
+            {
+                text = text.Replace(
+                    encoded,
+                    Convert.ToBase64String(Encoding.UTF8.GetBytes(scrubbed)),
+                    StringComparison.Ordinal);
+            }
+        }
+
         return text;
+    }
+
+    /// <summary>Whether a run of base64 decodes to text somebody could read.</summary>
+    private static bool TryDecodeText(string encoded, out string decoded)
+    {
+        decoded = "";
+
+        try
+        {
+            var text = Encoding.UTF8.GetString(Convert.FromBase64String(encoded));
+
+            if (text.Length == 0 || text.Any(char.IsControl))
+            {
+                return false;
+            }
+
+            decoded = text;
+
+            return true;
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
     }
 
 
@@ -107,6 +204,10 @@ public static partial class Scrubber
     /// </summary>
     public static Match FindUnscrubbedCredential(string candidate) =>
         UnscrubbedCredentialPattern().Match(candidate);
+
+    /// <summary>A JSON string value that is entirely base64, which is how a claim carries text.</summary>
+    [GeneratedRegex("\"([A-Za-z0-9+/]{16,}={0,2})\"")]
+    private static partial Regex Base64ValuePattern();
 
     // A credential-bearing field whose value is neither a placeholder nor obviously inert.
     // Covers both shapes a body can take: form encoding and JSON. Percent-encoded braces are

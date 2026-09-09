@@ -130,6 +130,71 @@ public class FixtureGuardTests
     }
 
     /// <summary>
+    /// Nothing committed names a network that belongs to somebody.
+    /// </summary>
+    /// <remarks>
+    /// This one is retrospective. Three transaction-token payloads carried
+    /// <c>transaction_client_ip</c> - the public address of the machine that took the sitting -
+    /// through three releases. Nobody wrote it down on purpose: the broker puts it in the token,
+    /// the scrubber replaced the signed token with a placeholder, and the decoded payload written
+    /// beside it for readability kept the address where anyone could read it. The guards that
+    /// existed looked for personal numbers and for credentials, and an address is neither.
+    /// <para>
+    /// Loopback, the private ranges and the documentation blocks pass, so an example may still
+    /// name an address. Everything else fails, including one hidden inside a token.
+    /// </para>
+    /// </remarks>
+    /// <summary>
+    /// Files whose dotted quads are object identifiers, and why each one is not an address.
+    /// </summary>
+    /// <remarks>
+    /// Its own list rather than the shared exemption above, which would also stop the personal
+    /// number and credential scans from reading these files - they have no reason to be skipped,
+    /// and a guard switched off wider than its cause is how coverage is lost quietly.
+    /// <para>
+    /// An X.509 object identifier with four arcs is textually a dotted quad and there is no rule
+    /// that separates them - the authority key identifier is a four-arc identifier and reads
+    /// exactly like an address. Narrowing the pattern would cost the guard real addresses, so the
+    /// ambiguity is recorded here instead, where it can be read.
+    /// </para>
+    /// </remarks>
+    private static readonly Dictionary<string, string> MayContainObjectIdentifiers = new()
+    {
+        ["tools/StubId.CaptureHarness/Ocsp.cs"] =
+            "X.509 object identifiers for the OCSP request it builds, one of which - the "
+            + "authority key identifier - has four arcs and so reads as an address.",
+    };
+
+    /// <summary>Every file excused from the address scan still exists.</summary>
+    [Fact]
+    public void Every_file_excused_from_the_address_scan_is_still_there()
+    {
+        Assert.All(MayContainObjectIdentifiers, entry =>
+            Assert.True(File.Exists(Path.Combine(Repository.Root, entry.Key)),
+                $"{entry.Key} is excused from the address scan but does not exist."));
+    }
+
+    [Theory]
+    [MemberData(nameof(TextFiles))]
+    public void No_routable_address_reaches_the_repository(string relativePath)
+    {
+        if (MayContainSensitiveShapes.ContainsKey(relativePath)
+            || MayContainObjectIdentifiers.ContainsKey(relativePath))
+        {
+            return;
+        }
+
+        var text = File.ReadAllText(Path.Combine(Repository.Root, relativePath));
+
+        var finding = SensitiveContent.FindRoutableIp(text);
+
+        Assert.False(finding.Found,
+            $"{relativePath} names the routable address {finding.Value} ({finding.Location}). "
+            + "An address recorded from a live sitting belongs to whoever took it, not to this "
+            + "project - redact it and add it to the redact block in capture.local.json.");
+    }
+
+    /// <summary>
     /// Both packs. The unattended one is rehashed by every <c>capture</c> run, so it drifts
     /// only briefly; the sitting's manifest is written when somebody finishes a sitting and
     /// not again, and those recordings are the ones no run can reproduce. This test was

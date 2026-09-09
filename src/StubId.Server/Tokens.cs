@@ -25,6 +25,16 @@ namespace StubId.Server;
 /// </remarks>
 public sealed class Tokens(Keys keys, TimeProvider clock)
 {
+    /// <summary>What every token reports for the client's geolocated distance.</summary>
+    /// <remarks>
+    /// A constant, and deliberately not the number the recordings carried: the broker derives it
+    /// by geolocating the address a sitting was taken from, so the recorded value said something
+    /// about the machine that did the recording rather than about the broker. It is redacted in
+    /// the fixtures. Zero is the one value that asserts nothing - the claim's presence, slot and
+    /// type are what this reproduces, and no client parses the number.
+    /// </remarks>
+    private const string GeoIpDistanceKm = "0";
+
     private static readonly Guid SubjectNamespace = new("6f9b1c34-2d5e-4a71-8c93-1e5b7a2d4f60");
 
     private readonly JwsWriter _writer = new();
@@ -201,7 +211,12 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
             claims.Add(JsonClaim.String("mitid.reference_text", reference));
         }
 
-        claims.Add(JsonClaim.String("mitid.geo_ip_distance_km", "8396"));
+        // Zero rather than the distance the recordings carried. The broker derives this from
+        // geolocating the client's address, so the recorded value described where the sitting was
+        // taken from and not anything about the broker; it is redacted in the fixtures for that
+        // reason. Nothing parses it and nothing asserts on it - what is emulated is that the claim
+        // is always present, in this slot, as a string.
+        claims.Add(JsonClaim.String("mitid.geo_ip_distance_km", GeoIpDistanceKm));
 
         if (scopes.Contains("ssn"))
         {
@@ -393,7 +408,7 @@ public sealed class Tokens(Keys keys, TimeProvider clock)
             claims.Add(JsonClaim.String("mitid.reference_text", reference));
         }
 
-        claims.Add(JsonClaim.String("mitid.geo_ip_distance_km", "8396"));
+        claims.Add(JsonClaim.String("mitid.geo_ip_distance_km", GeoIpDistanceKm));
 
         if (scopes.Contains("ssn"))
         {

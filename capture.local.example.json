@@ -20,8 +20,10 @@
 
   "redact": {
     "//": "Values that must not reach a fixture, as replacement-to-original. A personal number is replaced by the same number with 60 added to the day (01-09 to 61-69, 10-19 to 70-79, 20-29 to 80-89, 30-31 to 90-91), which cannot be anyone's and keeps the length and shape a fixture depends on. The example below uses the 31st of February, which nobody was born on, so it shows the mapping without printing a number that might be someone's. Register both the bare and the separated form: the scrubber matches exact strings. A transaction token names the receiving organization, so its name and CVR belong here before recording one, as does the test identity's name.",
+    "//address": "The broker reports the address a sitting is taken from as transaction_client_ip, so it arrives without anyone writing it down. Three sittings recorded one before this entry existed. A test now fails on any routable address anywhere in the repository, so this is a second line rather than the only one - and the client identifiers above no longer need registering here, because the scrubber resolves them from the settings themselves.",
     "{{ORGANIZATION_NAME}}": "Example A/S",
     "{{ORGANIZATION_CVR}}": "12345678",
+    "{{CLIENT_IP}}": "the public address the sitting is taken from, as the broker sees it",
     "9102999995": "3102999995",
     "910299-9995": "310299-9995",
     "Synthetic Testperson": "the identity's name as MitID returns it"
