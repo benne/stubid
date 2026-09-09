@@ -85,8 +85,8 @@ nothing else.
 
 They are told apart nowhere else, and confusing them is the easiest mistake to make here.
 
-- **The build version** — `2026.09.3`. What is on nuget.org and what the image tag names. The
-  package spells it `2026.9.3` because NuGet reads a version as numbers and drops the leading
+- **The build version** — `2026.09.4`. What is on nuget.org and what the image tag names. The
+  package spells it `2026.9.4` because NuGet reads a version as numbers and drops the leading
   zero; the container tag keeps the padding because tags sort as text. Both resolve to the same
   release.
 - **The profile version** — which *recording* of the broker is being served. It moves only when a
@@ -131,7 +131,7 @@ really sends, where it previously did not — breaks anyone asserting on the byt
 that this is not a distinction a semantic minor can carry.
 
 That argument is the reason for the version scheme. It is not yet a description of anything that
-has happened: across three releases the recordings have not changed and the profile version has
+has happened: across four releases the recordings have not changed and the profile version has
 not moved. The change to CIBA above is not one of these — it moved *away* from the broker, to a
 declared out-of-contract answer, rather than closer to it.
 

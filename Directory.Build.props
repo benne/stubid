@@ -16,10 +16,10 @@
        correction breaks anyone asserting on the bytes it corrects. Bumped by hand, because
        which recording is being shipped is a decision rather than something a tool can derive
        from the commit graph. NuGet normalizes the leading zero away, so the package version
-       reads 2026.9.3 while the container tag stays padded - the padding is what makes the
+       reads 2026.9.4 while the container tag stays padded - the padding is what makes the
        tags sort, since 2026.09 precedes 2026.10 and 2026.9 does not. -->
   <PropertyGroup>
-    <StubIdVersion>2026.09.3</StubIdVersion>
+    <StubIdVersion>2026.09.4</StubIdVersion>
     <Version>$(StubIdVersion)</Version>
   </PropertyGroup>
 

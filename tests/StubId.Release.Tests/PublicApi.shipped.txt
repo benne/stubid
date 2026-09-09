@@ -1,4 +1,4 @@
-# shipped 2026.09.3
+# shipped 2026.09.4
 
 # StubId.Abstractions
 
@@ -176,6 +176,7 @@ type public sealed class StubId.Client.StubIdClient : System.IDisposable
   method System.Threading.Tasks.Task<bool> IsLiveAsync (System.Threading.CancellationToken ct = default)
   method System.Threading.Tasks.Task<bool> IsReadyAsync (System.Threading.CancellationToken ct = default)
   method System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<StubId.Client.IssuedArtifact>> IssuedAsync (System.Threading.CancellationToken ct = default)
+  method System.Threading.Tasks.Task<StubId.Client.StubIdProfile?> ProfileAsync (System.Threading.CancellationToken ct = default)
   method System.Threading.Tasks.Task ResetAsync (System.Threading.CancellationToken ct = default)
   method System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<StubId.Client.EmulatedRoute>> RoutesAsync (System.Threading.CancellationToken ct = default)
   property StubId.Client.BehaviorApi Behavior { get; }
@@ -198,6 +199,11 @@ type public sealed class StubId.Client.StubIdException : System.Exception
 type public enum StubId.Client.StubIdGender : int
   enum Female = 0
   enum Male = 1
+
+type public sealed record StubId.Client.StubIdProfile : System.IEquatable<StubId.Client.StubIdProfile>
+  ctor (string Broker, string Version)
+  property string Broker { get; init; }
+  property string Version { get; init; }
 
 type public sealed record StubId.Client.StubIdSession : System.IEquatable<StubId.Client.StubIdSession>
   ctor (string Id, string ClientId, StubId.Client.SessionState State, string? CitizenId, string? ErrorCode, System.DateTimeOffset CreatedAt, System.DateTimeOffset Deadline, System.DateTimeOffset? DecidedAt, string? OauthError = null, int Version = 0)
@@ -247,6 +253,7 @@ type public interface StubId.Profiles.IBrokerProfile
   property StubId.Profiles.ProfileId Id { get; }
 
 type public static class StubId.Profiles.NotEmulated
+  field const string Documentation = "https://github.com/benne/stubid/blob/master/"
   method static Microsoft.AspNetCore.Http.IResult Answer (Microsoft.AspNetCore.Http.HttpContext http, string reason, string? what = null)
 
 type public sealed record StubId.Profiles.ProfileContext : System.IEquatable<StubId.Profiles.ProfileContext>
@@ -682,7 +689,7 @@ type public sealed class StubId.Testing.StubIdBuilder : DotNet.Testcontainers.Bu
   ctor ()
   ctor (DotNet.Testcontainers.Images.IImage image)
   ctor (string image)
-  field const string StubIdImage = "ghcr.io/benne/stubid:2026.09.3"
+  field const string StubIdImage = "ghcr.io/benne/stubid:2026.09.4"
   field const ushort StubIdPort = 8080
   field const ushort StubIdTlsPort = 8443
   method virtual StubId.Testing.StubIdContainer Build ()

@@ -17,7 +17,7 @@ public sealed class StubIdBuilder : ContainerBuilder<StubIdBuilder, StubIdContai
     /// a distinction a semantic minor can carry - a date says which recording of the broker you are
     /// running. The trailing component is pinned and byte-stable; the shorter tag floats.
     /// </remarks>
-    public const string StubIdImage = "ghcr.io/benne/stubid:2026.09.3";
+    public const string StubIdImage = "ghcr.io/benne/stubid:2026.09.4";
 
     /// <summary>Answers on every instance, TLS or not, and carries the control API.</summary>
     public const ushort StubIdPort = 8080;
