@@ -119,11 +119,11 @@ public class ScrubberTests
 
     /// <summary>A name inside a base64 claim value is scrubbed like one written plainly.</summary>
     /// <remarks>
-    /// The case that got through. The broker sends the CPR consent sentence base64-encoded, and it
-    /// names the organization receiving the number; the redact block has always carried an entry
-    /// for that name, and it never matched, because base64 encodes three bytes at a time and the
-    /// same name at a different offset is a different substring. Three sittings recorded a real
-    /// company's name with the rule that should have caught it sitting one encoding away.
+    /// The broker sends the CPR consent sentence base64-encoded, and it names the organization
+    /// receiving the number. The redact block has always carried an entry for that name and it
+    /// never matched, because base64 encodes three bytes at a time and the same name at a
+    /// different offset is a different substring - the rule and the value it was written for sat
+    /// one encoding apart.
     /// </remarks>
     [Fact]
     public void A_name_inside_a_base64_claim_is_scrubbed_too()

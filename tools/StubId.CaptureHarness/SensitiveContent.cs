@@ -122,11 +122,11 @@ public static partial class SensitiveContent
     /// A routable address, whether written plainly or encoded inside a token.
     /// </summary>
     /// <remarks>
-    /// The address a sitting was taken from is not the broker's data; it is the recordist's.
+    /// The address a sitting is taken from is not the broker's data; it is the recordist's.
     /// The broker puts it in the transaction token as <c>transaction_client_ip</c>, so it arrives
-    /// without anyone choosing to write it down, and it survived three sittings before anybody
-    /// looked - the scrubber replaced the signed token with a placeholder, and the decoded payload
-    /// written beside it for readability kept the address in plain sight.
+    /// without anyone choosing to write it down. Replacing a signed token with a placeholder does
+    /// not cover it either: a decoded payload written beside the token for readability carries the
+    /// same claim in plain sight.
     /// <para>
     /// Shaped rather than listed, like the personal-number check above and for the same reason:
     /// the next address will be a different one. Loopback, the private ranges and the blocks RFC

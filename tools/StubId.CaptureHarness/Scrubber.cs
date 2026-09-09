@@ -27,10 +27,9 @@ public static partial class Scrubber
         ("{{NEB_PP_CLIENT_ID}}", "STUBID_NEB_PP_CLIENT_ID"),
         ("{{NEB_PP_CLIENT_SECRET}}", "STUBID_NEB_PP_CLIENT_SECRET"),
 
-        // The single sign-on and hybrid registrations. They were missing until 2026-09-09, and
-        // three sittings recorded their client identifiers raw while the identifier from the
-        // setting directly above them was placeholdered thirty times over - the same private
-        // registrations, told apart only by which line of this list somebody had written.
+        // The single sign-on and hybrid registrations. Every private client belongs on this
+        // list: what separates one that is scrubbed from one that is not is only whether somebody
+        // wrote the line.
         ("{{NEB_PP_SSO_A_CLIENT_ID}}", "STUBID_NEB_PP_SSO_A_CLIENT_ID"),
         ("{{NEB_PP_SSO_A_CLIENT_SECRET}}", "STUBID_NEB_PP_SSO_A_CLIENT_SECRET"),
         ("{{NEB_PP_SSO_B_CLIENT_ID}}", "STUBID_NEB_PP_SSO_B_CLIENT_ID"),
@@ -136,10 +135,9 @@ public static partial class Scrubber
     /// again.
     /// <para>
     /// This is not hypothetical either. The CPR consent text is a base64 sentence naming the
-    /// organization that receives the number, and the redact block has carried an entry for the
-    /// organization's name from the beginning - it simply never matched, so a real company was
-    /// named in a committed recording through three releases while the rule meant to prevent it
-    /// sat one encoding away.
+    /// organization that receives the number, and the redact block has carried an entry for that
+    /// name from the beginning - it simply never matched, because the rule and the value it was
+    /// written for sat one encoding apart.
     /// </para>
     /// </remarks>
     private static string ScrubEncoded(

@@ -133,12 +133,11 @@ public class FixtureGuardTests
     /// Nothing committed names a network that belongs to somebody.
     /// </summary>
     /// <remarks>
-    /// This one is retrospective. Three transaction-token payloads carried
-    /// <c>transaction_client_ip</c> - the public address of the machine that took the sitting -
-    /// through three releases. Nobody wrote it down on purpose: the broker puts it in the token,
-    /// the scrubber replaced the signed token with a placeholder, and the decoded payload written
-    /// beside it for readability kept the address where anyone could read it. The guards that
-    /// existed looked for personal numbers and for credentials, and an address is neither.
+    /// An address the broker reports back - <c>transaction_client_ip</c> - describes the machine
+    /// a sitting was taken from rather than the broker, and it arrives without anyone writing it
+    /// down. Replacing a signed token with a placeholder does not cover it, because a decoded
+    /// payload written beside the token for readability carries the same claim. The other guards
+    /// look for personal numbers and for credentials, and an address is neither.
     /// <para>
     /// Loopback, the private ranges and the documentation blocks pass, so an example may still
     /// name an address. Everything else fails, including one hidden inside a token.
