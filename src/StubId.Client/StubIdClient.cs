@@ -76,6 +76,24 @@ public sealed class StubIdClient : IDisposable
         await Control.EnsureAsync(response, ct);
     }
 
+    /// <summary>Which recording of the broker this instance is serving.</summary>
+    /// <remarks>
+    /// Null against an instance older than the release that put this on the wire, which is a
+    /// state a caller can meet: the package and the image are versioned apart. A suite that
+    /// asserts on reproduced bytes should read this rather than infer it from the image tag,
+    /// because the two move on different occasions.
+    /// </remarks>
+    public async Task<StubIdProfile?> ProfileAsync(CancellationToken ct = default)
+    {
+        using var response = await Http.GetAsync("/_stubid/v1/fidelity", ct);
+
+        await Control.EnsureAsync(response, ct);
+
+        var body = await response.Content.ReadFromJsonAsync(ControlJson.Default.EntriesBody, ct);
+
+        return body?.Profile;
+    }
+
     /// <summary>Every divergence this instance admits to, read from the code that emits it.</summary>
     public async Task<IReadOnlyList<FidelityEntry>> FidelityAsync(CancellationToken ct = default)
     {

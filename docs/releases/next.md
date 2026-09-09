@@ -53,6 +53,16 @@ There is a door for a break that is decided rather than accidental — it takes 
 its reason, and a second test fails when an entry stops describing a break that really happened,
 so an exemption cannot outlive what it excused. The door is empty today.
 
+The first member added since found a hole in how the surface was read. Reference nullability was
+recorded only at the outermost level, so `Task<StubIdCitizen?>` was written down as
+`Task<StubIdCitizen>` — and that is the shape most of the client's contract takes, since the
+methods that answer "not there" with null are the ones that return a task of something nullable.
+Eight members across four packages were recorded as promising a value they can return null for.
+The surface is now read at every depth, and both files are rewritten: the record of what the last
+release published names the same members as before, spelled correctly. Nothing about those
+packages changed — what changed is that dropping one of those annotations is now a diff somebody
+sees.
+
 None of this changes what any package does. What it changes is that the next time this project
 breaks something, it will be on purpose.
 
@@ -117,3 +127,24 @@ names the two packages a suite should reference instead.
 A test now reads both halves rather than trusting either: the packages carrying tags, from the
 project files, and the packages a guide tells a reader to install, from the `dotnet add package`
 lines. They have to be the same set.
+
+## An instance will say which recording it is serving
+
+Every release note tells a suite asserting on the broker's bytes to pin the version. There are two
+of those, and the page on compatibility spends a section separating them: the build version, which
+the image tag and the package name, and the profile version, which says which capture of the
+broker is being reproduced. Until now only one of them could be read off a running instance, and
+it was the other one.
+
+`GET /_stubid/v1/fidelity` now names the recording ahead of the ledger it already served:
+
+```json
+{ "profile": { "broker": "neb", "version": "2026.09.1" }, "entries": [ ... ] }
+```
+
+`StubIdClient.ProfileAsync()` reads it. Against an instance older than this release the key is not
+sent and the method answers null rather than throwing, because the package and the image are
+versioned apart and a suite can hold a client newer than the container it drives.
+
+Nothing else about the route moved: the `entries` array is unchanged, and a caller reading only
+that sees no difference.

@@ -98,4 +98,12 @@ internal sealed record RouteOnTheWire(
     string? Role,
     bool? Emulated);
 
-internal sealed record EntriesBody(IReadOnlyList<FidelityEntry> Entries);
+/// <summary>The fidelity route's body, which answers two questions in one call.</summary>
+/// <remarks>
+/// <c>Profile</c> is nullable for the reason <see cref="RouteOnTheWire" /> gives at length: an
+/// instance older than the release that added the key does not send it, and the package and the
+/// image are versioned separately, so meeting one is expected rather than exceptional. Positional
+/// here, so an absent key arrives as a null constructor argument rather than through an
+/// initializer slot.
+/// </remarks>
+internal sealed record EntriesBody(StubIdProfile? Profile, IReadOnlyList<FidelityEntry> Entries);

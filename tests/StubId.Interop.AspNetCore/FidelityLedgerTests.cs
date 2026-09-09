@@ -1,6 +1,12 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
+using StubId.Profiles;
 using StubId.Server;
+
+// Both assemblies declare a FidelityEntry - the server's is what the ledger reads, the
+// client's is what a consumer meets - so the client is reached by alias rather than by import.
+using StubIdClient = StubId.Client.StubIdClient;
 
 namespace StubId.Interop.AspNetCore;
 
@@ -85,6 +91,74 @@ public class FidelityLedgerTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.True(dangling.Count == 0,
             "These point at a document that is not there: "
             + string.Join(", ", dangling.Select(e => $"{e.Subject} -> {e.Reason}")));
+    }
+
+    /// <summary>The recording is named on the wire, not only in the source.</summary>
+    /// <remarks>
+    /// Read as bytes rather than through the typed client, because the field names are what a
+    /// caller that is not .NET has to know and nothing else pins them. The version is checked
+    /// against the profile the host actually loaded rather than against a literal, which would
+    /// be a second place to update and the first one somebody forgets.
+    /// </remarks>
+    [Fact]
+    public async Task A_running_instance_says_which_recording_it_serves()
+    {
+        using var client = _factory.CreateClient();
+        using var document = JsonDocument.Parse(
+            await client.GetStringAsync("/_stubid/v1/fidelity", Ct));
+
+        var profile = document.RootElement.GetProperty("profile");
+        var loaded = _factory.Services.GetRequiredService<IBrokerProfile>().Id;
+
+        Assert.Equal(loaded.Broker, profile.GetProperty("broker").GetString());
+        Assert.Equal(loaded.Version, profile.GetProperty("version").GetString());
+    }
+
+    /// <summary>And the typed client reads it, rather than leaving it to be parsed by hand.</summary>
+    [Fact]
+    public async Task The_client_reads_the_recording_off_the_wire()
+    {
+        using var http = _factory.CreateClient();
+        using var stubId = new StubIdClient(http);
+
+        var profile = await stubId.ProfileAsync(Ct);
+        var loaded = _factory.Services.GetRequiredService<IBrokerProfile>().Id;
+
+        Assert.NotNull(profile);
+        Assert.Equal(loaded.Broker, profile.Broker);
+        Assert.Equal(loaded.Version, profile.Version);
+        Assert.Equal(loaded.ToString(), profile.ToString());
+    }
+
+    /// <summary>An instance too old to answer is a null, not an exception.</summary>
+    /// <remarks>
+    /// The case the client is written for and the one no real server here can produce: the
+    /// package and the image are versioned separately, so a suite can hold a client newer than
+    /// the instance it drives. Served by hand for that reason - what is under test is the
+    /// deserializer meeting a body with the key missing.
+    /// </remarks>
+    [Fact]
+    public async Task An_instance_that_predates_the_field_reads_as_no_recording()
+    {
+        using var http = new HttpClient(new OneBody("""{"entries":[]}"""))
+        {
+            BaseAddress = new Uri("http://stubid.invalid"),
+        };
+
+        using var stubId = new StubIdClient(http);
+
+        Assert.Null(await stubId.ProfileAsync(Ct));
+    }
+
+    /// <summary>A fidelity route answering exactly one body, for the older-instance case.</summary>
+    private sealed class OneBody(string body) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request, CancellationToken ct) =>
+            Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            {
+                Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json"),
+            });
     }
 
     [Fact]
