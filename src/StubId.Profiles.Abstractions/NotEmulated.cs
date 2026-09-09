@@ -29,7 +29,7 @@ public static class NotEmulated
     /// site being restructured, it works for the same reader on a train, and it is the
     /// convention the README already uses for every link it carries.
     /// </remarks>
-    private const string Documentation = "https://github.com/benne/stubid/blob/master/";
+    public const string Documentation = "https://github.com/benne/stubid/blob/master/";
 
     /// <summary>Answers 501, naming the path and linking to why it is not reproduced.</summary>
     /// <param name="http">The request, which already says which endpoint was asked for.</param>

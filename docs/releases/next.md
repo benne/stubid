@@ -148,3 +148,31 @@ versioned apart and a suite can hold a client newer than the container it drives
 
 Nothing else about the route moved: the `entries` array is unchanged, and a caller reading only
 that sees no difference.
+
+## A route that is going away will say so on the wire
+
+The compatibility statement promises that a control route which is renamed keeps answering for one
+release before it stops. A .NET caller collects that promise as `[Obsolete]` and a build warning.
+Everyone else collected nothing: when `/behaviours/enqueue` was retired, a caller written in
+anything but .NET got no in-band signal at all, and the release meant as their grace period was a
+release in which nothing told them.
+
+A deprecated route now carries the two header fields the standards define for it, plus a link to
+where the decision is written:
+
+```http
+Deprecation: @1688169599
+Link: <https://github.com/benne/stubid/blob/master/docs/compatibility.md#...>; rel="deprecation"; type="text/html"
+```
+
+`Sunset` is sent only where a removal has actually been scheduled. RFC 8594 asks for a timestamp
+in the future and this project has no release calendar to draw one from, so a date put there to
+fill the field in would be a promise about when a release happens rather than a fact. Act on the
+`Deprecation`; do not wait for a `Sunset`.
+
+**Nothing is deprecated in this release, which is the point of building it now.** A mechanism
+first exercised on the day it is needed is one whose header formats nobody has checked, and these
+two are easy to get the wrong way round — one is seconds since the epoch, the other an HTTP-date.
+The notice is attached to the endpoint as metadata as well as written to the response, so the
+build can see it too, and a deprecation whose link points at a page that has since been renamed
+fails a test rather than reaching a caller.

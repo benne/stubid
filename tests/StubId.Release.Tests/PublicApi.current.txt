@@ -251,6 +251,7 @@ type public interface StubId.Profiles.IBrokerProfile
   property StubId.Profiles.ProfileId Id { get; }
 
 type public static class StubId.Profiles.NotEmulated
+  field const string Documentation = "https://github.com/benne/stubid/blob/master/"
   method static Microsoft.AspNetCore.Http.IResult Answer (Microsoft.AspNetCore.Http.HttpContext http, string reason, string? what = null)
 
 type public sealed record StubId.Profiles.ProfileContext : System.IEquatable<StubId.Profiles.ProfileContext>

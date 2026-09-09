@@ -166,8 +166,28 @@ Two things that release did not buy, stated because a promise nobody can act on 
   identifier and no link, so the next one is suppressible on its own.
 - The renamed control-API route carried no `Deprecation` or `Sunset` header, so a caller that was
   not a .NET compiler — Node, Spring, curl — got no signal at all before the route began answering
-  404. Nothing is deprecated on the wire today and no mechanism for those headers exists yet;
-  this is the intention for the next one rather than something already built.
+  404. That mechanism now exists, and the next deprecated route will carry it.
+
+What a deprecated route sends, so that a caller can read it before there is one to read it on:
+
+```http
+Deprecation: @1688169599
+Link: <https://github.com/benne/stubid/blob/master/docs/compatibility.md#...>; rel="deprecation"; type="text/html"
+```
+
+`Deprecation` is an item structured header field whose value is a Date ([RFC 9745]) — an `@` and
+then seconds since the epoch — and it says when the route was deprecated, not when it goes. The
+`Link` is where the reason is written.
+
+`Sunset` ([RFC 8594], an HTTP-date, which is a different format on purpose) is sent only where a
+removal has actually been scheduled, and usually it will not be. That field asks for a timestamp
+in the future, and this project has no release calendar to draw one from; a date invented to fill
+it in would be a promise about when a release happens, which is not a promise anything here can
+keep. **So do not wait for a `Sunset` to act on a `Deprecation`.** One release of notice is what
+is promised, and the deprecation header is the notice.
+
+[RFC 9745]: https://www.rfc-editor.org/rfc/rfc9745.html
+[RFC 8594]: https://www.rfc-editor.org/rfc/rfc8594.html
 
 ## How this is enforced
 
