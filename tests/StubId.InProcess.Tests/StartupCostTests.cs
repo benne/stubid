@@ -46,7 +46,7 @@ public class StartupCostTests(ITestOutputHelper output)
     /// are worth buying.
     /// </para>
     /// <para>
-    /// Not all of the spread is the machine, either. Forced to take all five on an idle laptop,
+    /// Not all of the spread is the machine, either. Forced to take all five with nothing else running,
     /// this measured 116, 56, 40, 43 and 47 ms - the first start paying for JIT that every later
     /// one finds already done. That part is systematic rather than random, and it lands entirely
     /// on the sample a single-shot test would have used.

@@ -68,7 +68,7 @@ public class InProcessLoginTests(ITestOutputHelper output)
     /// first sample pays for JIT that every later one finds already done.
     /// </para>
     /// <para>
-    /// That last part is not a small correction here. Forced to take all five on an idle laptop,
+    /// That last part is not a small correction here. Forced to take all five with nothing else running,
     /// this measured 237, 2, 1, 2 and 1 ms - the first login costing more than a hundred times
     /// the ones behind it. So the single sample the old shape took was spending most of a
     /// four-fold margin on warm-up before the login itself was measured at all, which is a
