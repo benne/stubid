@@ -1,9 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <Description>The emulated broker surface, and the composition that hosts it.</Description>
-    <PackageTags>stubid;mitid;oidc;testing;aspnetcore</PackageTags>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <!-- No PackageTags and no PackageReadmeFile, for the reason StubId.Profiles.Abstractions
+         gives about itself, StubId.Abstractions and StubId.Wire: this ships only because the
+         packages a reader installs depend on it, and a dependency somebody finds by searching
+         the tags is a dependency they will reference directly. It carried both until now,
+         which made the first release notes' claim that the substrate packages carry neither
+         true of three of the four rather than of all of them. -->
+    <Description>The emulated broker surface, and the composition that hosts it.
+      Substrate: reference StubId.Testing or StubId.InProcess to run StubID from a test
+      suite.</Description>
     <RootNamespace>StubId.Server</RootNamespace>
     <!--
       The Web SDK defaults this to false, because a web application is normally shipped as an
@@ -66,12 +72,6 @@
       <EmbeddedResource Include="$(IntermediateOutputPath)discovery.template.json" LogicalName="discovery.json" />
     </ItemGroup>
   </Target>
-
-  <!-- The root README, so the package page says what this is. Absolute links in it are what
-       make that work: nuget.org resolves a relative one against itself. -->
-  <ItemGroup>
-    <None Include="../../README.md" Pack="true" PackagePath="\" />
-  </ItemGroup>
 
 
   <ItemGroup>

@@ -165,7 +165,9 @@ public class VersionTests
     /// them, so this is new ground rather than a regression guard. What it catches is a
     /// mistyped identifier, a line naming the Idura spike, and a line surviving a release that
     /// stopped shipping the package it names. It cannot catch a package that failed to reach
-    /// nuget.org - only consuming one from outside can, and nothing here does that yet.
+    /// nuget.org - only consuming one from outside can, which tests/consume-nuget does, but on a
+    /// weekly schedule and after a release rather than on a pull request. So nothing before a
+    /// merge proves a package resolves.
     /// </remarks>
     [Fact]
     public void Every_package_the_documentation_tells_a_reader_to_install_is_one_we_publish()
@@ -203,6 +205,49 @@ public class VersionTests
 
         // A regex that quietly stopped matching would pass this test by finding nothing.
         Assert.True(found > 0, "no install instruction was found in the documentation at all");
+    }
+
+    /// <summary>
+    /// A package is advertised on nuget.org exactly when a guide says to install it.
+    /// </summary>
+    /// <remarks>
+    /// <c>PackageTags</c> is what makes a package findable by searching, and
+    /// <c>StubId.Profiles.Abstractions</c> writes the rule down for itself, StubId.Abstractions
+    /// and StubId.Wire: they ship only because packages a reader installs depend on them, and
+    /// "a dependency a reader finds by searching the tags is a dependency they will reference
+    /// directly". The rule was true of those three and never of StubId.Server, which carried
+    /// tags and a readme from before the first release while every document called it substrate -
+    /// so <c>docs/releases/2026.09.1.md</c> shipped a sentence that was false about a quarter of
+    /// what it described.
+    /// <para>
+    /// Both halves are read rather than listed. The advertised set comes from the project files
+    /// and the installable set from the <c>dotnet add package</c> lines in the guides, so a
+    /// package that starts being recommended, or stops, moves both sides together or fails here.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void Exactly_the_packages_a_guide_says_to_install_are_advertised()
+    {
+        var advertised = Directory
+            .EnumerateFiles(Path.Combine(Repository.Root, "src"), "*.csproj",
+                SearchOption.AllDirectories)
+            .Where(project => File.ReadAllText(project)
+                .Contains("<PackageTags>", StringComparison.Ordinal))
+            .Select(project => Path.GetFileNameWithoutExtension(project)!)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToList();
+
+        var installable = Scanned()
+            .Where(file => file.Relative.StartsWith("docs/guides/", StringComparison.Ordinal))
+            .SelectMany(file => new Regex(@"dotnet add package (StubId\.[A-Za-z.]+)")
+                .Matches(File.ReadAllText(file.Full))
+                .Select(match => match.Groups[1].Value))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.NotEmpty(installable);
+        Assert.Equal(installable, advertised);
     }
 
     /// <summary>

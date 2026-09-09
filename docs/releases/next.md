@@ -93,3 +93,27 @@ identifier and no link, so the next one is suppressible on its own.
 The page also carries a correction the dated notes cannot: the first release said the floating
 `2026.09` tag moves to the next release *recorded* in the same month. 2026.09.2 recorded nothing
 and the tag moved anyway. It moves to the next release in the same month, recorded or not.
+
+## StubId.Server stops advertising itself
+
+Every document in this repository calls `StubId.Server` substrate — published because the packages
+you install depend on it, not because anything is meant to call it. Its project file disagreed: it
+carried `PackageTags`, which is what makes a package findable by searching nuget.org, and shipped
+the README as its package page. Both predate the first release, so
+`docs/releases/2026.09.1.md`'s claim that the substrate packages "carry no package tags and no
+readme" was true of three of the four and never of this one.
+
+It now carries neither, matching `StubId.Abstractions`, `StubId.Wire` and
+`StubId.Profiles.Abstractions`, whose project file is where the rule was written down in the first
+place: *"a dependency a reader finds by searching the tags is a dependency they will reference
+directly."*
+
+**What changes for you: nothing you can call.** The package still publishes, still carries the
+same version and the same assembly, and anything referencing it keeps working. What changes is
+that it stops appearing in a tag search on nuget.org, and its listing page no longer shows the
+project README — it shows its own description, which now says outright that it is substrate and
+names the two packages a suite should reference instead.
+
+A test now reads both halves rather than trusting either: the packages carrying tags, from the
+project files, and the packages a guide tells a reader to install, from the `dotnet add package`
+lines. They have to be the same set.
