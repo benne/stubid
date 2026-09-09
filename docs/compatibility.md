@@ -191,22 +191,38 @@ is promised, and the deprecation header is the notice.
 
 ## How this is enforced
 
-The .NET half is not a promise you have to take on trust. The public surface of every published
+Neither half is a promise you have to take on trust. The public surface of every published
 package is composed by reflection and committed as text, in two files: one for what the assemblies
 say now, and one for what the last release published. A member that the last release published,
 that is gone from the current surface, and that did not carry `[Obsolete]` when it shipped, fails
 the build and is named. A break that is decided rather than accidental takes an entry recording the
 reason, and a second test fails when such an entry stops describing a break that actually happened.
 
+The control API is recorded the same way and for the same reason, in
+`ControlApi.current.txt` and `ControlApi.shipped.txt`. Its field names are derived from property
+names by a naming policy, and almost every test reads them back through the typed client's own
+records — so renaming a property renamed both sides at once and nothing failed, while a caller
+reading the JSON broke. That baseline is composed by starting an instance, driving it through
+enough states that every route answers, and recording the key path of every field in the bytes it
+actually sent. Both directions are checked: a registered route the script never reached fails, and
+so does a route in the file this build no longer registers.
+
+A field the last release answered with, gone from this one, fails — unless the route said on the
+wire that it was going away, which is what the `Deprecation` header records and what the baseline
+carries forward as a mark against that route. Nothing is deprecated yet, so that half of the rule
+has nothing to excuse and will not until a release ships a route carrying the header.
+
 What is **not** enforced, so that you know where the edges are:
 
-- **Route paths.** The baseline is composed from .NET members. A control-API path is a string
-  inside a route registration, so a renamed or removed route is caught by whichever test happened
-  to call it, not by anything systematic.
-- **JSON field names, in general.** Some are pinned as literals by tests that read the server's
-  actual bytes — the routes, fidelity and session-explanation payloads among them — but most are
-  derived from property names by a naming policy and exercised through the typed client, which
-  round-trips both sides of a rename without noticing.
+- **Field types.** The baseline records paths, not the JSON kind at each one. A nullable field's
+  kind depends on the state the fixture had the instance in, and a baseline that moves with its
+  fixture is one nobody can trust. A rename or a removal is caught; a string becoming a number is
+  not.
+- **Response branches the fixture cannot reach.** Three are named in the composer rather than left
+  to be noticed: the readiness probe's 503 body needs an instance with no address, the certificate
+  routes' populated shape needs TLS, and the clock's refusal needs an uncontrollable clock. The
+  in-process host cannot produce any of the three, and each would cost a second instance for one
+  shape.
 - **The shipped baseline moving on its own.** Nothing rewrites it automatically. What forces it is
   a test asserting it names the version being built, so it is a release-time step somebody performs
   rather than a file that maintains itself.
