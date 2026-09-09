@@ -36,9 +36,8 @@ held three entries and no others:
 | Reference Text Header | `Godkend hos <service provider>` |
 
 The transaction text was not among them in any form — not the text, not the base64 it was sent
-as, not the digest. The operator's note on the app simulator was "I don't even know if it
-really says it anywhere normally", which is the right amount of confidence to take from one
-screen.
+as, not the digest. The app simulator offered no assurance that the text appears anywhere in a
+normal login, which is the right amount of confidence to take from one screen.
 
 CAP-031 sent neither `reference_text` nor `action_text`, so `Godkend` and its header came from
 somewhere other than the request; whether MitID supplied them or the broker did is not

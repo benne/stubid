@@ -117,6 +117,52 @@ public class ScrubberTests
         Assert.Contains("STUBID_NEB_PP_CODE_CLIENT_SECRET", thrown.Message, StringComparison.Ordinal);
     }
 
+    /// <summary>A name inside a base64 claim value is scrubbed like one written plainly.</summary>
+    /// <remarks>
+    /// The case that got through. The broker sends the CPR consent sentence base64-encoded, and it
+    /// names the organization receiving the number; the redact block has always carried an entry
+    /// for that name, and it never matched, because base64 encodes three bytes at a time and the
+    /// same name at a different offset is a different substring. Three sittings recorded a real
+    /// company's name with the rule that should have caught it sitting one encoding away.
+    /// </remarks>
+    [Fact]
+    public void A_name_inside_a_base64_claim_is_scrubbed_too()
+    {
+        var sentence = "Ved at indtaste det her, godkender du, at Example A/S modtager dit CPR-nummer.";
+        var encoded = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(sentence));
+
+        var scrubbed = Scrubber.Scrub(
+            $$"""{"mitid.cpr_consent_text":"{{encoded}}"}""",
+            setting => null,
+            [("{{ORGANIZATION_NAME}}", "Example A/S")]);
+
+        Assert.DoesNotContain("Example A/S", Decode(scrubbed), StringComparison.Ordinal);
+        Assert.Contains("{{ORGANIZATION_NAME}}", Decode(scrubbed), StringComparison.Ordinal);
+
+        // The sentence around it survives: what is redacted is the name, not the recording.
+        Assert.Contains("modtager dit CPR-nummer.", Decode(scrubbed), StringComparison.Ordinal);
+    }
+
+    /// <summary>Base64 that is not readable text is left exactly as it was.</summary>
+    /// <remarks>
+    /// A signature, a hash and a key are all base64 and none of them is a sentence. Decoding and
+    /// re-encoding one would change bytes the recording exists to preserve.
+    /// </remarks>
+    [Fact]
+    public void Base64_that_is_not_text_is_left_alone()
+    {
+        const string text = """{"mitid.transaction_text_sha256":"KJjd1jCP2c+GnkLNl8cAEquyjsxVf6FI6EtoVddhHR8="}""";
+
+        Assert.Equal(text, Scrubber.Scrub(text, _ => null, [("{{ORGANIZATION_NAME}}", "Example A/S")]));
+    }
+
+    private static string Decode(string json)
+    {
+        var value = json.Split('"')[3];
+
+        return System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(value));
+    }
+
     [Fact]
     public void A_configured_credential_is_substituted_before_the_request_is_sent()
     {

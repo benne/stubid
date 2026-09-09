@@ -1114,7 +1114,7 @@ naming answer.
 
 **Things deliberately not in this script**, so nobody adds them back mid-sitting: the
 fragment-mode transcription (step 15); a third parked browser for a broker-page timeout, which
-the design that proposed it already marked droppable; a second `prompt=none` variant with
+already marked droppable; a second `prompt=none` variant with
 `idp_values` omitted, which is a recorded null result; more than two wrong-CPR attempts; and
 hunting the test tool for a protection control beyond the thirty seconds in P1.
 

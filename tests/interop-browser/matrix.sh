@@ -26,7 +26,7 @@ suite=${SUITE_DIR:-/suite}
 work=${WORK_DIR:-/work}
 
 # The suite is mounted read-only and built in a copy, so npm never writes node_modules into a
-# bind-mounted working tree as root. That is how tests/interop-spring/target became root-owned.
+# bind-mounted working tree as root. Without it the host's working tree is left holding root-owned build output.
 mkdir -p "$work"
 cp "$suite"/package.json "$suite"/signin.mjs "$work/"
 cd "$work"

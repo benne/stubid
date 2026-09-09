@@ -13,7 +13,7 @@ namespace StubId.Interop.AspNetCore;
 /// <para>
 /// Crossing it is a bad failure to debug. It surfaces as an IOException about file descriptors in
 /// whichever test happened to build the next host, so the tests that fail are arbitrary, differ
-/// between runs, and name nothing to do with what they assert. It cost an afternoon once already.
+/// between runs, and name nothing to do with what they assert.
 /// </para>
 /// <para>
 /// Set here rather than on each factory because the budget belongs to the process, not to a class:

@@ -118,6 +118,73 @@ public static partial class SensitiveContent
         return Finding.None;
     }
 
+    /// <summary>
+    /// A routable address, whether written plainly or encoded inside a token.
+    /// </summary>
+    /// <remarks>
+    /// The address a sitting was taken from is not the broker's data; it is the recordist's.
+    /// The broker puts it in the transaction token as <c>transaction_client_ip</c>, so it arrives
+    /// without anyone choosing to write it down, and it survived three sittings before anybody
+    /// looked - the scrubber replaced the signed token with a placeholder, and the decoded payload
+    /// written beside it for readability kept the address in plain sight.
+    /// <para>
+    /// Shaped rather than listed, like the personal-number check above and for the same reason:
+    /// the next address will be a different one. Loopback, the private ranges and the blocks RFC
+    /// 5737 and RFC 3849 set aside for documentation are all allowed, because those describe
+    /// nobody's network and are what an example should use.
+    /// </para>
+    /// </remarks>
+    public static Finding FindRoutableIp(string candidate)
+    {
+        foreach (Match match in IpPattern().Matches(candidate))
+        {
+            if (IsRoutable(match.Value))
+            {
+                return new Finding(true, match.Value, "plain text");
+            }
+        }
+
+        foreach (var (segment, decoded) in DecodedSegments(candidate))
+        {
+            foreach (Match match in IpPattern().Matches(decoded))
+            {
+                if (IsRoutable(match.Value))
+                {
+                    return new Finding(true, match.Value, $"inside base64url segment {segment[..8]}...");
+                }
+            }
+        }
+
+        return Finding.None;
+    }
+
+    /// <summary>Whether an address belongs to somebody rather than to an example.</summary>
+    private static bool IsRoutable(string candidate)
+    {
+        if (!System.Net.IPAddress.TryParse(candidate, out var address)
+            || address.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
+        {
+            return false;
+        }
+
+        var octets = address.GetAddressBytes();
+
+        return (octets[0], octets[1], octets[2]) switch
+        {
+            (0, _, _) => false,                                  // "this network"
+            (10, _, _) => false,                                 // private
+            (127, _, _) => false,                                // loopback
+            (169, 254, _) => false,                              // link-local
+            (172, >= 16 and <= 31, _) => false,                   // private
+            (192, 0, 2) => false,                                // TEST-NET-1, for documentation
+            (192, 168, _) => false,                              // private
+            (198, 51, 100) => false,                             // TEST-NET-2, for documentation
+            (203, 0, 113) => false,                              // TEST-NET-3, for documentation
+            (>= 224, _, _) => false,                             // multicast and reserved
+            _ => true,
+        };
+    }
+
     private static IEnumerable<(string Segment, string Decoded)> DecodedSegments(string candidate)
     {
         foreach (Match match in Base64UrlSegmentPattern().Matches(candidate))
@@ -167,6 +234,17 @@ public static partial class SensitiveContent
     /// </summary>
     [GeneratedRegex(@"(?<![0-9A-Za-z])(0[1-9]|[12]\d|3[01])(0[1-9]|1[0-2])\d{2}[- ]?\d{4}(?![0-9A-Za-z])")]
     private static partial Regex CprPattern();
+
+    /// <summary>
+    /// Four dotted octets, not sitting inside a longer run of digits, dots or letters.
+    /// </summary>
+    /// <remarks>
+    /// The boundary is what keeps it off version numbers and off the dotted quads inside a
+    /// longer identifier. It over-reports by design: <see cref="IsRoutable" /> is what decides,
+    /// and it is the part that can be read and argued with.
+    /// </remarks>
+    [GeneratedRegex(@"(?<![0-9A-Za-z.])((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?![0-9A-Za-z.])")]
+    private static partial Regex IpPattern();
 
     [GeneratedRegex(@"([A-Za-z0-9_-]{16,})\.([A-Za-z0-9_-]{16,})\.([A-Za-z0-9_-]*)")]
     private static partial Regex JwsPattern();
