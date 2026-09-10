@@ -37,6 +37,9 @@ public sealed class IduraProfile(IReadOnlyList<IduraClient> clients) : IBrokerPr
 
     public ProfileId Id => new("idura", "2026.08-spike");
 
+    /// <summary>The bare host, with no path segment of its own, and tolerant of a trailing slash.</summary>
+    public TenantRoot Root => TenantRoot.HostRoot;
+
     public IReadOnlyList<RouteDeclaration> DeclareRoutes(ProfileContext context)
     {
         // Tolerant where Idura is tolerant. Being stricter than the broker fails a client that

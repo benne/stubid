@@ -23,6 +23,8 @@ public class RouteCollisionTests
     {
         public ProfileId Id => new(Name, "test");
 
+        public TenantRoot Root => TenantRoot.HostRoot;
+
         public IReadOnlyList<RouteDeclaration> DeclareRoutes(ProfileContext context) => Routes;
     }
 

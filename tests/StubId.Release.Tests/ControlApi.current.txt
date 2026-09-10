@@ -80,6 +80,7 @@ GET /_stubid/v1/fidelity -> 200
   entries[].subject
   entries[].tier
   profile.broker
+  profile.root
   profile.version
 
 GET /_stubid/v1/issued -> 200

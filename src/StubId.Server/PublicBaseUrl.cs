@@ -116,12 +116,14 @@ public sealed class PublicBaseUrl
         if (path.Length > 0)
         {
             // The mistake an operator actually makes is pasting the authority out of their own
-            // client configuration, which already carries the segment we are about to add.
-            fault = path.Equals("op", StringComparison.OrdinalIgnoreCase)
-                ? ("the public base URL must not include the /op path segment",
-                    "The issuer is this value plus /op. Send http://host:port.")
-                : ("the public base URL must not carry a path",
-                    "StubID serves the broker at the host root, under /op.");
+            // client configuration, which already carries the segments we are about to add. Which
+            // segments those are depends on the broker, so the message names what was sent rather
+            // than what was expected - the alternative is a hint that is wrong for every profile
+            // but one.
+            fault = ("the public base URL must not carry a path",
+                $"StubID adds the emulated broker's own path to this value to form the issuer, so "
+                + $"'/{path}' would end up in it twice. Send the host on its own, like "
+                + $"http://localhost:18080.");
 
             return false;
         }

@@ -30,6 +30,10 @@ public static class ControlApi
             {
                 broker = profile.Id.Broker,
                 version = profile.Id.Version,
+
+                // The path its surface sits under, so a caller can build the authority a client
+                // library needs without knowing which broker it asked for.
+                root = profile.Root.Segments,
             },
             entries = FidelityLedger.Read(FidelityLedger.Sources),
         }));

@@ -27,7 +27,7 @@ They are not one thing and they do not move together.
 | --- | --- | --- |
 | The .NET API you install | `StubId.Client`, `StubId.Testing`, `StubId.InProcess` | Stable. A member is deprecated for one release before it is removed, and the build enforces it. |
 | StubID's own control API | The routes under `/_stubid/v1`, which `StubId.Client` covers member by member | Stable. Additions are expected; a rename keeps answering for one release, then stops. |
-| The emulated broker | Everything under `/op` | **Deliberately not stable.** Getting closer to the broker changes bytes, and that is the point of the project rather than a regression in it. |
+| The emulated broker | Everything under the loaded profile's root, which is `/op` today | **Deliberately not stable.** Getting closer to the broker changes bytes, and that is the point of the project rather than a regression in it. |
 | Configuration and the container | `StubId:*` settings, `StubId__*` environment variables, ports 8080 and 8443, the `/keys` volume, the image tags | Additive. A removed setting or a moved port is a release note. |
 
 `StubId.Abstractions` carries the same promise as the first row and appears in the API reference,
