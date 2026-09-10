@@ -242,6 +242,7 @@ type public sealed class StubId.InProcess.StubIdHostBuilder
   method StubId.InProcess.StubIdHostBuilder WithControllableClock (bool controllable = true)
   method StubId.InProcess.StubIdHostBuilder WithKeyPath (string path)
   method StubId.InProcess.StubIdHostBuilder WithLogging (System.Action<Microsoft.Extensions.Logging.ILoggingBuilder> configure)
+  method StubId.InProcess.StubIdHostBuilder WithProfile (string profile)
   method StubId.InProcess.StubIdHostBuilder WithPublicBaseUrl (System.Uri publicBaseUrl)
   method StubId.InProcess.StubIdHostBuilder WithSetting (string key, string value)
 
@@ -717,6 +718,7 @@ type public sealed class StubId.Testing.StubIdBuilder : DotNet.Testcontainers.Bu
   method StubId.Testing.StubIdBuilder WithControllableClock (bool controllable = true)
   method StubId.Testing.StubIdBuilder WithKeyVolume (DotNet.Testcontainers.Volumes.IVolume volume)
   method StubId.Testing.StubIdBuilder WithKeyVolume (string name)
+  method StubId.Testing.StubIdBuilder WithProfile (string profile)
   method StubId.Testing.StubIdBuilder WithPublicBaseUrl (System.Uri publicBaseUrl)
   method StubId.Testing.StubIdBuilder WithTlsCertificate (byte[] pkcs12, string? password = null)
   method StubId.Testing.StubIdBuilder WithTls (bool tls = true)

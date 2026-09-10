@@ -37,6 +37,16 @@ public sealed class StubIdContainer : DockerContainer
     /// </remarks>
     public X509Certificate2? ServerCertificate { get; internal set; }
 
+    /// <summary>
+    /// The path the emulated broker's surface sits under, read from the instance during start.
+    /// </summary>
+    /// <remarks>
+    /// Asked rather than looked up in a table of this module's own. The profile is the one thing
+    /// that knows where its surface sits, and a module that answered from a second copy of that
+    /// would be right until the day a profile moved and wrong without anything failing.
+    /// </remarks>
+    internal string ProfileRoot { get; set; } = "op";
+
     /// <summary>Where this process reaches the container: the host and the mapped port.</summary>
     /// <remarks>
     /// Distinct from <see cref="BaseAddress" /> on purpose. A pinned instance is told to call itself
@@ -67,7 +77,8 @@ public sealed class StubIdContainer : DockerContainer
     /// for character, which is the comparison openid-client and Spring Security both make.
     /// </summary>
     /// <remarks>Not <see cref="Uri.Authority" />, which is a host and a port.</remarks>
-    public Uri Authority => new(BaseAddress, "op");
+    public Uri Authority =>
+        ProfileRoot.Length == 0 ? BaseAddress : new Uri(BaseAddress, ProfileRoot);
 
     /// <summary>The control API, over this instance.</summary>
     /// <remarks>

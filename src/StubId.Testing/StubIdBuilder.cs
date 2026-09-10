@@ -121,6 +121,17 @@ public sealed class StubIdBuilder : ContainerBuilder<StubIdBuilder, StubIdContai
             .WithPortBinding(StubIdTlsPort, assignRandomHostPort: true);
     }
 
+    /// <summary>Which broker this instance emulates.</summary>
+    /// <remarks>
+    /// One instance serves one broker, and this is how it is chosen. Setting the environment
+    /// variable directly reaches the server but not <see cref="StubIdContainer.Authority" />, which has to know
+    /// the same answer before the instance has said anything - so a build that does one without
+    /// the other hands a client library the wrong path and the failure arrives as a discovery
+    /// error with the broker's name nowhere in it.
+    /// </remarks>
+    public StubIdBuilder WithProfile(string profile) =>
+        WithEnvironment("StubId__Profile", profile ?? throw new ArgumentNullException(nameof(profile)));
+
     /// <summary>
     /// A clock a test can move, so a five-minute timeout is reached in milliseconds.
     /// </summary>
@@ -212,6 +223,15 @@ public sealed class StubIdBuilder : ContainerBuilder<StubIdBuilder, StubIdContai
         {
             await WaitForLivenessAsync(control, ct);
             container.ServerCertificate = await control.Runtime.GetTlsCertificateAsync(ct);
+
+            // Matched on the root rather than on the profile, because an instance old enough to
+            // omit the field is still new enough to report a profile - and the empty string is a
+            // real root, so a missing field cannot be allowed to read as one. What is left in
+            // place is the only broker such an instance can be serving.
+            if (await control.ProfileAsync(ct) is { Root: { } root })
+            {
+                container.ProfileRoot = root;
+            }
 
             if (configuration.PublicBaseUrl is not null)
             {
