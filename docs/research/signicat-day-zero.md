@@ -8,8 +8,9 @@ self-registered sandbox account on Signicat's Digital Trust Platform — whose e
 Two kinds of evidence are mixed here and are kept apart on purpose. **The dashboard** says what
 is *possible*: which scopes a client may hold, which toggles exist. **The discovery document**
 is the platform speaking for itself and is quoted as fetched. Neither is a recording of a
-login, so nothing below establishes a single claim name, JSON type or member order. That still
-has to be recorded.
+login. One question needed one to close, and section 3 says so where it relies on it; everything
+else below stops at what is possible. No claim name, JSON type or member order is established
+here — that is [a separate note](signicat-observed-tokens.md), and neither is a recording.
 
 This is the current generation throughout. The older Enterprise platform serves `/oidc` and
 names its MitID claims with full stops; it is a different product and mixing the two is the
@@ -58,19 +59,24 @@ sources, one incomplete, and the incomplete one is the one a reader meets first.
 
 ## 3. What gates the CPR number?
 
-**Unsettled, and only a login will settle it.** The scope exists and is selectable; whether the
-number actually arrives is a different question, and the documentation contradicts itself on it.
+**A scope, and the flow it drives runs.** A login on a client holding `nin` asks for the CPR
+number as its second step, on a free sandbox, with nothing ordered and nobody contacted.
+
+A completed login settles the rest of it: `nin` arrives, at userinfo, ten characters long, which
+is the length a CPR has. What a claim is *called* and where it appears is in
+[the observed tokens](signicat-observed-tokens.md); what matters here is that nothing was ordered
+and nobody was contacted to make it appear.
 
 What is established: `nin` is one of the scopes a client can hold, and the dashboard states it
 declares three claims — `nin`, `nin_type` and `nin_issuing_country`. There is no CPR-matching
 toggle anywhere in the dashboard, no CPR field on a client, and no CPR page in the
 configuration documentation.
 
-What is not established: whether holding the scope is sufficient. Signicat's own attributes
-reference presents the CPR-match response under MitID *without* add-ons, and its migration
-guide says only to make sure `nin` is among the requested scopes — both of which read as "just
-ask for it". Against that stands one sentence, in a migration table, saying CPR matching must be
-enabled, naming no toggle, no ticket and no contact. The two cannot be reconciled from outside.
+The documentation could not have told you this. Signicat's own attributes reference presents the
+CPR-match response under MitID *without* add-ons, and its migration guide says only to make sure
+`nin` is among the requested scopes — both of which read as "just ask for it". Against that stands
+one sentence, in a migration table, saying CPR matching must be enabled, naming no toggle, no
+ticket and no contact. The two cannot be reconciled from outside, and the wire settles it.
 
 The scope picker is not the evidence it appears to be either. The platform's discovery document
 advertises fifty-nine scopes and the list is identical on unrelated hosts, so it is a catalog
@@ -93,13 +99,33 @@ Observed with `openid`, `profile`, `nin` and `idp-id` selected:
 
 ## 4. What will transaction consent cost?
 
-**More than a checkbox, and the harness needs a new signer either way.**
+**Nothing**, beyond a key the harness has to grow anyway. It is already live on a free
+self-serve sandbox, and that was established by using it rather than by asking.
 
-There is no transaction-consent setting in the dashboard, and unlike the CPR question this one
-has a documented answer: the add-on is ordered through Signicat, and a flag is then set on the
-account's MitID configuration — a surface no published page, screenshot or field list shows. So
-it is not something to find. It is something to ask for, and whether Signicat grants it on a
-free sandbox is not documented either way.
+The documentation says close to the opposite: the add-on is ordered through Signicat and a flag is
+then set on the account's MitID configuration, a surface no published page or field list shows. So
+there is nothing to find in the dashboard, which is the symptom that sends somebody looking for a
+support address.
+
+Two signed requests settle it, identical but for one carrying `mitid_reference_text` inside its
+`acr_values`. The MitID test app's simulator shows a `Flow Value Texts` panel, and the difference
+between the two is the whole result:
+
+| | Control | Carrying a reference text |
+| --- | --- | --- |
+| `Reference Text` | *(empty)* | the exact string that was sent |
+| `Reference Text Header` | `Log on at Signicat demo` | `Log on at Signicat demo` |
+| `Service Provider` | `Signicat demo` | `Signicat demo` |
+
+The control is what makes that an answer rather than an impression. A populated field on its own
+says nothing about what populated it, and an empty one says nothing about entitlement.
+
+Two of those three rows were never set by either request. `Reference Text Header` and
+`Service Provider` are Signicat's defaults for an account that has not asked for its own, so the
+citizen is told they are logging on at "Signicat demo" whoever the client belongs to. Both are
+documented as things Signicat configures on request, and both are text a person reads before
+approving. A recording made before they are set carries the default; the account's own name
+appears the day they are.
 
 The mechanics on this side are self-serve, and they are what the harness has to be ready for.
 `mitid_reference_text` is a request-time `acr_values` key carrying Base64 text, and it must
@@ -118,6 +144,15 @@ The capture harness signs its request objects HS256 with the client secret, beca
 the first broker accepted. That will not work here. A key pair, an asymmetric signer, and a
 public key registered on the client are preparation for a sitting rather than something to
 discover during one.
+
+Registering one is two different acts wearing similar labels. **Import public key** takes a key
+you already hold, which is the one a capture harness wants: the private half never leaves the
+machine that signs with it. **Add public key** has Signicat generate the pair and show you the
+private half once, never storing it — convenient, and the wrong shape for a key that has to be
+reproducible from a checked-out repository. Either way the key carries a name, a validity window
+defaulting to about three months, and a usage of either signing or encryption. Signing is the one
+that verifies a request object; encryption is for receiving encrypted responses, which is a
+different mechanism on the same page.
 
 ## 5. Two things the first broker has no equivalent of
 
@@ -212,6 +247,55 @@ eIDs the account has added — `mitid` and nothing else. Beside it sit a free-te
 field and a **Force use ACR values** checkbox, which is where a client-level default for
 `idp:mitid` would go.
 
+## 8. What an unauthenticated authorize request settles
+
+Sent the way the first broker's day-zero probes were sent: real requests to the real endpoint,
+no login completed, nothing recorded as a fixture.
+
+**`acr_values` is read, and the negative control proves it.** The account has one eID, so a
+request naming nothing still reaches MitID and on its own says nothing. A request naming an eID
+that does not exist is what separates the two readings:
+
+| `acr_values` | Where it lands |
+| --- | --- |
+| *(absent)* | MitID |
+| `idp:mitid` | MitID |
+| **`idp:nosuchidp`** | **a "Select identity provider" chooser** |
+
+**But an unknown key is ignored rather than refused.** `idp:` is validated; the keys beside it
+are not. A request carrying `nosuchkey:abc` reaches MitID exactly as the baseline does, and so
+does one carrying `mitid_reference_text`, in every spelling tried — space-separated,
+comma-separated, and alone. So the absence of a complaint about the reference text establishes
+nothing about whether the account may use it. This is the same trap the first broker set with
+`simulation`, where a deliberately invalid value reaching the login page was the row that
+settled it.
+
+Nor is there an error to look for. The platform's published error catalog is thirty-three
+entries under five prefixes, and not one of them mentions consent, a reference text, an add-on
+or an entitlement.
+
+**The MitID journey leaves the tenant host entirely.** The redirect chain ends on the older
+Enterprise infrastructure, at `preprod.signicat.com/std/method/dtp`, whose target parameter names
+a `saml11target` — SAML 1.1, internally, behind an OIDC front door. The page it serves is a small
+shim that hands off to the widget at `signicat.pp.mitid.dk`.
+
+That last hostname settles something the documentation only implied: the sandbox is backed by the
+real MitID pre-production environment, on a Signicat-branded subdomain of it. It also bounds what
+an emulator is responsible for. Everything from the shim onward is MitID's own surface on
+somebody else's host, which StubID does not reproduce and does not need to.
+
+**Two error-surface facts, both worth recording.** An unusable request object redirects to
+`/auth/open/Error?errorId=CfDJ8…` — the ASP.NET Core Data Protection payload, the same shape the
+first broker uses. The page renders `An error has occured`, misspelled, which is a functional
+fact this project reproduces exactly rather than corrects. Below it sits `Invalid JWT request`,
+which is character-for-character what the first broker returns as the `error_description` from
+its pushed-authorization endpoint. Two vendors, one IdentityServer underneath.
+
+And the reason is not distinguishable from outside: a correctly signed request object whose key
+is not registered, and a `request` parameter that is outright garbage, produce the same page and
+the same words. An emulator can reproduce that; a client debugging against it cannot tell the two
+apart, which is the broker's choice rather than ours.
+
 ## Two spellings that are both correct
 
 `mitid-private-business` is a scope. `mitid-private-to-business` is an eID scoping code, used as
@@ -220,12 +304,21 @@ emulator that treats either as a typo for the other will refuse a request the br
 
 ## What this does not settle
 
-Everything a login produces. No byte of a Signicat response has been recorded, no MitID claim
-name has been observed, and the dashboard's own warning about scopes is a fair statement of how
-much its claim lists are worth until one has been.
+Everything a login produces, as bytes. One login was completed to close two questions, and what
+it returned is written up beside this as shapes rather than values — but no Signicat response has
+been recorded, no MitID-specific claim has been seen at all, and the dashboard's own warning about
+scopes is a fair statement of what its claim lists are worth until one is.
 
-Ranked, the questions a first sitting has to answer: whether `nin` actually arrives with the
-scope alone; whether transaction consent can be had on a free sandbox at all; what a canceled
-and a timed-out login return, for which no code is quotable today; and whether the path below
-`/auth/open` is matched strictly or loosely, which decides what the profile's tenant root
-declares.
+Two of the four questions this note opened with are now answered by observation rather than by
+reading, and both answers contradict what the documentation implies. What is left is narrower.
+
+Ranked, the questions a first sitting still has to answer: what a canceled and a timed-out login
+return, for which no code is quotable today and no entitlement error exists in the published
+catalog; whether the path below `/auth/open` is matched strictly or loosely, which decides what
+the profile's tenant root declares; and every claim name, JSON type and member order, none of
+which any amount of dashboard reading can supply.
+
+One methodological note, because it is the reason two of these closed. Both answers came from a
+pair of requests differing in one parameter, run against the real environment, with the control
+run first. Neither could have come from a single request, and neither is visible anywhere but
+inside the MitID app.
