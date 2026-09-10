@@ -201,6 +201,7 @@ type public enum StubId.Client.StubIdGender : int
 type public sealed record StubId.Client.StubIdProfile : System.IEquatable<StubId.Client.StubIdProfile>
   ctor (string Broker, string Version)
   property string Broker { get; init; }
+  property string? Root { get; init; }
   property string Version { get; init; }
 
 type public sealed record StubId.Client.StubIdSession : System.IEquatable<StubId.Client.StubIdSession>
@@ -241,6 +242,7 @@ type public sealed class StubId.InProcess.StubIdHostBuilder
   method StubId.InProcess.StubIdHostBuilder WithControllableClock (bool controllable = true)
   method StubId.InProcess.StubIdHostBuilder WithKeyPath (string path)
   method StubId.InProcess.StubIdHostBuilder WithLogging (System.Action<Microsoft.Extensions.Logging.ILoggingBuilder> configure)
+  method StubId.InProcess.StubIdHostBuilder WithProfile (string profile)
   method StubId.InProcess.StubIdHostBuilder WithPublicBaseUrl (System.Uri publicBaseUrl)
   method StubId.InProcess.StubIdHostBuilder WithSetting (string key, string value)
 
@@ -249,6 +251,7 @@ type public sealed class StubId.InProcess.StubIdHostBuilder
 type public interface StubId.Profiles.IBrokerProfile
   method abstract System.Collections.Generic.IReadOnlyList<StubId.Profiles.RouteDeclaration> DeclareRoutes (StubId.Profiles.ProfileContext context)
   property StubId.Profiles.ProfileId Id { get; }
+  property StubId.Profiles.TenantRoot Root { get; }
 
 type public static class StubId.Profiles.NotEmulated
   field const string Documentation = "https://github.com/benne/stubid/blob/master/"
@@ -296,6 +299,14 @@ type public sealed record StubId.Profiles.SegmentExactness : System.IEquatable<S
   property System.Collections.Generic.IReadOnlyList<System.StringComparison> LiteralSegments { get; init; }
   property StubId.Profiles.TrailingSlash TrailingSlash { get; init; }
 
+type public sealed record StubId.Profiles.TenantRoot : System.IEquatable<StubId.Profiles.TenantRoot>
+  ctor (string Segments, System.StringComparison Comparison, StubId.Profiles.TrailingSlash TrailingSlash)
+  field static StubId.Profiles.TenantRoot HostRoot
+  property System.StringComparison Comparison { get; init; }
+  property string Prefix { get; }
+  property string Segments { get; }
+  property StubId.Profiles.TrailingSlash TrailingSlash { get; init; }
+
 type public enum StubId.Profiles.TrailingSlash : int
   enum Refuse = 0
   enum Tolerate = 1
@@ -341,6 +352,13 @@ type public sealed class StubId.Server.AutomaticApproval
   property bool Configured { get; }
   property bool Enabled { get; }
   property bool? Overridden { get; }
+
+type public static class StubId.Server.BrokerProfiles
+  field const string Default = "neb"
+  field const string Setting = "StubId:Profile"
+  method static StubId.Profiles.IBrokerProfile Select (Microsoft.Extensions.Configuration.IConfiguration configuration)
+  method static StubId.Profiles.IBrokerProfile Select (string? name)
+  property System.Collections.Generic.IReadOnlyList<string> Available { get; }
 
 type public sealed class StubId.Server.BrokerState
   ctor ()
@@ -489,9 +507,10 @@ type public sealed class StubId.Server.NetsEidBrokerProfile : StubId.Profiles.IB
   ctor ()
   method System.Collections.Generic.IReadOnlyList<StubId.Profiles.RouteDeclaration> DeclareRoutes (StubId.Profiles.ProfileContext context)
   property StubId.Profiles.ProfileId Id { get; }
+  property StubId.Profiles.TenantRoot Root { get; }
 
 type public sealed class StubId.Server.PathRules
-  ctor (string pathBase)
+  ctor (StubId.Profiles.TenantRoot root)
   method bool Accepts (Microsoft.AspNetCore.Http.PathString path)
 
 type public sealed class StubId.Server.ProfileEndpointDataSource : Microsoft.AspNetCore.Routing.EndpointDataSource
@@ -699,6 +718,7 @@ type public sealed class StubId.Testing.StubIdBuilder : DotNet.Testcontainers.Bu
   method StubId.Testing.StubIdBuilder WithControllableClock (bool controllable = true)
   method StubId.Testing.StubIdBuilder WithKeyVolume (DotNet.Testcontainers.Volumes.IVolume volume)
   method StubId.Testing.StubIdBuilder WithKeyVolume (string name)
+  method StubId.Testing.StubIdBuilder WithProfile (string profile)
   method StubId.Testing.StubIdBuilder WithPublicBaseUrl (System.Uri publicBaseUrl)
   method StubId.Testing.StubIdBuilder WithTlsCertificate (byte[] pkcs12, string? password = null)
   method StubId.Testing.StubIdBuilder WithTls (bool tls = true)

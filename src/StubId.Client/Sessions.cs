@@ -209,6 +209,20 @@ public sealed record DecisionOutcome
 /// </remarks>
 public sealed record StubIdProfile(string Broker, string Version)
 {
+    /// <summary>
+    /// The path this broker's surface sits under, relative and without slashes at either end, or
+    /// null when the instance is too old to say.
+    /// </summary>
+    /// <remarks>
+    /// Appended to the address to form the authority a client library is configured with, which
+    /// the issuer it then discovers equals character for character. Nullable because the empty
+    /// string is a real answer - it is what a broker served at the host root reports - so a
+    /// missing field and a broker with no path of its own must not arrive here as the same value.
+    /// An instance that predates the field was serving the first broker, which is the only one
+    /// there was.
+    /// </remarks>
+    public string? Root { get; init; }
+
     /// <summary>The form the ledger and the release notes write it in.</summary>
     public override string ToString() => $"{Broker}@{Version}";
 }

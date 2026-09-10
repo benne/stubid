@@ -2,3 +2,53 @@
 
 Notes accumulate here as changes land, and this file is renamed to the version when a release
 goes out. The dated files beside it are history and are never edited.
+
+## The broker an instance serves is now chosen, not assumed
+
+`StubId__Profile` picks it, and `neb` is what it is when nothing says otherwise — so a suite
+written before this setting existed keeps working without being told about it. `StubIdBuilder` and
+`StubIdHostBuilder` both take `WithProfile`, and a name this build does not serve is refused where
+you can still see it rather than starting the wrong broker quietly.
+
+There is one broker to choose today, which is the point: the setting exists so that the second one
+is a configuration change rather than a fork. Choosing is also now the only way `Authority` can be
+right. It used to return the address with `op` appended, and `op` is Signaturgruppen's own path
+segment rather than anything of StubID's.
+
+## A profile declares where its surface sits
+
+`IBrokerProfile` gains a `TenantRoot`: the path a broker's surface begins under, how that path is
+compared, and whether a trailing slash below it is refused. Three things read it that a route table
+could not tell them — the gate that runs before routing, the issuer, and the authority the hosting
+packages hand a caller.
+
+Before this, `/op` was written into the engine in five places, and the seam that was supposed to
+hold a broker's personality held only its route table. The consequence was not theoretical: the
+Idura profile has been in the repository since the seam was cut, declared and served, and loading
+it into the real application would have answered 404 for every one of its routes, because the path
+gate was constructed with a literal. Its own tests never caught that — they build a bare host with
+routing on it and never call `AddStubId` or `UseStubId` at all.
+
+They do now. `HostedProfileTests` runs Idura through the composition an instance actually uses, and
+checks the three things that separate a gate from a hard-coded prefix: a profile at the host root
+answers where it said it would, StubID's own `/_stubid` surface is still reachable past a tenant
+whose first path segment is dynamic, and the strictness is the profile's — Idura tolerates a
+trailing slash where Signaturgruppen refuses one. There is a negative control beside them, because
+a stub looser than the broker passes a client the real thing would fail, and that failure arrives
+in production rather than in the suite.
+
+## The issuer is composed per request
+
+`iss` used to be built in the handler from a literal `/op`, and from a public base URL read per
+request. It is now built from that same live address plus the loaded profile's root. The route
+loader still hands a profile an issuer, but that value is a snapshot taken when the routes loaded,
+and a container does not learn its own mapped host port until Docker has started it — so a handler
+reading the snapshot would have emitted a stale issuer in every token of every container login.
+
+## Two smaller things
+
+`GET /_stubid/v1/fidelity` reports `profile.root` beside the broker and the version, which is how
+the Testcontainers module knows what authority to hand you without keeping a table of its own.
+
+The refusal you get for a public base URL with a path in it no longer names `/op`. It names the
+path you actually sent, which is the same help for whichever broker is loaded.

@@ -16,5 +16,12 @@ public sealed class NetsEidBrokerProfile : IBrokerProfile
 {
     public ProfileId Id => new("neb", "2026.09.1");
 
+    /// <summary>
+    /// Probed against pre-production rather than assumed: the segment itself is compared ordinally
+    /// because a reverse proxy selects the application by it, and a trailing slash below it is
+    /// refused.
+    /// </summary>
+    public TenantRoot Root { get; } = new("op", StringComparison.Ordinal, TrailingSlash.Refuse);
+
     public IReadOnlyList<RouteDeclaration> DeclareRoutes(ProfileContext context) => Endpoints.Declare();
 }

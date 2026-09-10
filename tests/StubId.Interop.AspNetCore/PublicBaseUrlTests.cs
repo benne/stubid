@@ -148,11 +148,23 @@ public class PublicBaseUrlTests
 
         Assert.False(string.IsNullOrWhiteSpace(error));
 
-        // The one an operator actually hits, by pasting the authority out of their client
-        // configuration. It has to say which segment is the problem, not just that one is.
-        if (candidate.EndsWith("/op", StringComparison.Ordinal))
+        // The mistake an operator actually hits is pasting the authority out of their client
+        // configuration, which already carries the broker's own path. It has to say which segment
+        // is the problem, not just that one is - and it has to do that for whichever broker is
+        // loaded, so the message names what was sent rather than what was expected.
+        // Only the candidates that get as far as the path check. "localhost:8080" parses as an
+        // absolute URI with a scheme of "localhost" and a path of "8080", and is refused two
+        // clauses earlier for a reason that has nothing to do with a path.
+        var path = Uri.TryCreate(candidate, UriKind.Absolute, out var parsed)
+            && parsed.Scheme is "http" or "https"
+                ? parsed.AbsolutePath.Trim('/')
+                : "";
+
+        if (path.Length > 0)
         {
-            Assert.Contains("/op", error, StringComparison.Ordinal);
+            var detail = body.RootElement.GetProperty("detail").GetString();
+
+            Assert.Contains($"/{path}", detail, StringComparison.Ordinal);
         }
     }
 

@@ -32,6 +32,17 @@ public interface IBrokerProfile
     ProfileId Id { get; }
 
     /// <summary>
+    /// Where this broker's surface begins under the host, and what its issuer ends with.
+    /// </summary>
+    /// <remarks>
+    /// Declared rather than inferred from the route table. Two of the things that depend on it —
+    /// the path gate that runs before routing, and the issuer — are not routes and cannot read
+    /// one, and the first broker got both by having <c>/op</c> written into the engine in five
+    /// places.
+    /// </remarks>
+    TenantRoot Root { get; }
+
+    /// <summary>
     /// The routes this profile serves, relative to the tenant root. The host composes any
     /// mount prefix and registers them.
     /// </summary>

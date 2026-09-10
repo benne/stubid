@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using StubId.Server;
 
 namespace StubId.InProcess;
 
@@ -45,6 +46,23 @@ public sealed class StubIdHostBuilder
         ArgumentNullException.ThrowIfNull(publicBaseUrl);
 
         _settings["StubId:PublicBaseUrl"] = publicBaseUrl.ToString().TrimEnd('/');
+
+        return this;
+    }
+
+    /// <summary>Which broker this instance emulates.</summary>
+    /// <remarks>
+    /// One instance serves one broker, and this is how it is chosen. Setting the environment
+    /// variable directly reaches the server but not <see cref="StubIdHost.Authority" />, which has to know
+    /// the same answer before the instance has said anything - so a build that does one without
+    /// the other hands a client library the wrong path and the failure arrives as a discovery
+    /// error with the broker's name nowhere in it.
+    /// </remarks>
+    public StubIdHostBuilder WithProfile(string profile)
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+
+        _settings[BrokerProfiles.Setting] = profile;
 
         return this;
     }
@@ -133,6 +151,7 @@ public sealed class StubIdHostBuilder
         var settings = new Dictionary<string, string?>(StringComparer.Ordinal)
         {
             ["StubId:PublicBaseUrl"] = DefaultPublicBaseUrl,
+            [BrokerProfiles.Setting] = BrokerProfiles.Default,
             ["StubId:ControllableClock"] = "false",
             ["StubId:ApproveAutomatically"] = "true",
             ["StubId:KeyPath"] = Path.Combine(Path.GetTempPath(), "stubid-keys"),

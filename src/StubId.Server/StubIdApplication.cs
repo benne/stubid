@@ -63,9 +63,11 @@ public static class StubIdApplication
             sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<Ladder>()));
         services.AddSingleton<Tokens>();
 
-        services.AddSingleton(new PathRules("/op"));
+        // The profile decides where the surface sits and what the issuer ends with, so the gate
+        // and the route loader both read it rather than each carrying a copy of the answer.
+        services.AddSingleton<IBrokerProfile>(_ => BrokerProfiles.Select(configuration));
+        services.AddSingleton(sp => new PathRules(sp.GetRequiredService<IBrokerProfile>().Root));
         services.AddSingleton<ProfileEndpointDataSource>();
-        services.AddSingleton<IBrokerProfile, NetsEidBrokerProfile>();
 
         return services;
     }
@@ -129,11 +131,13 @@ public static class StubIdApplication
         var routes = app.Services.GetRequiredService<ProfileEndpointDataSource>();
 
         // A snapshot of the address as the routes were loaded, and not a second source of truth: the
-        // value moves at runtime and a route table does not get rebuilt when it does. No profile reads
-        // it today, and one that needs it must read PublicBaseUrl per request instead.
+        // value moves at runtime and a route table does not get rebuilt when it does. Anything that
+        // has to be right after the address moves - which is every issuer, because a container does
+        // not learn its own mapped port until after this has run - composes it per request from
+        // PublicBaseUrl and the profile's root instead.
         var seeded = publicBaseUrl.Value ?? "";
 
-        routes.Load([(profile, new ProfileContext($"{seeded}/op", seeded), MountPrefix: "")]);
+        routes.Load([(profile, new ProfileContext(seeded + profile.Root.Prefix, seeded), MountPrefix: "")]);
         ((IEndpointRouteBuilder)app).DataSources.Add(routes);
 
         return app;

@@ -130,6 +130,64 @@ public class FidelityLedgerTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Equal(loaded.ToString(), profile.ToString());
     }
 
+    /// <summary>
+    /// It says where its surface sits, too, so a caller can build an authority without knowing
+    /// which broker it asked for.
+    /// </summary>
+    /// <remarks>
+    /// The Testcontainers module reads exactly this to answer <c>Authority</c>. Asserted against
+    /// the loaded profile rather than against <c>op</c>, because a literal here would agree with
+    /// a literal in the module and neither would be checking anything.
+    /// </remarks>
+    [Fact]
+    public async Task A_running_instance_says_where_its_surface_sits()
+    {
+        using var http = _factory.CreateClient();
+        using var stubId = new StubIdClient(http);
+        using var document = JsonDocument.Parse(
+            await http.GetStringAsync("/_stubid/v1/fidelity", Ct));
+
+        var loaded = _factory.Services.GetRequiredService<IBrokerProfile>().Root;
+        var profile = await stubId.ProfileAsync(Ct);
+
+        Assert.Equal(
+            loaded.Segments,
+            document.RootElement.GetProperty("profile").GetProperty("root").GetString());
+
+        Assert.NotNull(profile);
+        Assert.Equal(loaded.Segments, profile.Root);
+    }
+
+    /// <summary>
+    /// An instance that names a recording but not a root reads as no root, which is not the same
+    /// as a root of nothing.
+    /// </summary>
+    /// <remarks>
+    /// The published image of the release before this one answers exactly this body. A broker
+    /// served at the host root reports the empty string, so a missing field deserializing to one
+    /// would have the module hand a caller the bare address as an authority - correct for a
+    /// broker that does not exist yet, and wrong for every instance that has ever run.
+    /// </remarks>
+    [Fact]
+    public async Task An_instance_that_names_no_root_is_not_read_as_the_host_root()
+    {
+        const string Body =
+            """{"profile":{"broker":"neb","version":"2026.09.1"},"entries":[]}""";
+
+        using var http = new HttpClient(new OneBody(Body))
+        {
+            BaseAddress = new Uri("http://stubid.invalid"),
+        };
+
+        using var stubId = new StubIdClient(http);
+
+        var profile = await stubId.ProfileAsync(Ct);
+
+        Assert.NotNull(profile);
+        Assert.Equal("neb", profile.Broker);
+        Assert.Null(profile.Root);
+    }
+
     /// <summary>An instance too old to answer is a null, not an exception.</summary>
     /// <remarks>
     /// The case the client is written for and the one no real server here can produce: the

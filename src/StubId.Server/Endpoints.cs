@@ -856,7 +856,19 @@ public static class Endpoints
         http.RequestServices.GetRequiredService<PublicBaseUrl>().Value
         ?? throw new PublicBaseUrlNotSetException();
 
-    private static string Issuer(HttpContext http) => $"{BaseUrl(http)}/op";
+    /// <summary>
+    /// The issuer, composed per request rather than read from the context the profile was handed.
+    /// </summary>
+    /// <remarks>
+    /// That context is a snapshot taken when the routes were loaded, and the address moves after
+    /// that: a container does not learn its own mapped host port until Docker has started it, and
+    /// the Testcontainers module publishes the correct value through the control API once it does.
+    /// A handler reading the snapshot would emit a stale <c>iss</c> in every token of every
+    /// container login, which a client library reports as a key-resolution failure with nothing on
+    /// its side to explain it.
+    /// </remarks>
+    private static string Issuer(HttpContext http) =>
+        BaseUrl(http) + http.RequestServices.GetRequiredService<IBrokerProfile>().Root.Prefix;
 
     /// <summary>The shell the broker's own pages are rendered into.</summary>
     private static string Page(string title, string body) => $$"""

@@ -33,10 +33,20 @@ public class PublicApiTests
     /// entry carries its reason, and a second test fails when an entry stops describing a break
     /// that is really there, so an exemption cannot outlive what it excused.
     /// <para>
-    /// Empty today, and the release that empties it again is the one that should.
+    /// Every entry here is on a substrate package - one published because something a reader
+    /// installs depends on it, not because anything is meant to call it. The same break on the
+    /// three packages a reader does install would not get a door.
     /// </para>
     /// </remarks>
-    private static readonly (string Identity, string Why)[] Allowed = [];
+    private static readonly (string Identity, string Why)[] Allowed =
+    [
+        ("type public sealed class StubId.Server.PathRules  ctor (string pathBase)",
+            "The path gate took a literal, which is how /op came to be written into the engine. It "
+            + "takes the loaded profile's TenantRoot now, because a base string alone cannot say "
+            + "how the base itself is compared or whether a trailing slash below it is refused, and "
+            + "the two brokers disagree about both. Keeping the old constructor would keep a way to "
+            + "build a gate that is only half configured."),
+    ];
 
 
     /// <summary>The committed surface is the one the assemblies actually have.</summary>

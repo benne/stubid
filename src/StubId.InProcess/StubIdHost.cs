@@ -36,7 +36,15 @@ public sealed class StubIdHost : IAsyncDisposable
         _settings = settings;
         _logging = logging;
         BaseAddress = new Uri(settings["StubId:PublicBaseUrl"]!);
+
+        // Read once, from the same selector the server uses, so that the authority handed to a
+        // caller and the issuer the instance emits cannot come from two different answers about
+        // which broker this is. Known before start because BaseAddress is, and a caller configures
+        // its client library before it signs in.
+        _root = BrokerProfiles.Select(settings.GetValueOrDefault(BrokerProfiles.Setting)).Root.Segments;
     }
+
+    private readonly string _root;
 
     /// <summary>The address this instance says it answers at, known before it is started.</summary>
     public Uri BaseAddress { get; }
@@ -47,7 +55,7 @@ public sealed class StubIdHost : IAsyncDisposable
     /// make and neither forgives.
     /// </summary>
     /// <remarks>Not <see cref="Uri.Authority" />, which is a host and a port.</remarks>
-    public Uri Authority => new(BaseAddress, "op");
+    public Uri Authority => _root.Length == 0 ? BaseAddress : new Uri(BaseAddress, _root);
 
     /// <summary>The control API, over this instance.</summary>
     public StubIdClient Control => _control ?? throw NotStarted();
