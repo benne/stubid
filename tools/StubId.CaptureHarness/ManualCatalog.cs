@@ -11,7 +11,19 @@ namespace StubId.CaptureHarness;
 /// </remarks>
 public static class ManualCatalog
 {
-    private const string MitIdOnly = "mitid";
+    /// <summary>Every step of a broker's sitting, in the order it has to happen.</summary>
+    public static IReadOnlyList<ManualCase> For(Broker broker) => broker switch
+    {
+        Broker.NetsEidBroker => NetsEidBroker,
+        Broker.Signicat => Signicat,
+        _ => [],
+    };
+
+    /// <summary>
+    /// Nothing yet. Two of the first broker's steps have no counterpart here and one more may
+    /// have nowhere to stop, so this catalog waits on the clients it will be written against.
+    /// </summary>
+    private static IReadOnlyList<ManualCase> Signicat => [];
 
     /// <summary>Everything the private client is entitled to ask for.</summary>
     private const string FullScope =
@@ -22,7 +34,7 @@ public static class ManualCatalog
     /// number. A login establishes a broker session, so the steps that record a refusal or an
     /// abort have to happen before the first successful one or they record something else.
     /// </summary>
-    public static IReadOnlyList<ManualCase> All =>
+    private static IReadOnlyList<ManualCase> NetsEidBroker =>
     [
         new()
         {
@@ -196,8 +208,8 @@ public static class ManualCatalog
     /// which /finish writes beside the first and the manifest then covers as though both were
     /// meant. Naming the steps is cheaper than remembering not to click.
     /// </remarks>
-    public static IReadOnlyList<ManualCase> Selected(IReadOnlyCollection<string>? only) =>
+    public static IReadOnlyList<ManualCase> Selected(Broker broker, IReadOnlyCollection<string>? only) =>
         only is null || only.Count == 0
-            ? All
-            : [.. All.Where(c => only.Contains(c.Id, StringComparer.OrdinalIgnoreCase))];
+            ? For(broker)
+            : [.. For(broker).Where(c => only.Contains(c.Id, StringComparer.OrdinalIgnoreCase))];
 }

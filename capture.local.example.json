@@ -1,5 +1,5 @@
 {
-  "//": "Copy to capture.local.json, which is gitignored. Environment variables of the same name win. Run `dotnet run --project tools/StubId.CaptureHarness -- check` to see what is missing and which steps it costs.",
+  "//": "Copy to capture.local.json, which is gitignored. Environment variables of the same name win. Run `dotnet run --project tools/StubId.CaptureHarness -- check --broker=neb` to see what is missing and which steps it costs.",
 
   "//published": "The broker publishes credentials for its open test clients in its integration documentation, so anyone can exercise pre-production. Needed for the front-channel step.",
   "STUBID_NEB_PP_CODE_CLIENT_SECRET": "the published open code-flow client secret",
@@ -19,7 +19,7 @@
   "STUBID_NEB_PP_SSO_C_CLIENT_SECRET": "",
 
   "//signicat": "The second broker's sandbox, whose tenant is its hostname. That is the difference worth knowing before you record anything: the first broker's pre-production host is public and shared, so no recording of it could say whose it was, while your Signicat subdomain sits in the issuer, in every absolute URL inside the discovery document, and in iss in every token. Register it before the first recording rather than after one.",
-  "//signicat-scan": "These four are also what the committed-file guard searches the working tree for, and it can only look for what is set here. A value left blank is replaced in nothing and searched for nowhere, which looks exactly like a value that was never needed - run `dotnet run --project tools/StubId.CaptureHarness -- check` to see which of them it can look for.",
+  "//signicat-scan": "These four are also what the committed-file guard searches the working tree for, and it can only look for what is set here. A value left blank is replaced in nothing and searched for nowhere, which looks exactly like a value that was never needed - run `dotnet run --project tools/StubId.CaptureHarness -- check --broker=signicat` to see which of them it can look for.",
   "STUBID_SIGNICAT_DOMAIN": "the subdomain your sandbox answers on, without .sandbox.signicat.com",
   "STUBID_SIGNICAT_CLIENT_ID": "",
   "STUBID_SIGNICAT_CLIENT_SECRET": "",

@@ -145,9 +145,43 @@ public static partial class Scrubber
     /// </summary>
     public static string Unscrub(string text, Func<string, string?> resolve)
     {
+        if (TryUnscrub(text, resolve, out var resolved, out var missing))
+        {
+            return resolved;
+        }
+
+        throw new InvalidOperationException(
+            $"Set {missing} to record this case, in the environment or in "
+            + "capture.local.json at the repository root. Credentials are kept out of "
+            + "this repository on purpose.");
+    }
+
+    /// <summary>
+    /// The same substitution, for a caller whose job is to report that it cannot be made.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Preflight" /> exists to say what is missing, so it cannot be a caller that
+    /// throws on the first thing that is. Everything that records still goes through
+    /// <see cref="Unscrub(string)" />, which refuses rather than putting a placeholder on the
+    /// wire.
+    /// </remarks>
+    public static bool TryUnscrub(string text, out string resolved) =>
+        TryUnscrub(text, LocalSettings.Get, out resolved, out _);
+
+    /// <inheritdoc cref="TryUnscrub(string, out string)"/>
+    /// <param name="missing">The first setting that did not resolve, when the answer is false.</param>
+    public static bool TryUnscrub(
+        string text,
+        Func<string, string?> resolve,
+        out string resolved,
+        out string? missing)
+    {
+        resolved = text;
+        missing = null;
+
         foreach (var (_, placeholder, setting) in Credentials)
         {
-            if (!text.Contains(placeholder, StringComparison.Ordinal))
+            if (!resolved.Contains(placeholder, StringComparison.Ordinal))
             {
                 continue;
             }
@@ -155,16 +189,14 @@ public static partial class Scrubber
             var value = resolve(setting);
             if (string.IsNullOrEmpty(value))
             {
-                throw new InvalidOperationException(
-                    $"Set {setting} to record this case, in the environment or in "
-                    + "capture.local.json at the repository root. Credentials are kept out of "
-                    + "this repository on purpose.");
+                missing = setting;
+                return false;
             }
 
-            text = text.Replace(placeholder, value, StringComparison.Ordinal);
+            resolved = resolved.Replace(placeholder, value, StringComparison.Ordinal);
         }
 
-        return text;
+        return true;
     }
 
     /// <summary>

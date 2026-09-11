@@ -13,7 +13,7 @@ namespace StubId.CaptureHarness;
 /// </remarks>
 public static class Preflight
 {
-    public static async Task<int> RunAsync(CancellationToken ct)
+    public static async Task<int> RunAsync(BrokerTarget target, CancellationToken ct)
     {
         var problems = 0;
         var warnings = 0;
@@ -22,46 +22,60 @@ public static class Preflight
         // triggers it reports "not found" while the rest of the report happily uses it.
         _ = LocalSettings.Get("STUBID_NEB_PP_CLIENT_ID");
 
+        Console.WriteLine($"Broker: {target.Display}");
         Console.WriteLine($"Configuration: {LocalSettings.Path ?? "(no capture.local.json found)"}");
+        Console.WriteLine();
+
+        Console.WriteLine("Authority");
+        if (target.TryResolveAuthority(out var authority))
+        {
+            Console.WriteLine($"  {authority}");
+        }
+        else
+        {
+            // Not a crash. Reporting what is missing is this command's whole job, so it cannot
+            // be a caller that throws on the first thing that is.
+            Console.WriteLine($"  cannot resolve {target.AuthorityTemplate}");
+            Console.WriteLine("  Everything below that needs the live broker is skipped.");
+            warnings++;
+        }
+
         Console.WriteLine();
 
         // Read from the scrubber rather than from a list of its own. The copy that used to live
         // here is the reason this section could report a clean bill for a credential the scrubber
         // had never been told about: two lists, one of which nobody remembers to edit.
-        foreach (var broker in Enum.GetValues<Broker>())
+        Console.WriteLine("Credentials");
+
+        var unset = 0;
+
+        foreach (var (_, _, name) in Scrubber.Credentials.Where(c => c.Broker == target.Broker))
         {
-            Console.WriteLine($"Credentials ({Name(broker)})");
+            var value = LocalSettings.Get(name);
 
-            var unset = 0;
-
-            foreach (var (_, _, name) in Scrubber.Credentials.Where(c => c.Broker == broker))
+            if (value is null)
             {
-                var value = LocalSettings.Get(name);
-
-                if (value is null)
-                {
-                    unset++;
-                    Console.WriteLine($"  {name,-34} missing");
-                    warnings += ReportCost(name, broker);
-                    continue;
-                }
-
-                Console.WriteLine($"  {name,-34} set, {value.Length} characters");
-                warnings += ReportReach(value);
+                unset++;
+                Console.WriteLine($"  {name,-34} missing");
+                warnings += ReportCost(name, target);
+                continue;
             }
 
-            // Once for the block rather than under every line. Nothing records this broker yet,
-            // so a missing value costs coverage rather than a step, and saying that four times
-            // reads as four problems.
-            if (broker == Broker.Signicat && unset > 0)
-            {
-                Console.WriteLine($"           {unset} not set. Nothing records Signicat yet, and the guard");
-                Console.WriteLine("           that scans committed files can only look for what is here.");
-            }
-
-            Console.WriteLine();
+            Console.WriteLine($"  {name,-34} set, {value.Length} characters");
+            warnings += ReportReach(value);
         }
 
+        // Once for the block rather than under every line. Where nothing is recorded yet a
+        // missing value costs coverage rather than a step, and saying that four times reads as
+        // four problems.
+        if (unset > 0 && ManualCatalog.For(target.Broker).Count == 0)
+        {
+            Console.WriteLine($"           {unset} not set. Nothing records {target.Display} yet, and");
+            Console.WriteLine("           the guard that scans committed files can only look for");
+            Console.WriteLine("           what is here.");
+        }
+
+        Console.WriteLine();
         Console.WriteLine("Redactions");
 
         var redactions = LocalSettings.Redactions();
@@ -138,7 +152,9 @@ public static class Preflight
 
         Console.WriteLine();
         Console.WriteLine("Signing keys");
-        warnings += await ReportKeysAsync(ct);
+        warnings += authority is { Length: > 0 }
+            ? await ReportKeysAsync(target, ct)
+            : Skipped();
 
         Console.WriteLine();
         Console.WriteLine(problems == 0 && warnings == 0
@@ -158,14 +174,19 @@ public static class Preflight
     /// the key set. Finding a rotation here costs a minute; finding it after a sitting costs
     /// the sitting's only durable evidence of which key signed what.
     /// </remarks>
-    private static async Task<int> ReportKeysAsync(CancellationToken ct)
+    private static int Skipped()
+    {
+        Console.WriteLine("  skipped: the authority does not resolve.");
+        return 0;
+    }
+
+    private static async Task<int> ReportKeysAsync(BrokerTarget target, CancellationToken ct)
     {
         string jwks;
         try
         {
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
-            jwks = await client.GetStringAsync(
-                "https://pp.netseidbroker.dk/op/.well-known/openid-configuration/jwks", ct);
+            jwks = await client.GetStringAsync(target.JwksUrl, ct);
         }
         catch (Exception error) when (error is HttpRequestException or TaskCanceledException)
         {
@@ -182,30 +203,41 @@ public static class Preflight
         var warnings = 0;
 
         // Named rather than counted: it is the one key a transaction token is signed by, and
-        // its absence is what a sitting recording one needs to know before it starts.
-        if (!live.Any(k => TokenFixtures.SubjectFor(k, jwks)?.Contains("Transact", StringComparison.Ordinal) == true))
+        // its absence is what a sitting recording one needs to know before it starts. A broker
+        // that names no such certificate is not checked for one, rather than failed for it.
+        if (target.CertificateSubjectMarker is { } marker
+            && !live.Any(k => TokenFixtures.SubjectFor(k, jwks)?.Contains(marker, StringComparison.Ordinal) == true))
         {
             Console.WriteLine("  WARNING  no transaction-signing certificate is published.");
             Console.WriteLine("           A transaction token recorded now cannot be bound to a key.");
             warnings++;
         }
 
-        var committed = CommittedKids();
+        var committed = CommittedKids(target);
         if (committed is not null && !committed.SequenceEqual(live, StringComparer.Ordinal))
         {
-            Console.WriteLine("  WARNING  the committed CAP-002 key set is not what the broker serves.");
-            Console.WriteLine("           That is a rotation rather than a fault, but it makes CAP-002 stale.");
+            Console.WriteLine(
+                $"  WARNING  the committed {target.KeySetCaptureId} key set is not what the broker serves.");
+            Console.WriteLine(
+                $"           That is a rotation rather than a fault, but it makes {target.KeySetCaptureId} stale.");
             warnings++;
         }
 
         return warnings;
     }
 
-    private static string[]? CommittedKids()
+    /// <summary>
+    /// The key set this broker's own pack recorded, or null before it has one.
+    /// </summary>
+    /// <remarks>
+    /// Null is the right answer on a broker nothing has recorded yet, and it makes this silent
+    /// rather than failed on a first run.
+    /// </remarks>
+    private static string[]? CommittedKids(BrokerTarget target)
     {
         var path = LocalSettings.Root is null
             ? null
-            : Path.Combine(LocalSettings.Root, "fixtures", "neb", "pp", "CAP-002", "response.raw");
+            : Path.Combine(LocalSettings.Root, target.Pack, target.KeySetCaptureId, "response.raw");
 
         return path is null || !File.Exists(path) ? null : Kids(File.ReadAllText(path));
     }
@@ -233,9 +265,9 @@ public static class Preflight
     /// listed, so they are. Nothing records Signicat yet, so a missing value there costs coverage
     /// rather than a step - which the block says once rather than four times.
     /// </remarks>
-    private static int ReportCost(string name, Broker broker)
+    private static int ReportCost(string name, BrokerTarget target)
     {
-        if (broker == Broker.Signicat)
+        if (ManualCatalog.For(target.Broker).Count == 0)
         {
             return 0;
         }
@@ -243,14 +275,14 @@ public static class Preflight
         var needed = name switch
         {
             "STUBID_NEB_PP_CODE_CLIENT_SECRET" =>
-                Steps(c => c.Client is ClientProfile.OpenCode or ClientProfile.OpenImplicit),
+                Steps(target.Broker, c => c.Client is ClientProfile.OpenCode or ClientProfile.OpenImplicit),
             var n when n.Contains("SSO_A", StringComparison.Ordinal) =>
-                Steps(c => c.Client is ClientProfile.SsoA or ClientProfile.Restricted),
+                Steps(target.Broker, c => c.Client is ClientProfile.SsoA or ClientProfile.Restricted),
             var n when n.Contains("SSO_B", StringComparison.Ordinal) =>
-                Steps(c => c.Client == ClientProfile.SsoB),
+                Steps(target.Broker, c => c.Client == ClientProfile.SsoB),
             var n when n.Contains("SSO_C", StringComparison.Ordinal) =>
-                Steps(c => c.Client == ClientProfile.Hybrid),
-            _ => Steps(c => c.Client == ClientProfile.Private),
+                Steps(target.Broker, c => c.Client == ClientProfile.Hybrid),
+            _ => Steps(target.Broker, c => c.Client == ClientProfile.Private),
         };
 
         if (needed.Count == 0)
@@ -283,16 +315,8 @@ public static class Preflight
         return 1;
     }
 
-    /// <summary>The broker as somebody would say it out loud.</summary>
-    private static string Name(Broker broker) => broker switch
-    {
-        Broker.NetsEidBroker => "Nets eID Broker",
-        Broker.Signicat => "Signicat",
-        _ => broker.ToString(),
-    };
-
-    private static List<string> Steps(Func<ManualCase, bool> predicate) =>
-        [.. ManualCatalog.All.Where(predicate).Select(c => c.Id)];
+    private static List<string> Steps(Broker broker, Func<ManualCase, bool> predicate) =>
+        [.. ManualCatalog.For(broker).Where(predicate).Select(c => c.Id)];
 
     /// <summary>Enough to identify an entry without printing it.</summary>
     private static string Describe(string value) => value.Length <= 4

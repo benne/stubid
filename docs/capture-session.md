@@ -37,7 +37,7 @@ not have.
 
 | | Item | Status |
 | --- | --- | --- |
-| B1 | The relying party | done — `dotnet run --project tools/StubId.CaptureHarness -- session` |
+| B1 | The relying party | done — `dotnet run --project tools/StubId.CaptureHarness -- session --broker=neb` |
 | B2 | Request-side scrubbing | done |
 | B3 | Unscrub the case URL | done |
 | B4 | The signed-token fixture layout | done — placeholder in the body, decoded halves beside it |
@@ -338,7 +338,7 @@ authentication is spent on them.
 
 ### P5. On the morning of the sitting
 
-Run `dotnet run --project tools/StubId.CaptureHarness -- check`, which now fetches the key
+Run `dotnet run --project tools/StubId.CaptureHarness -- check --broker=neb`, which now fetches the key
 set and prints each `kid` with the certificate subject it resolves to, and says so when the
 committed CAP-002 no longer describes what the broker serves. Step 10 resolves token `kid`s,
 so the key set it resolves against must be same-day. A `kid` that resolves to nothing means a
@@ -761,7 +761,7 @@ reaches the token as the base64 sent, the decoded text, or only as a digest. Whe
 answer for a login. And whether `transaction_actions` gains an action beyond `mitid.login`.
 
 *This went wrong if:* the authorize lands on `/op/Error`. Run
-`dotnet run --project tools/StubId.CaptureHarness -- rehearse` before sitting down — it sends
+`dotnet run --project tools/StubId.CaptureHarness -- rehearse --broker=neb` before sitting down — it sends
 this exact request and reports `ready` or not, so a broken request object is found the day
 before rather than in the chair. If it fails only here and step 9 is fine, the request object is
 the suspect, not the `idp_params`.
@@ -1253,8 +1253,8 @@ rather than a red build. Edit first, then start.
 The day before, or the morning of:
 
 ```
-dotnet run --project tools/StubId.CaptureHarness -- check
-dotnet run --project tools/StubId.CaptureHarness -- rehearse --only=CAP-031
+dotnet run --project tools/StubId.CaptureHarness -- check --broker=neb
+dotnet run --project tools/StubId.CaptureHarness -- rehearse --broker=neb --only=CAP-031
 ```
 
 `check` must end `Ready to record.`, must list a certificate whose subject is
@@ -1265,7 +1265,7 @@ back carries its state. Neither completes anything and both can be run as often 
 ### The sitting
 
 ```
-dotnet run --project tools/StubId.CaptureHarness -- session --only=CAP-031
+dotnet run --project tools/StubId.CaptureHarness -- session --broker=neb --only=CAP-031
 ```
 
 The launchpad shows one row, which is the point of `--only`: the other eleven steps are

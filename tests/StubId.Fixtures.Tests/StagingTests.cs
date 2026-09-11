@@ -221,7 +221,7 @@ public class StagingWriteTests
         // it the sitting still has to take the recording, and the absence is a fact about
         // signed requests rather than a detail to lose in a terminal.
         var staging = new Staging();
-        var @case = ManualCatalog.All.Single(c => c.SignRequest);
+        var @case = ManualCatalog.For(Broker.NetsEidBroker).Single(c => c.SignRequest);
         staging.Add(@case, "callback", Exchange("http://localhost:5099/callback", "code=abc"),
             "The callback carried no state.");
 
@@ -241,7 +241,7 @@ public class StagingWriteTests
         const string served = "X-Correlation-Id=00000000-1111-2222-3333-444444444444; path=/; secure; httponly";
 
         var staging = new Staging();
-        staging.Add(ManualCatalog.All.Single(c => c.SignRequest), "token", new RecordedExchange(
+        staging.Add(ManualCatalog.For(Broker.NetsEidBroker).Single(c => c.SignRequest), "token", new RecordedExchange(
             "POST", "https://pp.netseidbroker.dk/op/connect/token", [], null, 200, "OK",
             [new("Set-Cookie", served)], Encoding.UTF8.GetBytes("{}")));
 
@@ -266,8 +266,8 @@ public class StagingWriteTests
     private static Staging Staged(string? jwks, RSA? key = null)
     {
         var staging = new Staging(jwks);
-        var @case = ManualCatalog.All.Single(c => c.SignRequest);
-        var (url, _, _) = Session.BuildAuthorize(@case);
+        var @case = ManualCatalog.For(Broker.NetsEidBroker).Single(c => c.SignRequest);
+        var (url, _, _) = Session.BuildAuthorize(BrokerTarget.NetsEidBroker, @case);
 
         staging.Add(@case, "callback", Exchange(url, $"code=a-code\nstate={@case.Id}"));
         staging.Add(@case, "token", Exchange(

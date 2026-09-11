@@ -3,6 +3,36 @@
 Notes accumulate here as changes land, and this file is renamed to the version when a release
 goes out. The dated files beside it are history and are never edited.
 
+## The capture harness asks which broker it is recording
+
+Every command takes `--broker=`, and there is no default. The fixture root, the sitting's pack,
+the authority, the key set and the certificate report all come from that one word, and a command
+without it refuses and names the two it knows.
+
+There was a reason to make it explicit rather than pick a default. The sitting's directory used to
+be found by taking the unattended pack, walking three parent directories **by depth alone without
+checking a single segment name**, and re-appending a literal path. Any pack at the same depth was
+therefore written into the first broker's session pack, whose manifest was then rehashed over it —
+no error, no warning. That arithmetic is gone; both packs now derive from the repository root and
+the broker, found the way `capture.local.json` is found.
+
+`check` reports the broker it is checking, resolves that broker's authority before anything else,
+and skips what needs the live host rather than throwing when it cannot. Where a broker's authority
+names a value the local settings hold, an unset value is reported instead of crashing the report
+whose job is to report it.
+
+## A recording is checked against the request that produced it
+
+A recording is only evidence of what a broker does if the request that produced it is still the
+request the catalog makes. Nothing checked that, so the catalog and the pack could drift apart in
+a refactor while every assertion downstream went on passing against bytes obtained by asking a
+different question.
+
+`RecordedRequestTests` compares every case's method, URL, form body and header names against the
+`request.json` the pack recorded, and asserts that the pack holds a recording for every case and
+nothing else. It reads two files and needs no network and no credential, which is what makes it a
+gate rather than something somebody remembers to run.
+
 ## Nothing committed can name the account a recording came from
 
 The second broker's tenant is its hostname. The first broker's pre-production host is public and
