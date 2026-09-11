@@ -1,39 +1,5 @@
 namespace StubId.CaptureHarness;
 
-/// <summary>Which set of credentials a step uses.</summary>
-public enum ClientProfile
-{
-    /// <summary>The private client, which carries the richer scopes.</summary>
-    Private,
-
-    /// <summary>The broker's published code-flow client.</summary>
-    OpenCode,
-
-    /// <summary>The broker's published implicit client, for a front-channel id_token.</summary>
-    OpenImplicit,
-
-    /// <summary>
-    /// A client whose redirect URIs are actually registered, unlike the published ones which
-    /// accept anything. The only way to record how the broker refuses one it does not know.
-    /// </summary>
-    Restricted,
-
-    /// <summary>First of a pair joined to the same service provider's single sign-on.</summary>
-    SsoA,
-
-    /// <summary>
-    /// The second of that pair. Reaching it without a prompt is what single sign-on means, and
-    /// what the recording is for.
-    /// </summary>
-    SsoB,
-
-    /// <summary>
-    /// Configured for the hybrid grant, which is the only way to observe c_hash. ASP.NET Core
-    /// requires it whenever an id_token arrives through the front channel.
-    /// </summary>
-    Hybrid,
-}
-
 /// <summary>Work the harness does after the code has been exchanged, without the operator.</summary>
 public enum FollowUp
 {
@@ -79,7 +45,12 @@ public sealed class ManualCase
     /// </remarks>
     public bool ForcesLogin { get; init; } = true;
 
-    public ClientProfile Client { get; init; } = ClientProfile.Private;
+    /// <summary>
+    /// The registration this step records with. Required, with no default: on the second broker
+    /// a claim is a property of the client as much as of the broker, so a step that did not say
+    /// which client it used would record something nobody could read back.
+    /// </summary>
+    public required BrokerClient Client { get; init; }
 
     public string Scope { get; init; } = "openid mitid";
 

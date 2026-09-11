@@ -36,7 +36,8 @@ public static class CaptureCatalog
     public const string Production = "https://netseidbroker.dk/op";
 
     /// <summary>The broker publishes this client for anyone to use against pre-production.</summary>
-    public const string OpenCodeClient = "0a775a87-878c-4b83-abe3-ee29c720c3e7";
+    /// <remarks>Read from the roster, so the identifier is written down once.</remarks>
+    public static string OpenCodeClient => BrokerClient.NetsEidBroker.OpenCode.ClientId();
 
     private const string RedirectUri = "http://localhost:5099/callback";
 

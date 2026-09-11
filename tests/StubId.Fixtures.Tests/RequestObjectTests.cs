@@ -93,7 +93,7 @@ public class RequestObjectTests
             Title = "A signed step",
             Settles = "Nothing; this one is a test.",
             Operator = "Nothing.",
-            Client = ClientProfile.OpenCode,
+            Client = BrokerClient.NetsEidBroker.OpenCode,
             SignRequest = true,
         }).Url);
 
@@ -120,7 +120,7 @@ public class RequestObjectTests
             Title = "An ordinary step",
             Settles = "Nothing; this one is a test.",
             Operator = "Nothing.",
-            Client = ClientProfile.OpenCode,
+            Client = BrokerClient.NetsEidBroker.OpenCode,
         });
 
         Assert.DoesNotContain("request=", url, StringComparison.Ordinal);
