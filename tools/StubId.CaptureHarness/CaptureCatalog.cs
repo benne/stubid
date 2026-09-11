@@ -355,7 +355,10 @@ public static class CaptureCatalog
         new()
         {
             Id = "CAP-046",
-            Expected = Disposition.Unclassified,
+
+            // Unclassified until there was a name for a refusal that says more than its code.
+            // The body was always this shape; the vocabulary was the first broker's.
+            Expected = Disposition.DescribedJson,
             Description = "Pushed authorization request whose request parameter is not a JWT",
             Settles = "How PAR refuses a request object it cannot read, and with which status. "
                 + "The refusal's body was measured on 2026-09-01 and written down in "

@@ -40,7 +40,7 @@ public static class Rehearsal
             using var response = await client.GetAsync(url, ct);
             var location = response.Headers.Location?.ToString() ?? "";
 
-            var (verdict, note) = Classify(response.StatusCode, location, @case);
+            var (verdict, note) = Classify(broker, response.StatusCode, location, @case);
             Console.WriteLine($"  {@case.Id}  {verdict,-8}  {@case.Title}{note}");
 
             if (verdict == "PROBLEM")
@@ -109,15 +109,22 @@ public static class Rehearsal
             : ("PROBLEM", "  came back without it - the sitting's callback cannot match on state");
     }
 
+    /// <summary>
+    /// What a location means, read from the broker rather than from two literals kept here.
+    /// </summary>
+    /// <remarks>
+    /// These were spelled out in this file and in the disposition classifier both, which is two
+    /// places to edit and one of them to forget. They belong to the broker.
+    /// </remarks>
     private static (string Verdict, string Note) Classify(
-        HttpStatusCode status, string location, ManualCase @case)
+        BrokerTarget broker, HttpStatusCode status, string location, ManualCase @case)
     {
-        if (location.Contains("/Account/Login", StringComparison.Ordinal))
+        if (broker.LoginMarkers.Any(marker => location.Contains(marker, StringComparison.Ordinal)))
         {
             return ("ready", "");
         }
 
-        if (location.Contains("/Error?errorId=", StringComparison.Ordinal))
+        if (location.Contains(broker.ErrorMarker, StringComparison.Ordinal))
         {
             // The one step that is supposed to be refused: it exists to record the refusal.
             return @case.RedirectUriOverride is not null
@@ -125,6 +132,11 @@ public static class Rehearsal
                 : ("PROBLEM", "  refused before the login page");
         }
 
-        return ("PROBLEM", $"  unexpected: {(int)status} {location}");
+        // A broker whose login path nobody has declared cannot reach the first branch, so this
+        // is where an accepted request lands - and saying where it went is what fills the gap in.
+        return broker.LoginMarkers.Count == 0 && location.Length > 0
+            ? ("PROBLEM", $"  went to {location.Split('?')[0]}, and {broker.Display} declares no "
+                + "login path. If that is where an accepted request lands, add it to LoginMarkers.")
+            : ("PROBLEM", $"  unexpected: {(int)status} {location}");
     }
 }

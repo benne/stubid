@@ -3,6 +3,50 @@
 Notes accumulate here as changes land, and this file is renamed to the version when a release
 goes out. The dated files beside it are history and are never edited.
 
+## A broker says where its own pages are, and says nothing where nobody has looked
+
+Two literals decided what an answer was called — the error page's path and the login page's — and
+both were spelled out in the classifier and in the rehearsal, which is two places to edit and one
+of them to forget. They belong to the broker now.
+
+The second broker declares no login path at all, and that is the point rather than an omission.
+Both run IdentityServer, so guessing its login path from the first is tempting and is the
+dangerous kind of nearly-right: its MitID journey is known to leave the tenant host entirely for a
+shim on the older platform. Nothing classifies as a login redirect while the list is empty, and a
+run that meets one prints the location it actually reached, which is the observation that fills the
+list in.
+
+`BareJson` described a refusal that says nothing beyond its code, which is a finding about the
+first broker rather than a fact about OAuth. A refusal that carries a description or an `error_uri`
+— which is what the second broker is expected to send — now has a name of its own instead of
+falling through to `Unclassified`, where it would read as a surprise rather than as the answer.
+
+One recording was already in that position. `CAP-046` records a pushed authorization request
+refused with `{"error":"invalid_request_object","error_description":"Invalid JWT request"}`, and it
+was `Unclassified` only because there was no name for that shape.
+
+Two recordings were re-made to bring the pack back into agreement with the catalog, and the drift
+they carried is worth naming because nothing would have found it. A `meta.json` records the case's
+expectation as it stood when the case was last recorded, so editing a case without re-recording it
+leaves a committed file claiming something the recording beside it contradicts. `CAP-043`'s meta
+said the broker sent a request with no scope to its login page; the `response.head` beside it
+records a redirect to the error page, which is what the catalog has said for some time. Its
+`settles` text was a version behind as well, and `CAP-046`'s description still had a spelling the
+repository converted away from. Both bodies are byte for byte what they were — only the volatile
+headers and the stale claims moved.
+
+A new theory closes it: every recorded response must classify as the case that recorded it expects.
+It is asserted against the catalog rather than against the committed meta, because the case is the
+live claim and the meta is a copy of it.
+
+## Two crashes that were waiting for a first recording of a second broker
+
+`CertificateReport` read `x5c` without asking whether the key set published one, and a key set
+that does not would have crashed a first capture at its second case, leaving a pack half written.
+`TokenFixtures.Verify` caught three exception types and not the one an elliptic key throws when it
+is read for an RSA modulus — so instead of answering false, it would have surfaced during a
+sitting.
+
 ## A request object is signed by a signer, not by a secret
 
 The harness signed HS256 over the client secret because that is what the first broker accepts,

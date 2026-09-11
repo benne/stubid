@@ -245,7 +245,13 @@ public static class TokenFixtures
                 HashAlgorithmName.SHA256,
                 RSASignaturePadding.Pkcs1);
         }
-        catch (Exception e) when (e is FormatException or JsonException or CryptographicException)
+        // KeyNotFoundException is in the list because this reads an RSA modulus and exponent
+        // without asking what kind of key it found. An elliptic one has neither member, and the
+        // throw would have surfaced during a sitting rather than as a false.
+        catch (Exception e) when (e is FormatException
+                                  or JsonException
+                                  or CryptographicException
+                                  or KeyNotFoundException)
         {
             return false;
         }

@@ -31,6 +31,14 @@ public sealed record BrokerTarget
     /// <summary>The environment directory below the broker: "pp", "sandbox".</summary>
     public required string Environment { get; init; }
 
+    /// <summary>The environment as prose, for a file somebody reads.</summary>
+    /// <remarks>
+    /// Separate from the directory name because one broker calls it pre-production and the other
+    /// calls it a sandbox, and a generated document that said "pp" would be telling the reader
+    /// about a directory rather than about the broker.
+    /// </remarks>
+    public required string EnvironmentDisplay { get; init; }
+
     /// <summary>
     /// The issuer, which may name a value the local settings hold.
     /// </summary>
@@ -73,6 +81,34 @@ public sealed record BrokerTarget
 
     /// <summary>The setting holding the identifier the broker gave the registered key.</summary>
     public string? KeyIdSetting { get; init; }
+
+    /// <summary>
+    /// What a redirect to this broker's own error page looks like.
+    /// </summary>
+    /// <remarks>
+    /// Shared between the two so far, and declared per broker anyway. Both run IdentityServer, so
+    /// both answer an unusable request with a redirect carrying a protected error id - which is a
+    /// thing that turned out to be true rather than a thing to rely on.
+    /// </remarks>
+    public string ErrorMarker { get; init; } = "/Error?errorId=";
+
+    /// <summary>
+    /// What a redirect to this broker's own login page looks like, where that is known.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Empty means nobody has seen one. That is a deliberate state rather than a gap to fill in
+    /// from the other broker: both are IdentityServer, so guessing its login path would be the
+    /// dangerous kind of nearly-right, and Signicat's MitID journey is known to leave the tenant
+    /// host entirely for a shim on the older platform. A guess would classify a refusal as an
+    /// acceptance, or classify nothing and look like a broken probe.
+    /// </para>
+    /// <para>
+    /// Nothing classifies as a login redirect while this is empty, and the first run prints the
+    /// location it actually reached - which is the observation that fills it in.
+    /// </para>
+    /// </remarks>
+    public IReadOnlyList<string> LoginMarkers { get; init; } = [];
 
     /// <summary>
     /// A substring of the subject of a certificate this broker must publish, or null.
@@ -151,6 +187,7 @@ public sealed record BrokerTarget
         Key = "neb",
         Display = "Nets eID Broker",
         Environment = "pp",
+        EnvironmentDisplay = "pre-production",
         AuthorityTemplate = "https://pp.netseidbroker.dk/op",
         KeySetCaptureId = "CAP-002",
         CertificateSubjectMarker = "Transact",
@@ -158,6 +195,8 @@ public sealed record BrokerTarget
         // Measured, and its recordings were made with it. Re-signing them differently would
         // change the segment lengths the sitting's fixtures record.
         RequestObjectAlgorithm = "HS256",
+
+        LoginMarkers = ["/Account/Login"],
     };
 
     public static readonly BrokerTarget Signicat = new()
@@ -166,6 +205,7 @@ public sealed record BrokerTarget
         Key = "signicat",
         Display = "Signicat",
         Environment = "sandbox",
+        EnvironmentDisplay = "sandbox",
 
         // The tenant is the hostname here, which is the whole reason this is a template.
         AuthorityTemplate = "https://{{SIGNICAT_DOMAIN}}.sandbox.signicat.com/auth/open",
@@ -175,6 +215,9 @@ public sealed record BrokerTarget
         RequestObjectAlgorithm = "RS256",
         PrivateKeySetting = "STUBID_SIGNICAT_PRIVATE_KEY_PATH",
         KeyIdSetting = "STUBID_SIGNICAT_KEY_ID",
+
+        // Empty until a request reaches one and says where it landed. See LoginMarkers.
+        LoginMarkers = [],
 
         // Nothing observed says this broker publishes a certificate for a separate signing key,
         // and a marker written from a guess would read as a check while checking nothing.
