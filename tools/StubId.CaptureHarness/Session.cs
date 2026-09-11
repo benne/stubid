@@ -23,15 +23,28 @@ internal sealed record Pending(ManualCase Case, string Verifier, string Nonce, s
 /// </remarks>
 public static class Session
 {
-    private const string Authority = "https://pp.netseidbroker.dk/op";
+    /// <summary>The broker this sitting is against, set once when the host starts.</summary>
+    /// <remarks>
+    /// A field rather than a parameter threaded through six helpers, because this process hosts
+    /// one sitting against one broker and then exits. <see cref="BuildAuthorize" /> deliberately
+    /// does not read it and takes the target instead: the rehearsal and the tests call that
+    /// method without ever starting a host, and a method reading a static somebody else had to
+    /// set would be right only when it happened to have been set.
+    /// </remarks>
+    private static BrokerTarget Target = BrokerTarget.NetsEidBroker;
+
+    private static string Authority => Target.Authority;
 
     /// <summary>Where a step comes back to. The rehearsal checks the broker redirects here.</summary>
     public const string RedirectUri = "http://localhost:5099/callback";
 
     private static readonly ConcurrentDictionary<string, Pending> Pendings = new(StringComparer.Ordinal);
 
-    public static async Task<int> RunAsync(FixtureStore store, IReadOnlyList<ManualCase> cases)
+    public static async Task<int> RunAsync(
+        BrokerTarget broker, FixtureStore store, IReadOnlyList<ManualCase> cases)
     {
+        Target = broker;
+
         // Fetched now, not read from the committed CAP-002. Whether a token's signature checks
         // out against the broker's published key is the one fact about this sitting that cannot
         // be established afterwards - the transaction-signing key already rotated once, in May
@@ -58,7 +71,7 @@ public static class Session
                 return Results.NotFound($"No case {id}.");
             }
 
-            var (url, verifier, nonce) = BuildAuthorize(@case);
+            var (url, verifier, nonce) = BuildAuthorize(Target, @case);
 
             Pendings[@case.Id] = new Pending(@case, verifier, nonce, url);
             return Results.Redirect(url);
@@ -204,7 +217,9 @@ public static class Session
     /// beforehand is exactly what the sitting sends.
     /// </summary>
     public static (string Url, string Verifier, string Nonce) BuildAuthorize(
-        ManualCase @case, IReadOnlyDictionary<string, string>? overrides = null)
+        BrokerTarget broker,
+        ManualCase @case,
+        IReadOnlyDictionary<string, string>? overrides = null)
     {
         var verifier = Base64UrlText(RandomNumberGenerator.GetBytes(32));
         var nonce = Base64UrlText(RandomNumberGenerator.GetBytes(16));
@@ -249,7 +264,7 @@ public static class Session
         if (@case.SignRequest)
         {
             var signed = RequestObject.Build(
-                parameters, ClientId(@case.Client), Authority, Secret(@case.Client));
+                parameters, ClientId(@case.Client), broker.Authority, Secret(@case.Client));
 
             parameters = new Dictionary<string, string>(StringComparer.Ordinal)
             {
@@ -259,7 +274,7 @@ public static class Session
             };
         }
 
-        var url = $"{Authority}/connect/authorize?" + string.Join('&',
+        var url = $"{broker.Authority}/connect/authorize?" + string.Join('&',
             parameters.Select(p => $"{Uri.EscapeDataString(p.Key)}={Uri.EscapeDataString(p.Value)}"));
 
         return (url, verifier, nonce);

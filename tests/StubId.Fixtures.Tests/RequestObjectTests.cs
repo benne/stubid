@@ -86,7 +86,7 @@ public class RequestObjectTests
     [Fact]
     public void A_signed_step_sends_only_what_identifies_the_request()
     {
-        var url = WithSecret(() => Session.BuildAuthorize(new ManualCase
+        var url = WithSecret(() => Session.BuildAuthorize(BrokerTarget.NetsEidBroker, new ManualCase
         {
             Id = "CAP-TEST",
             Step = "Step 0",
@@ -113,7 +113,7 @@ public class RequestObjectTests
     [Fact]
     public void An_unsigned_step_is_left_exactly_as_it_was()
     {
-        var (url, _, _) = Session.BuildAuthorize(new ManualCase
+        var (url, _, _) = Session.BuildAuthorize(BrokerTarget.NetsEidBroker, new ManualCase
         {
             Id = "CAP-TEST",
             Step = "Step 0",
@@ -157,8 +157,8 @@ public class RequestObjectTests
     [Fact]
     public void The_catalog_step_that_signs_survives_a_round_trip()
     {
-        var signing = ManualCatalog.All.Single(c => c.SignRequest);
-        var url = WithCredentials(() => Session.BuildAuthorize(signing).Url);
+        var signing = ManualCatalog.For(Broker.NetsEidBroker).Single(c => c.SignRequest);
+        var url = WithCredentials(() => Session.BuildAuthorize(BrokerTarget.NetsEidBroker, signing).Url);
 
         Assert.True(SensitiveContent.FindSignedToken(url).Found,
             "the signed step is not producing a request object at all");

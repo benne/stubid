@@ -4,13 +4,34 @@ namespace StubId.CaptureHarness;
 /// The recordings that need no MitID login, and so can run unattended.
 /// </summary>
 /// <remarks>
-/// CAP-001 to CAP-019 are the first round of this pack, and CAP-040 onwards a second, added
+/// <para>
+/// CAP-001 to CAP-019 are the first round of a pack, and CAP-040 onwards a second, added
 /// while building the request surface: every one of them settles a question the code would
 /// otherwise have had to assume. CAP-020 to CAP-030 need a human to complete a login in
 /// MitID's test tool and live in a separate catalog, which is why the numbering skips them.
+/// </para>
+/// <para>
+/// The numbering restarts per broker, so CAP-001 is each pack's own discovery document. A
+/// citation therefore only means something beside the broker it belongs to, which is what the
+/// documentation gate checks.
+/// </para>
 /// </remarks>
 public static class CaptureCatalog
 {
+    /// <summary>Every unattended case this harness knows for a broker.</summary>
+    public static IReadOnlyList<CaptureCase> For(Broker broker) => broker switch
+    {
+        Broker.NetsEidBroker => NetsEidBroker,
+        Broker.Signicat => Signicat,
+        _ => [],
+    };
+
+    /// <summary>
+    /// Nothing yet. The pack is planned and the surface is researched, but a case written from
+    /// research rather than from a recording is a guess with a CAP number on it.
+    /// </summary>
+    private static IReadOnlyList<CaptureCase> Signicat => [];
+
     public const string PreProduction = "https://pp.netseidbroker.dk/op";
     public const string Production = "https://netseidbroker.dk/op";
 
@@ -27,7 +48,7 @@ public static class CaptureCatalog
         $"&response_type=code&redirect_uri={Uri.EscapeDataString(RedirectUri)}" +
         $"&scope={Uri.EscapeDataString("openid mitid")}&state=capture&nonce=capture{extra}";
 
-    public static IReadOnlyList<CaptureCase> All =>
+    private static IReadOnlyList<CaptureCase> NetsEidBroker =>
     [
         new()
         {

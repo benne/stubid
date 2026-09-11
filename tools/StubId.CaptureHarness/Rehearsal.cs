@@ -13,7 +13,8 @@ namespace StubId.CaptureHarness;
 /// </remarks>
 public static class Rehearsal
 {
-    public static async Task<int> RunAsync(IReadOnlyList<ManualCase> cases, CancellationToken ct)
+    public static async Task<int> RunAsync(
+        BrokerTarget broker, IReadOnlyList<ManualCase> cases, CancellationToken ct)
     {
         using var handler = new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false };
         using var client = new HttpClient(handler);
@@ -28,7 +29,7 @@ public static class Rehearsal
             string url;
             try
             {
-                (url, _, _) = Session.BuildAuthorize(@case);
+                (url, _, _) = Session.BuildAuthorize(broker, @case);
             }
             catch (InvalidOperationException error)
             {
@@ -49,7 +50,7 @@ public static class Rehearsal
 
             if (@case.SignRequest)
             {
-                var (echo, why) = await RedirectsBackAsync(client, @case, ct);
+                var (echo, why) = await RedirectsBackAsync(broker, client, @case, ct);
                 Console.WriteLine($"  {@case.Id}  {echo,-8}  the redirect back carries its state{why}");
 
                 if (echo == "PROBLEM")
@@ -88,10 +89,10 @@ public static class Rehearsal
     /// </para>
     /// </remarks>
     private static async Task<(string Verdict, string Note)> RedirectsBackAsync(
-        HttpClient client, ManualCase @case, CancellationToken ct)
+        BrokerTarget broker, HttpClient client, ManualCase @case, CancellationToken ct)
     {
         var (url, _, _) = Session.BuildAuthorize(
-            @case, new Dictionary<string, string>(StringComparer.Ordinal) { ["prompt"] = "none" });
+            broker, @case, new Dictionary<string, string>(StringComparer.Ordinal) { ["prompt"] = "none" });
 
         using var response = await client.GetAsync(url, ct);
         var location = response.Headers.Location?.ToString() ?? "";

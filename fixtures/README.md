@@ -5,14 +5,23 @@ vendor document and a recording disagree, the recording wins.
 
 ## Layout
 
+A pack is a broker and one of its environments. `MANIFEST.json` is what makes a directory a pack.
+
 ```
-fixtures/neb/pp/CAP-nnn/request.json     what was sent, with credentials replaced by placeholders
-fixtures/neb/pp/CAP-nnn/response.head    status line and response headers, in the order received
-fixtures/neb/pp/CAP-nnn/response.raw     response body, exactly as served
-fixtures/neb/pp/CAP-nnn/meta.json        what the recording settles, and what may vary between runs
-fixtures/neb/pp/MANIFEST.json            sha256 of every file above
-fixtures/neb/certificates.md             the JWKS certificates, decoded
+fixtures/<broker>/<env>/CAP-nnn/request.json     what was sent, with credentials replaced by placeholders
+fixtures/<broker>/<env>/CAP-nnn/response.head    status line and response headers, in the order received
+fixtures/<broker>/<env>/CAP-nnn/response.raw     response body, exactly as served
+fixtures/<broker>/<env>/CAP-nnn/meta.json        what the recording settles, and what may vary between runs
+fixtures/<broker>/<env>/MANIFEST.json            sha256 of every file above
+fixtures/<broker>/certificates.md                the JWKS certificates, decoded
 ```
+
+Today that is `fixtures/neb/pp` and `fixtures/neb/pp-session`. Every harness command names its
+broker with `--broker=`, and there is no default: the two write into different packs, and a run
+that guessed would put one broker's recordings where the other's belong.
+
+**The numbering restarts per broker.** `CAP-001` is each pack's own discovery document, so a
+citation only means something beside the broker it belongs to.
 
 Bodies are stored as served: no decompression, no reformatting, no reserializing. Member
 order and whitespace are part of what is being pinned, and a JSON round-trip would quietly
@@ -24,8 +33,8 @@ destroy both.
 
   ```
   export STUBID_NEB_PP_CODE_CLIENT_SECRET=...      # only needed to re-record
-  dotnet run --project tools/StubId.CaptureHarness -- verify     # check for drift
-  dotnet run --project tools/StubId.CaptureHarness -- capture    # re-record
+  dotnet run --project tools/StubId.CaptureHarness -- verify --broker=neb     # check for drift
+  dotnet run --project tools/StubId.CaptureHarness -- capture --broker=neb    # re-record
   ```
 
   Use `verify` day to day. It re-requests everything and compares against what is committed,
@@ -41,8 +50,8 @@ destroy both.
   set and order, the types of the userinfo values, and the transaction token's claim names.
 
   ```
-  dotnet run --project tools/StubId.CaptureHarness -- session
-  dotnet run --project tools/StubId.CaptureHarness -- session --only=CAP-031   # one step
+  dotnet run --project tools/StubId.CaptureHarness -- session --broker=neb
+  dotnet run --project tools/StubId.CaptureHarness -- session --broker=neb --only=CAP-031   # one step
   ```
 
   That hosts a relying party on `http://localhost:5099`. Work down the list it shows; each
