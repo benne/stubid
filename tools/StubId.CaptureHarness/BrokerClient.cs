@@ -52,12 +52,15 @@ public sealed record BrokerClient
     /// <inheritdoc cref="ClientId(Func{string, string?})"/>
     public string Secret(Func<string, string?> resolve) => Require(SecretSetting, resolve);
 
+    // Named with its broker, because both brokers have a client called "hybrid" - the hybrid
+    // grant is the hybrid grant - and "the hybrid client" is not an address.
     private string Require(string? setting, Func<string, string?> resolve) => setting is null
-        ? throw new InvalidOperationException($"The {Name} client names no setting for this.")
+        ? throw new InvalidOperationException(
+            $"{Broker}'s {Name} client names no setting for this.")
         : resolve(setting) is { Length: > 0 } value
             ? value
             : throw new InvalidOperationException(
-                $"Set {setting} to record with the {Name} client.");
+                $"Set {setting} to record with {Broker}'s {Name} client.");
 
     /// <summary>Every registration the harness knows, across every broker.</summary>
     public static IReadOnlyList<BrokerClient> All =>
@@ -142,15 +145,84 @@ public sealed record BrokerClient
     }
 
     /// <summary>
-    /// Signicat's, which do not exist yet.
+    /// Signicat's four, registered on the tenant a sitting records against.
     /// </summary>
     /// <remarks>
-    /// Four registrations are planned and differ only in a handful of toggles, but a client this
-    /// harness has never authenticated against is a guess with a setting name attached. They
-    /// arrive with the catalog that uses them.
+    /// <para>
+    /// They differ in a handful of toggles and each difference buys a recording the others
+    /// cannot make. The summaries carry those toggles because on this broker they decide what
+    /// comes back: a claim can be aliased per client, and one setting decides whether MitID's
+    /// claims reach the identity token at all.
+    /// </para>
+    /// <para>
+    /// One key signs for <see cref="Primary" />, <see cref="Claims" /> and <see cref="Hybrid" />.
+    /// It is registered separately on each, and the broker reported the same identifier for all
+    /// three, which is why the key is one setting rather than three. Import a different key on
+    /// one of them and that stops being true silently: the object would name a key the client
+    /// does not hold, and the error page declines to say so.
+    /// </para>
     /// </remarks>
     public static class Signicat
     {
-        public static IReadOnlyList<BrokerClient> All => [];
+        /// <summary>The baseline, and the only one that can carry transaction consent.</summary>
+        /// <remarks>
+        /// A reference text travels inside a signed request object, so consent needs a client
+        /// that requires one. That is the whole reason this differs from <see cref="Partner" />,
+        /// which is otherwise the same claim surface.
+        /// </remarks>
+        public static readonly BrokerClient Primary = new()
+        {
+            Broker = CaptureHarness.Broker.Signicat,
+            Name = "primary",
+            Summary = "code with PKCE, request object required, standard-scope claims, "
+                + "single sign-on off",
+            IdSetting = "STUBID_SIGNICAT_PRIMARY_CLIENT_ID",
+            SecretSetting = "STUBID_SIGNICAT_PRIMARY_CLIENT_SECRET",
+        };
+
+        /// <summary>Where MitID's own claims land, and whether they arrive at all.</summary>
+        /// <remarks>
+        /// The one client carrying <c>mitid-extra</c>. No <c>mitid_*</c> claim has ever been
+        /// observed from this broker, and the reason is not entitlement: the login that was
+        /// observed did not request that scope, which is where those attributes live.
+        /// </remarks>
+        public static readonly BrokerClient Claims = new()
+        {
+            Broker = CaptureHarness.Broker.Signicat,
+            Name = "claims",
+            Summary = "the primary's configuration with every claim in the identity token, "
+                + "and the mitid-extra scope",
+            IdSetting = "STUBID_SIGNICAT_CLAIMS_CLIENT_ID",
+            SecretSetting = "STUBID_SIGNICAT_CLAIMS_CLIENT_SECRET",
+        };
+
+        public static readonly BrokerClient Hybrid = new()
+        {
+            Broker = CaptureHarness.Broker.Signicat,
+            Name = "hybrid",
+            Summary = "the hybrid grant, which is the only way to observe c_hash; this broker "
+                + "advertises no pure-implicit response type",
+            IdSetting = "STUBID_SIGNICAT_HYBRID_CLIENT_ID",
+            SecretSetting = "STUBID_SIGNICAT_HYBRID_CLIENT_SECRET",
+        };
+
+        /// <summary>The unattended pack's client, and the sitting's second party.</summary>
+        /// <remarks>
+        /// The only one of the four that accepts a plain query. The other three require a
+        /// request object, so a bare <c>GET /connect/authorize</c> against any of them is refused
+        /// before a single parameter is read - which would make every probe from "unknown client"
+        /// onward land on the same error page and settle nothing.
+        /// </remarks>
+        public static readonly BrokerClient Partner = new()
+        {
+            Broker = CaptureHarness.Broker.Signicat,
+            Name = "partner",
+            Summary = "no PKCE, no request object and single sign-on left on: the only one that "
+                + "accepts a bare query",
+            IdSetting = "STUBID_SIGNICAT_PARTNER_CLIENT_ID",
+            SecretSetting = "STUBID_SIGNICAT_PARTNER_CLIENT_SECRET",
+        };
+
+        public static IReadOnlyList<BrokerClient> All => [Primary, Claims, Hybrid, Partner];
     }
 }

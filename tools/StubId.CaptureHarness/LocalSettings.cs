@@ -33,6 +33,16 @@ public static class LocalSettings
         {
             var configured = value.GetString();
 
+            // A line left blank is somebody who has not filled it in, not a credential that is
+            // the empty string - nothing here is legitimately empty. Returning "" made an unset
+            // value read as configured everywhere downstream: the preflight printed "set, 0
+            // characters" and then complained that it was under six, and an empty key identifier
+            // silenced the warning that the request object would name no key.
+            if (string.IsNullOrEmpty(configured))
+            {
+                return null;
+            }
+
             // Someone copied the example file and did not fill this one in. Treating it as
             // set would send the description text as a credential and record a puzzling
             // rejection instead of the exchange the case is for.

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using StubId.CaptureHarness;
 
 namespace StubId.Fixtures.Tests;
@@ -365,5 +366,43 @@ public class ScrubberTests
         Assert.Equal(
             [("STUBID_SIGNICAT_DOMAIN", "an-account"), ("{{ORGANIZATION_NAME}}", "Example A/S")],
             configured);
+    }
+
+    /// <summary>
+    /// Every credential the scrubber knows is one the example file tells somebody to set.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The two lists are written by hand and read by different people, so they drift in the
+    /// direction that hurts: a setting added to the table is scrubbed and searched for, and a
+    /// reader who was never told to set it leaves it blank - at which point it is replaced in
+    /// nothing and looked for nowhere, and looks exactly like a value that was never needed.
+    /// </para>
+    /// <para>
+    /// Only this direction is asserted. The example file also documents the path to a signing
+    /// key, which is deliberately not a credential: it is where a key lives rather than a value
+    /// to replace, and scrubbing a path out of a recording would be scrubbing something that
+    /// never reaches one.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void Every_credential_the_scrubber_knows_is_documented()
+    {
+        using var example = JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(Repository.Root, "capture.local.example.json")));
+
+        var documented = example.RootElement.EnumerateObject()
+            .Select(entry => entry.Name)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var undocumented = Scrubber.Credentials
+            .Select(entry => entry.Setting)
+            .Where(setting => !documented.Contains(setting))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        Assert.True(undocumented.Count == 0,
+            "Scrubbed and searched for, but nothing tells anyone to set them: "
+            + string.Join(", ", undocumented));
     }
 }

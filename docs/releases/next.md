@@ -3,6 +3,63 @@
 Notes accumulate here as changes land, and this file is renamed to the version when a release
 goes out. The dated files beside it are history and are never edited.
 
+## The second broker's clients are four registrations
+
+They were a plan with a setting name attached, and now they are a roster: a primary, a claims
+client, a hybrid one and a partner. Each difference buys a recording the others cannot make, and
+the summaries carry the toggles because on this broker the toggles decide what comes back — a
+claim can be aliased per client, and one setting decides whether MitID's claims reach the identity
+token at all.
+
+Two of the four are worth explaining rather than listing. The partner is the only one that accepts
+a plain query: the other three require a request object, so a bare authorize against any of them is
+refused before a parameter is read, which would make every probe from "unknown client" onward land
+on the same error page and settle nothing. And the claims client is the only one carrying
+`mitid-extra`. No `mitid_*` claim has ever been observed from this broker, and the reason is not
+entitlement — the one login that was observed never asked for the scope those attributes live in.
+
+The scrubber's table grew from four entries to ten. It held one unsuffixed identifier-and-secret
+pair, written before any client existed, which nothing would have resolved once four did. Each
+registration now has its own, because a client identifier comes back echoed in a login redirect and
+that is how a private one reached a fixture the first time round. The key identifier stayed a single
+entry: one key is registered on three of the clients and the broker reports the same identifier for
+all three.
+
+Both brokers now have a client called `hybrid`, because on both it is the hybrid grant and there is
+no better word. A name identifies a registration within its broker and not across the roster, which
+one test had been assuming the opposite of — it passed for exactly as long as the second broker had
+no clients. A refusal now names the broker as well, since "the hybrid client" stopped being an
+address.
+
+## A blank line in the settings file is not a value
+
+`capture.local.json` returned the empty string for a line somebody had not filled in, and an empty
+string is not nothing — it is a value of length zero, and everything downstream read it as
+configured. The preflight printed `set, 0 characters` and then warned that it was under six
+characters, which is a complaint about the length of a value that does not exist. Worse, an empty
+key identifier silenced the warning that a request object would name no key, so the object went out
+without one and earned a refusal the broker's error page declines to explain.
+
+Nothing here is legitimately empty, so an empty value is now the same as an absent one.
+
+## `check` no longer says a broker is ready when nothing can record it
+
+It ended with "Ready to record." whenever it found no problems, which answers whether the
+configuration is complete rather than whether anything can be recorded. Those came apart the moment
+a broker had credentials and no cases: fully configured, and every recording verb refuses. It now
+says which of the two it means.
+
+Four lines printed the word `PROBLEM` and then incremented the warning count, so a key file that is
+not there, an issuer belonging to somebody else, and a broker that does not take the algorithm the
+harness signs with all exited zero. A section now reports problems and warnings separately, and the
+exit code means what the word says.
+
+Two smaller things in the same report. A missing key file now says so when the path begins with a
+tilde, because this setting does not expand one and the hint printed above it is a shell command
+where the shell does — so the message "names a file that is not there" was arriving about a file
+that was. And the name column is measured from the names rather than set to the width that fitted
+when one broker had the longest one.
+
 ## A broker says where its own pages are, and says nothing where nobody has looked
 
 Two literals decided what an answer was called — the error page's path and the login page's — and
