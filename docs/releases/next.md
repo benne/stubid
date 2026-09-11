@@ -3,6 +3,45 @@
 Notes accumulate here as changes land, and this file is renamed to the version when a release
 goes out. The dated files beside it are history and are never edited.
 
+## Nothing committed can name the account a recording came from
+
+The second broker's tenant is its hostname. The first broker's pre-production host is public and
+shared, so no recording of it could say whose it was; a Signicat sandbox puts the account's own
+subdomain in the issuer, in every absolute URL inside the discovery document, and in `iss` in
+every token. Two guards now cover ground the four already there could not.
+
+The first needs no configuration. A tenant is a label under a known suffix, and a suffix is a
+shape, so it holds on a machine that has never recorded anything — including every machine CI
+runs on, which is where a document somebody typed by hand would otherwise arrive unread. Both
+ways of writing the URL still pass without an exemption: `{{SIGNICAT_DOMAIN}}`, which is what the
+scrubber substitutes, and `<subdomain>`, which is what the research notes use.
+
+The second finds what has no shape at all — a client identifier, a key identifier, an
+organization's name, an account word in a sentence — by searching for the values the local
+configuration actually holds. On a fresh checkout it has nothing to look for, and that is the
+right population rather than a gap: those values are only knowable to the people who can commit
+them. It reads the working tree rather than the index, so an untracked scratch file is scanned
+too, and a failure names the setting instead of the value, because a build log is not a place to
+put the thing the check exists to keep out of one file.
+
+`capture.local.json` gains the Signicat vocabulary alongside it: the tenant domain, the client id
+and secret, and the identifier of the signing key a request object names in its header. The
+domain is the one to fill in before recording rather than after — a case template that names
+`{{SIGNICAT_DOMAIN}}` refuses to be sent at all until the setting resolves, which is what keeps a
+first recording from writing the account's hostname into every fixture it makes.
+
+All six read a wider set of files than they did. The list was what a recording is written in
+plus the repository's own source and documentation; it now also takes what a sitting leaves
+beside a recording — an exported HAR, a scratch log, a saved response, a note in a text file.
+Those are the ones nobody thinks to look at afterwards, because none of them was going to be
+committed on purpose.
+
+`check` now reports those settings beside the first broker's, and reads them from the scrubber
+rather than from a list of its own. It used to keep a second copy of the nine names, which is the
+shape of drift where a tenth gets scrubbed and never checked. It also says which values are too
+short to search a repository for, since those are replaced in a recording but cannot be looked
+for in a document.
+
 ## The broker an instance serves is now chosen, not assumed
 
 `StubId__Profile` picks it, and `neb` is what it is when nothing says otherwise — so a suite

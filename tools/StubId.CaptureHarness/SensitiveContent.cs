@@ -185,6 +185,127 @@ public static partial class SensitiveContent
         };
     }
 
+    /// <summary>
+    /// A hostname that names the account a recording was taken from.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The first broker made this a problem nobody had. Its pre-production host is public and
+    /// shared, so no recording of it could say whose it was. Signicat's tenant is the hostname,
+    /// which puts the account's own subdomain in the issuer, in every absolute URL inside the
+    /// discovery document, and in <c>iss</c> in every token a sitting produces.
+    /// </para>
+    /// <para>
+    /// Shaped rather than listed, like the personal-number and address checks above, and for a
+    /// sharper reason than either: a subdomain is a word somebody chose, so nothing about the
+    /// value itself says it is an account name. Only the suffix does. Checking the suffix is what
+    /// makes this guard work on a machine that has never been configured to record — including
+    /// every machine CI runs on, which is where a document written by hand would otherwise reach
+    /// the repository unread.
+    /// </para>
+    /// <para>
+    /// Only the sandbox suffix, because it is the only tenant-shaped host any of this project's
+    /// evidence establishes. What a production tenant is called has not been observed, and a
+    /// guard written against a guess would read as coverage without being any.
+    /// </para>
+    /// </remarks>
+    public static Finding FindTenantHost(string candidate)
+    {
+        foreach (Match match in TenantHostPattern().Matches(candidate))
+        {
+            return new Finding(true, match.Value, "plain text");
+        }
+
+        foreach (var (segment, decoded) in DecodedSegments(candidate))
+        {
+            foreach (Match match in TenantHostPattern().Matches(decoded))
+            {
+                return new Finding(true, match.Value, $"inside base64url segment {segment[..8]}...");
+            }
+        }
+
+        return Finding.None;
+    }
+
+    /// <summary>
+    /// The shortest value worth searching a whole repository for.
+    /// </summary>
+    /// <remarks>
+    /// A configured value is matched as a substring, so a short one matches text that has nothing
+    /// to do with it - and a guard that cries wolf gets switched off, which costs more than the
+    /// one file it was going to catch. Anything below this is reported by <see cref="Preflight" />
+    /// as not scanned rather than quietly dropped here.
+    /// </remarks>
+    public const int ShortestScannableValue = 6;
+
+    /// <summary>
+    /// Anything the local configuration knows the value of, wherever it appears.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The other checks here find things by their shape, which is what lets them run everywhere.
+    /// This one finds what has no shape: a client identifier, a key identifier, an organization's
+    /// name, an account word written into a sentence. None of those can be recognized without
+    /// being known, so this check only sees as much as the machine running it is configured to
+    /// see - and that is the whole population that can leak them.
+    /// </para>
+    /// <para>
+    /// The finding names the setting rather than the value. A failure message is read in a
+    /// terminal, pasted into an issue and kept in a build log, and none of those is a place to
+    /// put the thing the check exists to keep out of one file.
+    /// </para>
+    /// </remarks>
+    /// <param name="candidate">The text to search.</param>
+    /// <param name="configured">
+    /// What to look for, as the name to report paired with the value to find.
+    /// </param>
+    public static Finding FindConfigured(
+        string candidate,
+        IEnumerable<(string Name, string Value)> configured)
+    {
+        var looking = Scannable(configured);
+
+        foreach (var (name, value) in looking)
+        {
+            // Case-insensitively, which is wider than the scrubber's exact replace on purpose:
+            // a hostname does not care about case and a sentence capitalizes a name at its start,
+            // and this check is meant to catch what the scrubber could not.
+            if (candidate.Contains(value, StringComparison.OrdinalIgnoreCase))
+            {
+                return new Finding(true, name, "plain text");
+            }
+        }
+
+        foreach (var (segment, decoded) in DecodedSegments(candidate))
+        {
+            foreach (var (name, value) in looking)
+            {
+                if (decoded.Contains(value, StringComparison.OrdinalIgnoreCase))
+                {
+                    return new Finding(true, name, $"inside base64url segment {segment[..8]}...");
+                }
+            }
+        }
+
+        return Finding.None;
+    }
+
+    /// <summary>
+    /// The values long enough to search for, each also in the form a URL would carry it in.
+    /// </summary>
+    /// <remarks>
+    /// The escaped form matters for the same reason it does in the scrubber: the first capture
+    /// run wrote a credential into a fixture because the replace ran after the form had been
+    /// percent-encoded, and a value with a slash or a space in it is a different string by then.
+    /// </remarks>
+    private static (string Name, string Value)[] Scannable(
+        IEnumerable<(string Name, string Value)> configured) =>
+        [.. configured
+            .Where(entry => entry.Value.Length >= ShortestScannableValue)
+            .SelectMany(entry => Uri.EscapeDataString(entry.Value) == entry.Value
+                ? new[] { entry }
+                : [entry, (entry.Name, Uri.EscapeDataString(entry.Value))])];
+
     private static IEnumerable<(string Segment, string Decoded)> DecodedSegments(string candidate)
     {
         foreach (Match match in Base64UrlSegmentPattern().Matches(candidate))
@@ -245,6 +366,19 @@ public static partial class SensitiveContent
     /// </remarks>
     [GeneratedRegex(@"(?<![0-9A-Za-z.])((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?![0-9A-Za-z.])")]
     private static partial Regex IpPattern();
+
+    /// <summary>
+    /// A DNS label under Signicat's sandbox suffix, not sitting inside a longer name.
+    /// </summary>
+    /// <remarks>
+    /// The boundary is what lets a placeholder through without an exemption: neither
+    /// <c>{{SIGNICAT_DOMAIN}}</c> nor <c>&lt;subdomain&gt;</c> ends in a character a DNS label may
+    /// contain, so documentation can go on writing the URL in full.
+    /// </remarks>
+    [GeneratedRegex(
+        @"(?<![A-Za-z0-9_.-])[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?\.sandbox\.signicat\.com",
+        RegexOptions.IgnoreCase)]
+    private static partial Regex TenantHostPattern();
 
     [GeneratedRegex(@"([A-Za-z0-9_-]{16,})\.([A-Za-z0-9_-]{16,})\.([A-Za-z0-9_-]*)")]
     private static partial Regex JwsPattern();

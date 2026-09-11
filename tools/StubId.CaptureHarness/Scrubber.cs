@@ -4,38 +4,71 @@ using System.Text.RegularExpressions;
 namespace StubId.CaptureHarness;
 
 /// <summary>
-/// Keeps credentials out of the fixtures, and puts them back when a case is replayed.
+/// Keeps the values that identify an account out of the fixtures, and puts them back when a
+/// case is replayed.
 /// </summary>
 /// <remarks>
 /// <para>
-/// The broker publishes credentials for its open test clients so anyone can exercise
-/// pre-production, so these are not confidential. They are still kept out of the repository
+/// Nets eID Broker publishes credentials for its open test clients so anyone can exercise
+/// pre-production, so those are not confidential. They are still kept out of the repository
 /// and out of the fixtures. Something secret-shaped in a recorded exchange trips every
 /// scanner pointed at a public repository, and "that one is published on purpose" is not an
 /// argument anyone should have to have twice.
 /// </para>
 /// <para>
-/// Supply the value through the environment when recording. The broker's own documentation
-/// is where to get it.
+/// Supply the value through the environment when recording, or in <c>capture.local.json</c>.
+/// The broker's own documentation is where to get the published ones.
 /// </para>
 /// </remarks>
 public static partial class Scrubber
 {
-    private static readonly (string Placeholder, string Setting)[] Credentials =
+    /// <summary>
+    /// Everything read from the local configuration and replaced on its way into a fixture,
+    /// with the broker it belongs to and the placeholder that stands in for it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Every private client belongs on this list: what separates one that is scrubbed from one
+    /// that is not is only whether somebody wrote the line. That was true of the nine entries the
+    /// first broker needed, and it is why <see cref="Preflight" /> reads this list rather than
+    /// keeping a second copy of the names — the copy it used to keep is exactly the kind of thing
+    /// a tenth entry would have been left out of.
+    /// </para>
+    /// <para>
+    /// Not all of them are credentials, whatever the name says. Signicat's tenant is its
+    /// hostname, so the account's own subdomain appears in the issuer, in every absolute URL in
+    /// the discovery document and in <c>iss</c> in every token, and the key identifier names a
+    /// signing key registered on one client. Neither is secret. Both are somebody's account
+    /// rather than the broker's protocol, which is the same reason a client identifier is here
+    /// beside the secrets.
+    /// </para>
+    /// <para>
+    /// Registering the domain is also what makes a Signicat recording refuse rather than leak: a
+    /// case whose template names <c>{{SIGNICAT_DOMAIN}}</c> cannot be sent at all until the
+    /// setting resolves, because <see cref="Unscrub(string)" /> throws instead of putting a
+    /// placeholder on the wire.
+    /// </para>
+    /// </remarks>
+    public static readonly IReadOnlyList<(Broker Broker, string Placeholder, string Setting)> Credentials =
     [
-        ("{{NEB_PP_OPEN_CLIENT_CODE_SECRET}}", "STUBID_NEB_PP_CODE_CLIENT_SECRET"),
-        ("{{NEB_PP_CLIENT_ID}}", "STUBID_NEB_PP_CLIENT_ID"),
-        ("{{NEB_PP_CLIENT_SECRET}}", "STUBID_NEB_PP_CLIENT_SECRET"),
+        (Broker.NetsEidBroker, "{{NEB_PP_OPEN_CLIENT_CODE_SECRET}}", "STUBID_NEB_PP_CODE_CLIENT_SECRET"),
+        (Broker.NetsEidBroker, "{{NEB_PP_CLIENT_ID}}", "STUBID_NEB_PP_CLIENT_ID"),
+        (Broker.NetsEidBroker, "{{NEB_PP_CLIENT_SECRET}}", "STUBID_NEB_PP_CLIENT_SECRET"),
 
-        // The single sign-on and hybrid registrations. Every private client belongs on this
-        // list: what separates one that is scrubbed from one that is not is only whether somebody
-        // wrote the line.
-        ("{{NEB_PP_SSO_A_CLIENT_ID}}", "STUBID_NEB_PP_SSO_A_CLIENT_ID"),
-        ("{{NEB_PP_SSO_A_CLIENT_SECRET}}", "STUBID_NEB_PP_SSO_A_CLIENT_SECRET"),
-        ("{{NEB_PP_SSO_B_CLIENT_ID}}", "STUBID_NEB_PP_SSO_B_CLIENT_ID"),
-        ("{{NEB_PP_SSO_B_CLIENT_SECRET}}", "STUBID_NEB_PP_SSO_B_CLIENT_SECRET"),
-        ("{{NEB_PP_SSO_C_CLIENT_ID}}", "STUBID_NEB_PP_SSO_C_CLIENT_ID"),
-        ("{{NEB_PP_SSO_C_CLIENT_SECRET}}", "STUBID_NEB_PP_SSO_C_CLIENT_SECRET"),
+        // The single sign-on and hybrid registrations.
+        (Broker.NetsEidBroker, "{{NEB_PP_SSO_A_CLIENT_ID}}", "STUBID_NEB_PP_SSO_A_CLIENT_ID"),
+        (Broker.NetsEidBroker, "{{NEB_PP_SSO_A_CLIENT_SECRET}}", "STUBID_NEB_PP_SSO_A_CLIENT_SECRET"),
+        (Broker.NetsEidBroker, "{{NEB_PP_SSO_B_CLIENT_ID}}", "STUBID_NEB_PP_SSO_B_CLIENT_ID"),
+        (Broker.NetsEidBroker, "{{NEB_PP_SSO_B_CLIENT_SECRET}}", "STUBID_NEB_PP_SSO_B_CLIENT_SECRET"),
+        (Broker.NetsEidBroker, "{{NEB_PP_SSO_C_CLIENT_ID}}", "STUBID_NEB_PP_SSO_C_CLIENT_ID"),
+        (Broker.NetsEidBroker, "{{NEB_PP_SSO_C_CLIENT_SECRET}}", "STUBID_NEB_PP_SSO_C_CLIENT_SECRET"),
+
+        // The tenant first, because it is the one with no equivalent on the first broker and the
+        // one that reaches every byte of every recording.
+        (Broker.Signicat, "{{SIGNICAT_DOMAIN}}", "STUBID_SIGNICAT_DOMAIN"),
+        (Broker.Signicat, "{{SIGNICAT_CLIENT_ID}}", "STUBID_SIGNICAT_CLIENT_ID"),
+        (Broker.Signicat, "{{SIGNICAT_CLIENT_SECRET}}", "STUBID_SIGNICAT_CLIENT_SECRET"),
+        (Broker.Signicat, "{{SIGNICAT_KEY_ID}}", "STUBID_SIGNICAT_KEY_ID"),
     ];
 
     /// <summary>
@@ -60,6 +93,46 @@ public static partial class Scrubber
     ];
 
     /// <summary>
+    /// Every value this machine can recognize, as the name to report it under paired with the
+    /// value itself.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// What the scrubber replaces on the way into a fixture is exactly what a guard should look
+    /// for in one, so both read the same list. The difference is direction: the scrubber runs
+    /// while a recording is being written and sees only that recording, and the guard runs over
+    /// everything committed, including the documents somebody typed by hand — which is where a
+    /// hostname or a client identifier actually gets written down.
+    /// </para>
+    /// <para>
+    /// It returns nothing on a machine that has never been configured to record, which includes
+    /// every machine CI runs on. That is not a gap to apologize for: nobody can search for a
+    /// value they do not have, and the people who have them are the only ones who can leak them.
+    /// </para>
+    /// </remarks>
+    public static IEnumerable<(string Name, string Value)> Configured() =>
+        Configured(LocalSettings.Get, LocalSettings.Redactions().Select(e => (e.Key, e.Value)));
+
+    /// <inheritdoc cref="Configured()"/>
+    /// <remarks>
+    /// With both sources passed in, for the same reason the scrubbing overload takes them: a test
+    /// that reads the machine passes on a fresh checkout and fails once somebody configures
+    /// theirs to record.
+    /// </remarks>
+    public static IEnumerable<(string Name, string Value)> Configured(
+        Func<string, string?> resolve,
+        IEnumerable<(string Placeholder, string Value)> redactions) =>
+    [
+        .. Credentials
+            .Select(entry => (entry.Setting, Value: resolve(entry.Setting)))
+            .Where(entry => !string.IsNullOrEmpty(entry.Value))
+            .Select(entry => (entry.Setting, entry.Value!)),
+
+        // Keyed by the placeholder, which is the only name a redaction has.
+        .. redactions.Where(entry => !string.IsNullOrEmpty(entry.Value)),
+    ];
+
+    /// <summary>
     /// Substitutes real credentials into a value about to be sent. Throws rather than
     /// sending a placeholder to the broker, which would record a confusing 400 instead of
     /// the exchange the case is meant to capture.
@@ -72,7 +145,7 @@ public static partial class Scrubber
     /// </summary>
     public static string Unscrub(string text, Func<string, string?> resolve)
     {
-        foreach (var (placeholder, setting) in Credentials)
+        foreach (var (_, placeholder, setting) in Credentials)
         {
             if (!text.Contains(placeholder, StringComparison.Ordinal))
             {
@@ -132,7 +205,7 @@ public static partial class Scrubber
             return $"\"{match.Groups[1].Value}\":\"{placeholder}\"";
         });
 
-        foreach (var (placeholder, setting) in Credentials)
+        foreach (var (_, placeholder, setting) in Credentials)
         {
             var value = resolve(setting);
             if (!string.IsNullOrEmpty(value))

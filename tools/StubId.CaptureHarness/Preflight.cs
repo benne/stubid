@@ -25,50 +25,43 @@ public static class Preflight
         Console.WriteLine($"Configuration: {LocalSettings.Path ?? "(no capture.local.json found)"}");
         Console.WriteLine();
 
-        Console.WriteLine("Credentials");
-        foreach (var name in new[]
+        // Read from the scrubber rather than from a list of its own. The copy that used to live
+        // here is the reason this section could report a clean bill for a credential the scrubber
+        // had never been told about: two lists, one of which nobody remembers to edit.
+        foreach (var broker in Enum.GetValues<Broker>())
         {
-            "STUBID_NEB_PP_CLIENT_ID",
-            "STUBID_NEB_PP_CLIENT_SECRET",
-            "STUBID_NEB_PP_CODE_CLIENT_SECRET",
-            "STUBID_NEB_PP_SSO_A_CLIENT_ID",
-            "STUBID_NEB_PP_SSO_A_CLIENT_SECRET",
-            "STUBID_NEB_PP_SSO_B_CLIENT_ID",
-            "STUBID_NEB_PP_SSO_B_CLIENT_SECRET",
-            "STUBID_NEB_PP_SSO_C_CLIENT_ID",
-            "STUBID_NEB_PP_SSO_C_CLIENT_SECRET",
-        })
-        {
-            var value = LocalSettings.Get(name);
-            if (value is null)
-            {
-                var needed = name switch
-                {
-                    "STUBID_NEB_PP_CODE_CLIENT_SECRET" =>
-                        Steps(c => c.Client is ClientProfile.OpenCode or ClientProfile.OpenImplicit),
-                    var n when n.Contains("SSO_A", StringComparison.Ordinal) =>
-                        Steps(c => c.Client is ClientProfile.SsoA or ClientProfile.Restricted),
-                    var n when n.Contains("SSO_B", StringComparison.Ordinal) =>
-                        Steps(c => c.Client == ClientProfile.SsoB),
-                    var n when n.Contains("SSO_C", StringComparison.Ordinal) =>
-                        Steps(c => c.Client == ClientProfile.Hybrid),
-                    _ => Steps(c => c.Client == ClientProfile.Private),
-                };
+            Console.WriteLine($"Credentials ({Name(broker)})");
 
-                Console.WriteLine($"  {name,-34} missing");
-                if (needed.Count > 0)
-                {
-                    warnings++;
-                    Console.WriteLine($"           {string.Join(", ", needed)} cannot be recorded without it");
-                }
-            }
-            else
+            var unset = 0;
+
+            foreach (var (_, _, name) in Scrubber.Credentials.Where(c => c.Broker == broker))
             {
+                var value = LocalSettings.Get(name);
+
+                if (value is null)
+                {
+                    unset++;
+                    Console.WriteLine($"  {name,-34} missing");
+                    warnings += ReportCost(name, broker);
+                    continue;
+                }
+
                 Console.WriteLine($"  {name,-34} set, {value.Length} characters");
+                warnings += ReportReach(value);
             }
+
+            // Once for the block rather than under every line. Nothing records this broker yet,
+            // so a missing value costs coverage rather than a step, and saying that four times
+            // reads as four problems.
+            if (broker == Broker.Signicat && unset > 0)
+            {
+                Console.WriteLine($"           {unset} not set. Nothing records Signicat yet, and the guard");
+                Console.WriteLine("           that scans committed files can only look for what is here.");
+            }
+
+            Console.WriteLine();
         }
 
-        Console.WriteLine();
         Console.WriteLine("Redactions");
 
         var redactions = LocalSettings.Redactions();
@@ -231,6 +224,72 @@ public static class Preflight
             return [];
         }
     }
+
+    /// <summary>
+    /// What a missing value costs, when it costs something nameable.
+    /// </summary>
+    /// <remarks>
+    /// A missing Nets eID Broker credential blocks named steps of a sitting, and the steps can be
+    /// listed, so they are. Nothing records Signicat yet, so a missing value there costs coverage
+    /// rather than a step - which the block says once rather than four times.
+    /// </remarks>
+    private static int ReportCost(string name, Broker broker)
+    {
+        if (broker == Broker.Signicat)
+        {
+            return 0;
+        }
+
+        var needed = name switch
+        {
+            "STUBID_NEB_PP_CODE_CLIENT_SECRET" =>
+                Steps(c => c.Client is ClientProfile.OpenCode or ClientProfile.OpenImplicit),
+            var n when n.Contains("SSO_A", StringComparison.Ordinal) =>
+                Steps(c => c.Client is ClientProfile.SsoA or ClientProfile.Restricted),
+            var n when n.Contains("SSO_B", StringComparison.Ordinal) =>
+                Steps(c => c.Client == ClientProfile.SsoB),
+            var n when n.Contains("SSO_C", StringComparison.Ordinal) =>
+                Steps(c => c.Client == ClientProfile.Hybrid),
+            _ => Steps(c => c.Client == ClientProfile.Private),
+        };
+
+        if (needed.Count == 0)
+        {
+            return 0;
+        }
+
+        Console.WriteLine($"           {string.Join(", ", needed)} cannot be recorded without it");
+        return 1;
+    }
+
+    /// <summary>
+    /// Whether a value that is set can also be searched for.
+    /// </summary>
+    /// <remarks>
+    /// It is scrubbed either way - a replace does not care how short the string is. What a short
+    /// value cannot survive is being matched as a substring against every file in the repository,
+    /// where a short word is in half of them. Saying so is the difference between a guard with a
+    /// known blind spot and one with a quiet one.
+    /// </remarks>
+    private static int ReportReach(string value)
+    {
+        if (value.Length >= SensitiveContent.ShortestScannableValue)
+        {
+            return 0;
+        }
+
+        Console.WriteLine($"           WARNING  under {SensitiveContent.ShortestScannableValue} characters, so it is replaced in");
+        Console.WriteLine("           recordings but not searched for in committed files.");
+        return 1;
+    }
+
+    /// <summary>The broker as somebody would say it out loud.</summary>
+    private static string Name(Broker broker) => broker switch
+    {
+        Broker.NetsEidBroker => "Nets eID Broker",
+        Broker.Signicat => "Signicat",
+        _ => broker.ToString(),
+    };
 
     private static List<string> Steps(Func<ManualCase, bool> predicate) =>
         [.. ManualCatalog.All.Where(predicate).Select(c => c.Id)];

@@ -219,4 +219,151 @@ public class ScrubberTests
 
         Assert.Equal("client_secret=the-real-secret", sent);
     }
+
+    /// <summary>
+    /// A hostname that names somebody's tenant, which is the second broker's version of a
+    /// problem the first one could not have.
+    /// </summary>
+    [Theory]
+    [InlineData("https://an-account.sandbox.signicat.com/auth/open")]
+    [InlineData("""{"iss":"https://an-account.sandbox.signicat.com/auth/open"}""")]
+    // A hostname does not care about case, and neither does this.
+    [InlineData("https://An-Account.Sandbox.Signicat.com/auth/open")]
+    // A single-label account, which is what most of them are.
+    [InlineData("https://acme.sandbox.signicat.com/auth/open/.well-known/openid-configuration")]
+    public void A_tenant_host_is_caught(string text)
+    {
+        Assert.True(SensitiveContent.FindTenantHost(text).Found);
+    }
+
+    /// <summary>
+    /// The forms documentation actually uses, and the platform's shared hosts.
+    /// </summary>
+    /// <remarks>
+    /// This is the half that decides whether the guard is usable. A check that made it
+    /// impossible to write the URL down would be worked around within a week, so both ways of
+    /// writing it - the placeholder the scrubber substitutes, and the angle-bracketed form a
+    /// research note uses - have to pass without anyone adding an exemption.
+    /// </remarks>
+    [Theory]
+    [InlineData("https://{{SIGNICAT_DOMAIN}}.sandbox.signicat.com/auth/open")]
+    [InlineData("https://<subdomain>.sandbox.signicat.com/auth/open")]
+    // Shared infrastructure rather than a tenant: everyone's redirect chain ends here.
+    [InlineData("https://preprod.signicat.com/std/method/dtp")]
+    [InlineData("https://signicat.pp.mitid.dk/")]
+    public void A_placeholder_or_a_shared_host_is_not(string text)
+    {
+        Assert.False(SensitiveContent.FindTenantHost(text).Found);
+    }
+
+    /// <summary>A tenant host inside a token is found like one written out.</summary>
+    /// <remarks>
+    /// This is where it actually lives. Every token a sitting produces carries the issuer in
+    /// <c>iss</c>, and a base64url segment is one long alphanumeric run that no amount of
+    /// reading the file would reveal.
+    /// </remarks>
+    [Fact]
+    public void A_tenant_host_inside_a_token_is_caught()
+    {
+        var token = string.Join('.',
+            Segment("""{"alg":"RS256"}"""),
+            Segment("""{"iss":"https://an-account.sandbox.signicat.com/auth/open"}"""),
+            "c2ln");
+
+        var finding = SensitiveContent.FindTenantHost(token);
+
+        Assert.True(finding.Found);
+        Assert.Contains("base64url", finding.Location, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Something with no shape at all, found because this machine was told the value.
+    /// </summary>
+    /// <remarks>
+    /// The finding names the setting rather than the value, which is what makes the message
+    /// safe to print. A failure is read in a terminal, pasted into an issue and kept in a build
+    /// log, and none of those is a place to put the thing the check exists to keep out of a file.
+    /// </remarks>
+    [Fact]
+    public void A_configured_value_is_found_and_reported_by_name()
+    {
+        var finding = SensitiveContent.FindConfigured(
+            "the client is sandbox-nnnnnnnnnnnnnnnnnnnn and it works",
+            [("STUBID_SIGNICAT_CLIENT_ID", "sandbox-nnnnnnnnnnnnnnnnnnnn")]);
+
+        Assert.True(finding.Found);
+        Assert.Equal("STUBID_SIGNICAT_CLIENT_ID", finding.Value);
+    }
+
+    /// <summary>The escaped form too, because a URL carries values that way.</summary>
+    /// <remarks>
+    /// The same gap that put a real client secret in the very first fixture: the scrubber ran
+    /// after the form had been percent-encoded, and by then the value was a different string.
+    /// </remarks>
+    [Fact]
+    public void A_configured_value_is_found_in_the_form_a_url_carries_it_in()
+    {
+        var finding = SensitiveContent.FindConfigured(
+            "recipient=Example%20A%2FS&amount=100",
+            [("{{ORGANIZATION_NAME}}", "Example A/S")]);
+
+        Assert.True(finding.Found);
+        Assert.Equal("{{ORGANIZATION_NAME}}", finding.Value);
+    }
+
+    /// <summary>Inside a token as well, for the same reason as everything else here.</summary>
+    [Fact]
+    public void A_configured_value_inside_a_token_is_found_too()
+    {
+        var token = string.Join('.',
+            Segment("""{"alg":"RS256"}"""),
+            Segment("""{"iss":"https://an-account.sandbox.signicat.com/auth/open"}"""),
+            "c2ln");
+
+        var finding = SensitiveContent.FindConfigured(
+            token, [("STUBID_SIGNICAT_DOMAIN", "an-account")]);
+
+        Assert.True(finding.Found);
+        Assert.Equal("STUBID_SIGNICAT_DOMAIN", finding.Value);
+    }
+
+    /// <summary>
+    /// A value too short to search a repository for is not searched for.
+    /// </summary>
+    /// <remarks>
+    /// It is still scrubbed - a replace does not care how long the string is. What it cannot
+    /// survive is being matched as a substring against every file in the tree, where a short
+    /// word is in half of them. A guard that cries wolf gets switched off, which costs more
+    /// than the one file it was going to catch, so the floor is stated and
+    /// <see cref="Preflight" /> reports anything under it rather than dropping it quietly.
+    /// </remarks>
+    [Fact]
+    public void A_value_too_short_to_search_for_is_left_to_the_scrubber()
+    {
+        var finding = SensitiveContent.FindConfigured(
+            "the acme corporation, of acme street, in acme",
+            [("STUBID_SIGNICAT_DOMAIN", "acme")]);
+
+        Assert.False(finding.Found);
+    }
+
+    /// <summary>
+    /// The guard looks for exactly what the scrubber replaces, from one list.
+    /// </summary>
+    /// <remarks>
+    /// Both halves matter. Credentials that do not resolve are not searched for, because there
+    /// is nothing to search for; configured redactions are, because a value worth replacing in
+    /// a recording is worth finding in a document somebody typed.
+    /// </remarks>
+    [Fact]
+    public void The_scan_looks_for_what_the_scrubber_replaces()
+    {
+        var configured = Scrubber.Configured(
+            name => name == "STUBID_SIGNICAT_DOMAIN" ? "an-account" : null,
+            [("{{ORGANIZATION_NAME}}", "Example A/S")]).ToList();
+
+        Assert.Equal(
+            [("STUBID_SIGNICAT_DOMAIN", "an-account"), ("{{ORGANIZATION_NAME}}", "Example A/S")],
+            configured);
+    }
 }
