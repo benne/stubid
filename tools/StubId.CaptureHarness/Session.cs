@@ -264,7 +264,7 @@ public static class Session
         if (@case.SignRequest)
         {
             var signed = RequestObject.Build(
-                parameters, @case.Client.ClientId(), broker.Authority, @case.Client.Secret());
+                parameters, @case.Client.ClientId(), broker.Authority, broker.SignerFor(@case.Client));
 
             parameters = new Dictionary<string, string>(StringComparer.Ordinal)
             {

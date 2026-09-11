@@ -42,7 +42,7 @@ public class RequestObjectTests
     [Fact]
     public void The_signature_verifies_against_the_client_secret()
     {
-        var compact = RequestObject.Build(Parameters(), Client, Authority, Password);
+        var compact = RequestObject.Build(Parameters(), Client, Authority, RequestSigner.ClientSecret(Password));
         var segments = compact.Split('.');
 
         Assert.Equal(3, segments.Length);
@@ -62,7 +62,7 @@ public class RequestObjectTests
     [Fact]
     public void An_expiry_is_always_carried()
     {
-        var payload = Payload(RequestObject.Build(Parameters(), Client, Authority, Password));
+        var payload = Payload(RequestObject.Build(Parameters(), Client, Authority, RequestSigner.ClientSecret(Password)));
 
         Assert.True(payload.TryGetProperty("exp", out var exp));
         Assert.True(exp.GetInt64() > DateTimeOffset.UtcNow.ToUnixTimeSeconds());
@@ -72,7 +72,7 @@ public class RequestObjectTests
     public void Every_parameter_becomes_a_claim_and_the_issuer_is_the_client()
     {
         var parameters = Parameters();
-        var payload = Payload(RequestObject.Build(parameters, Client, Authority, Password));
+        var payload = Payload(RequestObject.Build(parameters, Client, Authority, RequestSigner.ClientSecret(Password)));
 
         foreach (var (key, value) in parameters)
         {
@@ -135,7 +135,7 @@ public class RequestObjectTests
     [Fact]
     public void A_recorded_request_object_leaves_no_token_in_the_url()
     {
-        var compact = RequestObject.Build(Parameters(), Client, Authority, Password);
+        var compact = RequestObject.Build(Parameters(), Client, Authority, RequestSigner.ClientSecret(Password));
         var sent = $"{Authority}/connect/authorize?client_id={Client}&response_type=code"
                    + $"&request={Uri.EscapeDataString(compact)}";
 

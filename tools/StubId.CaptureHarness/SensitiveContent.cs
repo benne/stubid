@@ -228,6 +228,29 @@ public static partial class SensitiveContent
     }
 
     /// <summary>
+    /// A private key, written out.
+    /// </summary>
+    /// <remarks>
+    /// New with the second broker, which verifies a request object against a key registered on
+    /// the client rather than against the client secret. The key lives in a file outside the
+    /// repository and is named by a setting, but a file somebody pasted into the tree to try
+    /// something is exactly the kind of thing that gets committed by accident — and unlike a
+    /// client secret it looks nothing like the shapes the other guards know.
+    /// <para>
+    /// Found by its armour rather than by its contents, which is the one thing every encoding of
+    /// one has in common.
+    /// </para>
+    /// </remarks>
+    public static Finding FindPrivateKey(string candidate)
+    {
+        var match = PrivateKeyPattern().Match(candidate);
+
+        return match.Success
+            ? new Finding(true, match.Value, "plain text")
+            : Finding.None;
+    }
+
+    /// <summary>
     /// The shortest value worth searching a whole repository for.
     /// </summary>
     /// <remarks>
@@ -379,6 +402,10 @@ public static partial class SensitiveContent
         @"(?<![A-Za-z0-9_.-])[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?\.sandbox\.signicat\.com",
         RegexOptions.IgnoreCase)]
     private static partial Regex TenantHostPattern();
+
+    /// <summary>The PEM armour a private key of any kind is wrapped in.</summary>
+    [GeneratedRegex(@"-----BEGIN (?:[A-Z0-9 ]+ )?PRIVATE KEY-----")]
+    private static partial Regex PrivateKeyPattern();
 
     [GeneratedRegex(@"([A-Za-z0-9_-]{16,})\.([A-Za-z0-9_-]{16,})\.([A-Za-z0-9_-]*)")]
     private static partial Regex JwsPattern();

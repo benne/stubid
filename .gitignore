@@ -12,6 +12,10 @@ artifacts/
 # Credentials and redaction rules for recording. Plain string replacement, not hashing.
 capture.local.json
 
+# The private key whose public half is registered on a broker's client. It is named by a
+# setting and belongs outside a checkout; this is the backstop for one written here anyway.
+*.pem
+
 # A recording session produces artifacts that carry session cookies, live tokens and the
 # test identity's personal number. None of them are scrubbed, and none belong here.
 *.har

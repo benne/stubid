@@ -7,15 +7,16 @@ using System.Text.RegularExpressions;
 namespace StubId.CaptureHarness;
 
 /// <summary>
-/// Packs an authorize request into a JWT signed with the client secret, and takes it back out
-/// again before anything is written to disk.
+/// Packs an authorize request into a signed JWT, and takes it back out again before anything is
+/// written to disk.
 /// </summary>
 /// <remarks>
 /// <para>
-/// The broker limits the transaction-text flow to signed requests, so a sitting that wants the
-/// transaction-text claims has to send one. What it accepts was measured rather than assumed,
-/// and the measurement is in docs/research/signed-requests.md: HS256 over the client secret,
-/// on both the published open client and a private one.
+/// A broker that limits a flow to signed requests makes a sitting that wants that flow send one.
+/// What the first broker accepts was measured rather than assumed, and the measurement is in
+/// docs/research/signed-requests.md: HS256 over the client secret, on both the published open
+/// client and a private one. What signs an object now comes from <see cref="RequestSigner" />,
+/// because the second broker advertises no symmetric algorithm at all.
 /// </para>
 /// <para>
 /// StubId.Wire's JwsWriter is not reusable here. It signs with an X509Certificate2 private key
@@ -43,7 +44,7 @@ public static partial class RequestObject
         IReadOnlyDictionary<string, string> parameters,
         string clientId,
         string authority,
-        string secret,
+        RequestSigner signer,
         DateTimeOffset? now = null)
     {
         var issued = now ?? DateTimeOffset.UtcNow;
@@ -69,17 +70,25 @@ public static partial class RequestObject
         claims["nbf"] = issued.ToUnixTimeSeconds();
         claims["jti"] = Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(16));
 
-        var header = Encode(new Dictionary<string, object>(StringComparer.Ordinal)
+        var members = new Dictionary<string, object>(StringComparer.Ordinal)
         {
-            ["alg"] = "HS256",
+            ["alg"] = signer.Algorithm,
             ["typ"] = "JWT",
-        });
+        };
 
+        // Only where there is one. A broker holding several public keys for a client needs
+        // telling which verifies this, and a symmetric signature identifies its key by being
+        // one - so an absent kid is the first broker's header byte for byte as it was.
+        if (signer.KeyId is { Length: > 0 } keyId)
+        {
+            members["kid"] = keyId;
+        }
+
+        var header = Encode(members);
         var payload = Encode(claims);
         var signingInput = $"{header}.{payload}";
 
-        var signature = HMACSHA256.HashData(
-            Encoding.UTF8.GetBytes(secret), Encoding.ASCII.GetBytes(signingInput));
+        var signature = signer.Sign(Encoding.ASCII.GetBytes(signingInput));
 
         return $"{signingInput}.{Base64Url.EncodeToString(signature)}";
     }
