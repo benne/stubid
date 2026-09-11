@@ -64,11 +64,22 @@ public static partial class Scrubber
         (Broker.NetsEidBroker, "{{NEB_PP_SSO_C_CLIENT_SECRET}}", "STUBID_NEB_PP_SSO_C_CLIENT_SECRET"),
 
         // The tenant first, because it is the one with no equivalent on the first broker and the
-        // one that reaches every byte of every recording.
+        // one that reaches every byte of every recording. The key identifier is one entry rather
+        // than four: the same key is registered on three of the clients and the broker reports
+        // the same identifier for all three.
         (Broker.Signicat, "{{SIGNICAT_DOMAIN}}", "STUBID_SIGNICAT_DOMAIN"),
-        (Broker.Signicat, "{{SIGNICAT_CLIENT_ID}}", "STUBID_SIGNICAT_CLIENT_ID"),
-        (Broker.Signicat, "{{SIGNICAT_CLIENT_SECRET}}", "STUBID_SIGNICAT_CLIENT_SECRET"),
         (Broker.Signicat, "{{SIGNICAT_KEY_ID}}", "STUBID_SIGNICAT_KEY_ID"),
+
+        // The four registrations. This replaced a single unsuffixed pair that was written before
+        // any client existed and that nothing would have resolved once four of them did.
+        (Broker.Signicat, "{{SIGNICAT_PRIMARY_CLIENT_ID}}", "STUBID_SIGNICAT_PRIMARY_CLIENT_ID"),
+        (Broker.Signicat, "{{SIGNICAT_PRIMARY_CLIENT_SECRET}}", "STUBID_SIGNICAT_PRIMARY_CLIENT_SECRET"),
+        (Broker.Signicat, "{{SIGNICAT_CLAIMS_CLIENT_ID}}", "STUBID_SIGNICAT_CLAIMS_CLIENT_ID"),
+        (Broker.Signicat, "{{SIGNICAT_CLAIMS_CLIENT_SECRET}}", "STUBID_SIGNICAT_CLAIMS_CLIENT_SECRET"),
+        (Broker.Signicat, "{{SIGNICAT_HYBRID_CLIENT_ID}}", "STUBID_SIGNICAT_HYBRID_CLIENT_ID"),
+        (Broker.Signicat, "{{SIGNICAT_HYBRID_CLIENT_SECRET}}", "STUBID_SIGNICAT_HYBRID_CLIENT_SECRET"),
+        (Broker.Signicat, "{{SIGNICAT_PARTNER_CLIENT_ID}}", "STUBID_SIGNICAT_PARTNER_CLIENT_ID"),
+        (Broker.Signicat, "{{SIGNICAT_PARTNER_CLIENT_SECRET}}", "STUBID_SIGNICAT_PARTNER_CLIENT_SECRET"),
     ];
 
     /// <summary>

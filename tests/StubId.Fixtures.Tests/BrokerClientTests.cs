@@ -30,17 +30,83 @@ public class BrokerClientTests
     public void A_registration_reads_what_it_always_read(
         string name, string? published, string? idSetting, string secretSetting)
     {
-        var client = BrokerClient.All.Single(c => c.Name == name);
+        var client = BrokerClient.NetsEidBroker.All.Single(c => c.Name == name);
 
         Assert.Equal(published, client.PublishedId);
         Assert.Equal(idSetting, client.IdSetting);
         Assert.Equal(secretSetting, client.SecretSetting);
     }
 
+    /// <summary>
+    /// A name identifies a registration within its broker, and only within it.
+    /// </summary>
+    /// <remarks>
+    /// Both brokers have a client called "hybrid", because on both it is the hybrid grant and
+    /// there is no better word. That is fine and it is also the reason nothing may look one up
+    /// across the whole roster - which one test did, and which passed for exactly as long as the
+    /// second broker had no clients.
+    /// </remarks>
+    [Fact]
+    public void A_name_is_unique_within_a_broker_but_not_across_them()
+    {
+        foreach (var broker in Enum.GetValues<Broker>())
+        {
+            var names = BrokerClient.All.Where(c => c.Broker == broker).Select(c => c.Name).ToList();
+            Assert.Equal(names.Count, names.Distinct(StringComparer.Ordinal).Count());
+        }
+
+        Assert.Equal(2, BrokerClient.All.Count(c => c.Name == "hybrid"));
+    }
+
     [Fact]
     public void The_roster_is_the_seven_the_enum_named()
     {
         Assert.Equal(7, BrokerClient.NetsEidBroker.All.Count);
+    }
+
+    /// <summary>
+    /// The second broker's four, and the settings each reads.
+    /// </summary>
+    /// <remarks>
+    /// Written out by hand for the same reason the first broker's are, with one difference that
+    /// matters more here: these were registered by hand in a dashboard, so a transposed setting
+    /// name would record a sitting under a client configured for something else and the recording
+    /// would look perfectly ordinary. None of them is published, so every one needs both settings.
+    /// </remarks>
+    [Theory]
+    [InlineData("primary", "STUBID_SIGNICAT_PRIMARY_CLIENT_ID", "STUBID_SIGNICAT_PRIMARY_CLIENT_SECRET")]
+    [InlineData("claims", "STUBID_SIGNICAT_CLAIMS_CLIENT_ID", "STUBID_SIGNICAT_CLAIMS_CLIENT_SECRET")]
+    [InlineData("hybrid", "STUBID_SIGNICAT_HYBRID_CLIENT_ID", "STUBID_SIGNICAT_HYBRID_CLIENT_SECRET")]
+    [InlineData("partner", "STUBID_SIGNICAT_PARTNER_CLIENT_ID", "STUBID_SIGNICAT_PARTNER_CLIENT_SECRET")]
+    public void A_signicat_registration_reads_its_own_pair(
+        string name, string idSetting, string secretSetting)
+    {
+        var client = BrokerClient.Signicat.All.Single(c => c.Name == name);
+
+        Assert.Equal(Broker.Signicat, client.Broker);
+        Assert.Null(client.PublishedId);
+        Assert.Equal(idSetting, client.IdSetting);
+        Assert.Equal(secretSetting, client.SecretSetting);
+    }
+
+    /// <summary>
+    /// No two registrations share a pair of settings on the second broker.
+    /// </summary>
+    /// <remarks>
+    /// The first broker's roster shares deliberately - its restricted-redirect entry is single
+    /// sign-on A under another name - so this cannot be asserted across both. Here a shared pair
+    /// would be a copied line rather than a decision, and it would quietly record two of the four
+    /// configurations as the same client.
+    /// </remarks>
+    [Fact]
+    public void The_four_signicat_registrations_are_four_distinct_clients()
+    {
+        var clients = BrokerClient.Signicat.All;
+
+        Assert.Equal(4, clients.Count);
+        Assert.Equal(4, clients.Select(c => c.IdSetting).Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(4, clients.Select(c => c.SecretSetting).Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(4, clients.Select(c => c.Summary).Distinct(StringComparer.Ordinal).Count());
     }
 
     /// <summary>
@@ -103,6 +169,27 @@ public class BrokerClientTests
 
         Assert.Contains("STUBID_NEB_PP_SSO_B_CLIENT_SECRET", refusal.Message, StringComparison.Ordinal);
         Assert.Contains("single sign-on B", refusal.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// And says whose, which is the half a name alone stopped carrying.
+    /// </summary>
+    /// <remarks>
+    /// Both brokers have a client called "hybrid". "Set ... to record with the hybrid client"
+    /// sends a reader to whichever dashboard they already had open, so the refusal names the
+    /// broker - and this is what would notice it being dropped again.
+    /// </remarks>
+    [Fact]
+    public void A_refusal_names_the_broker_because_two_of_them_share_a_name()
+    {
+        var signicat = Assert.Throws<InvalidOperationException>(
+            () => BrokerClient.Signicat.Hybrid.Secret(_ => null));
+        var neb = Assert.Throws<InvalidOperationException>(
+            () => BrokerClient.NetsEidBroker.Hybrid.Secret(_ => null));
+
+        Assert.Contains("Signicat", signicat.Message, StringComparison.Ordinal);
+        Assert.Contains("NetsEidBroker", neb.Message, StringComparison.Ordinal);
+        Assert.NotEqual(signicat.Message, neb.Message);
     }
 
     /// <summary>

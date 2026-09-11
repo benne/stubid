@@ -13,6 +13,25 @@ namespace StubId.CaptureHarness;
 /// </remarks>
 public static class Preflight
 {
+    /// <summary>What a section found.</summary>
+    /// <remarks>
+    /// A problem is a refusal and a warning is something to read, and the two used to be counted
+    /// in one integer. Four lines printed the word PROBLEM and then incremented the warning
+    /// count, so a key file that was not there, an issuer belonging to somebody else and a broker
+    /// that does not take the algorithm the harness signs with all exited zero.
+    /// </remarks>
+    public readonly record struct Tally(int Problems, int Warnings)
+    {
+        public static Tally None => new(0, 0);
+
+        public static Tally Problem => new(1, 0);
+
+        public static Tally Warning => new(0, 1);
+
+        public static Tally operator +(Tally left, Tally right) =>
+            new(left.Problems + right.Problems, left.Warnings + right.Warnings);
+    }
+
     public static async Task<int> RunAsync(BrokerTarget target, CancellationToken ct)
     {
         var problems = 0;
@@ -54,20 +73,27 @@ public static class Preflight
         Console.WriteLine("Credentials");
 
         var unset = 0;
+        var credentials = Scrubber.Credentials.Where(c => c.Broker == target.Broker).ToList();
 
-        foreach (var (_, _, name) in Scrubber.Credentials.Where(c => c.Broker == target.Broker))
+        // Measured rather than guessed. The column was a literal 34, one wider than the longest
+        // name there was, and a broker with four registrations brought names of 37 - so the
+        // column stopped being a column. This keeps the first broker's report identical: its
+        // longest name is 33, and 33 plus the two spaces below is the 34 plus one that was there.
+        var width = credentials.Count == 0 ? 0 : credentials.Max(c => c.Setting.Length);
+
+        foreach (var (_, _, name) in credentials)
         {
             var value = LocalSettings.Get(name);
 
             if (value is null)
             {
                 unset++;
-                Console.WriteLine($"  {name,-34} missing");
+                Console.WriteLine($"  {name.PadRight(width)}  missing");
                 warnings += ReportCost(name, target);
                 continue;
             }
 
-            Console.WriteLine($"  {name,-34} set, {value.Length} characters");
+            Console.WriteLine($"  {name.PadRight(width)}  set, {value.Length} characters");
             warnings += ReportReach(value);
         }
 
@@ -161,19 +187,59 @@ public static class Preflight
 
         // The key first, because reading it needs nothing but the file. What the broker
         // advertises needs the broker, and a key that does not resolve is worth saying either way.
-        warnings += ReportKeyMaterial(target);
-        warnings += live ? await ReportRequestObjectsAsync(target, ct) : Skipped();
+        var key = ReportKeyMaterial(target, LocalSettings.Get);
+        problems += key.Problems;
+        warnings += key.Warnings;
+
+        if (live)
+        {
+            var objects = await ReportRequestObjectsAsync(target, ct);
+            problems += objects.Problems;
+            warnings += objects.Warnings;
+        }
+        else
+        {
+            warnings += Skipped();
+        }
 
         Console.WriteLine();
         Console.WriteLine("Signing keys");
         warnings += live ? await ReportKeysAsync(target, ct) : Skipped();
 
         Console.WriteLine();
-        Console.WriteLine(problems == 0 && warnings == 0
-            ? "Ready to record."
-            : $"{problems} problem(s), {warnings} warning(s).");
+
+        // Whether anything can be recorded is a different question from whether the configuration
+        // is complete, and this used to answer the second while appearing to answer the first. A
+        // broker with no cases is fully configured and still refuses every recording verb, so
+        // "Ready to record." sent the reader off to run one and get an exit code 2.
+        var cases = CaptureCatalog.For(target.Broker).Count + ManualCatalog.For(target.Broker).Count;
+
+        Console.WriteLine(Verdict(problems, warnings, cases, target.Display));
 
         return problems == 0 ? 0 : 1;
+    }
+
+    /// <summary>
+    /// The line the report ends on, from the three numbers that decide it.
+    /// </summary>
+    /// <remarks>
+    /// Separate so it can be tested without a broker, a network or a configuration file - the
+    /// same reason <see cref="LocalSettings.ParseRedactions" /> is separate. It used to say
+    /// "Ready to record." whenever it found nothing wrong, which answers whether the
+    /// configuration is complete rather than whether anything can be recorded; those are the
+    /// same question only while every broker has cases.
+    /// </remarks>
+    public static string Verdict(int problems, int warnings, int cases, string display)
+    {
+        if (problems > 0 || warnings > 0)
+        {
+            return $"{problems} problem(s), {warnings} warning(s).";
+        }
+
+        return cases > 0
+            ? "Ready to record."
+            : $"Configured. No case names {display} yet, so capture, verify,{Environment.NewLine}"
+                + "rehearse and session all refuse; nothing above is wrong.";
     }
 
     /// <summary>
@@ -202,7 +268,7 @@ public static class Preflight
     /// parses perfectly and belongs to somebody else.
     /// </para>
     /// </remarks>
-    private static async Task<int> ReportRequestObjectsAsync(BrokerTarget target, CancellationToken ct)
+    private static async Task<Tally> ReportRequestObjectsAsync(BrokerTarget target, CancellationToken ct)
     {
         string document;
         try
@@ -213,10 +279,10 @@ public static class Preflight
         catch (Exception error) when (error is HttpRequestException or TaskCanceledException)
         {
             Console.WriteLine($"  WARNING  the discovery document could not be fetched: {error.Message}");
-            return 1;
+            return Tally.Warning;
         }
 
-        var warnings = 0;
+        var tally = Tally.None;
 
         using var parsed = JsonDocument.Parse(document);
         var root = parsed.RootElement;
@@ -231,7 +297,7 @@ public static class Preflight
             Console.WriteLine("  PROBLEM  the issuer is not the authority this is configured with.");
             Console.WriteLine($"           configured {target.Authority}");
             Console.WriteLine($"           serves     {issuer ?? "(no issuer member)"}");
-            warnings++;
+            tally += Tally.Problem;
         }
 
         var advertised = root.TryGetProperty("request_object_signing_alg_values_supported", out var algorithms)
@@ -242,7 +308,7 @@ public static class Preflight
         if (advertised.Count == 0)
         {
             Console.WriteLine("  WARNING  it advertises no request-object algorithms at all.");
-            warnings++;
+            tally += Tally.Warning;
         }
         else if (advertised.Contains(target.RequestObjectAlgorithm, StringComparer.Ordinal))
         {
@@ -252,10 +318,10 @@ public static class Preflight
         {
             Console.WriteLine($"  PROBLEM  it does not advertise {target.RequestObjectAlgorithm}.");
             Console.WriteLine($"           it takes: {string.Join(" ", advertised)}");
-            warnings++;
+            tally += Tally.Problem;
         }
 
-        return warnings;
+        return tally;
     }
 
     /// <summary>
@@ -267,26 +333,36 @@ public static class Preflight
     /// a malformed object. Printing the thumbprint on this side makes it a glance rather than an
     /// afternoon.
     /// </remarks>
-    private static int ReportKeyMaterial(BrokerTarget target)
+    public static Tally ReportKeyMaterial(BrokerTarget target, Func<string, string?> resolve)
     {
         if (target.PrivateKeySetting is null)
         {
             Console.WriteLine("  ok       signed with the client secret; there is no key to register");
-            return 0;
+            return Tally.None;
         }
 
-        if (LocalSettings.Get(target.PrivateKeySetting) is not { Length: > 0 } path)
+        if (resolve(target.PrivateKeySetting) is not { Length: > 0 } path)
         {
             Console.WriteLine($"  {target.PrivateKeySetting} is not set, so nothing can be signed.");
             Console.WriteLine("           openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 \\");
             Console.WriteLine("               -out ~/stubid-signicat.pem");
-            return 1;
+            Console.WriteLine("           The shell expands ~ there. This setting does not, so write");
+            Console.WriteLine("           the absolute path into it.");
+            return Tally.Warning;
         }
 
         if (!File.Exists(path))
         {
             Console.WriteLine($"  PROBLEM  {target.PrivateKeySetting} names a file that is not there.");
-            return 1;
+
+            // The likeliest reason, and one the message above reads as a lie: the file is
+            // there, and the path was copied from a shell where the shell had expanded it.
+            if (path.StartsWith('~'))
+            {
+                Console.WriteLine("           A leading ~ is not expanded here. Write the absolute path.");
+            }
+
+            return Tally.Problem;
         }
 
         RequestSigner.KeyDescription key;
@@ -297,12 +373,12 @@ public static class Preflight
         catch (InvalidOperationException error)
         {
             Console.WriteLine($"  PROBLEM  {error.Message}");
-            return 1;
+            return Tally.Problem;
         }
 
         Console.WriteLine($"  {key.Algorithm}, {key.Size} bits, sha-256 {key.Thumbprint[..16]}...");
 
-        var keyId = target.KeyIdSetting is null ? null : LocalSettings.Get(target.KeyIdSetting);
+        var keyId = target.KeyIdSetting is null ? null : resolve(target.KeyIdSetting);
         if (keyId is null)
         {
             // A client holding one key may resolve it without being told, but that is a guess.
@@ -317,7 +393,7 @@ public static class Preflight
             Console.WriteLine($"  {line.TrimEnd()}");
         }
 
-        return keyId is null ? 1 : 0;
+        return keyId is null ? Tally.Warning : Tally.None;
     }
 
     private static int Skipped()

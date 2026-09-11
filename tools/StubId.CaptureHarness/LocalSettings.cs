@@ -31,28 +31,42 @@ public static class LocalSettings
         if (File.Value?.RootElement.TryGetProperty(name, out var value) == true
             && value.ValueKind == JsonValueKind.String)
         {
-            var configured = value.GetString();
-
-            // Someone copied the example file and did not fill this one in. Treating it as
-            // set would send the description text as a credential and record a puzzling
-            // rejection instead of the exchange the case is for.
-            return IsExampleText(name, configured) ? null : configured;
+            return Resolve(value.GetString(), ExampleFor(name));
         }
 
         return null;
     }
 
-    private static bool IsExampleText(string name, string? configured)
-    {
-        if (string.IsNullOrEmpty(configured) || Example.Value is null)
-        {
-            return false;
-        }
+    /// <summary>
+    /// What a value read from the file actually resolves to, given the example file's value for
+    /// the same name.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Separate so it can be tested without a configuration file on disk, the same reason
+    /// <see cref="ParseRedactions" /> is separate. The environment cannot stand in for one here:
+    /// setting a variable to the empty string deletes it, so a test written that way exercises
+    /// the absent path and proves nothing about the empty one.
+    /// </para>
+    /// <para>
+    /// Two ways of not being filled in, and both used to read as a value. A blank line returned
+    /// the empty string, which is a value of length zero and was treated as configured
+    /// everywhere downstream — the preflight printed "set, 0 characters" and then complained it
+    /// was under six, and an empty key identifier silenced the warning that a request object
+    /// would name no key. The description text is the other: someone copied the example file and
+    /// did not fill this one in, and sending that as a credential records a puzzling rejection
+    /// instead of the exchange the case is for.
+    /// </para>
+    /// </remarks>
+    public static string? Resolve(string? configured, string? example) =>
+        string.IsNullOrEmpty(configured) || configured == example ? null : configured;
 
-        return Example.Value.RootElement.TryGetProperty(name, out var example)
-            && example.ValueKind == JsonValueKind.String
-            && example.GetString() == configured;
-    }
+    /// <summary>The example file's value for a name, or null where it names it not at all.</summary>
+    private static string? ExampleFor(string name) =>
+        Example.Value?.RootElement.TryGetProperty(name, out var example) == true
+        && example.ValueKind == JsonValueKind.String
+            ? example.GetString()
+            : null;
 
     /// <summary>
     /// Extra values to replace with placeholders when writing a fixture, as
