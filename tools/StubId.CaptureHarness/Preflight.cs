@@ -20,7 +20,7 @@ public static class Preflight
     /// count, so a key file that was not there, an issuer belonging to somebody else and a broker
     /// that does not take the algorithm the harness signs with all exited zero.
     /// </remarks>
-    private readonly record struct Tally(int Problems, int Warnings)
+    public readonly record struct Tally(int Problems, int Warnings)
     {
         public static Tally None => new(0, 0);
 
@@ -187,7 +187,7 @@ public static class Preflight
 
         // The key first, because reading it needs nothing but the file. What the broker
         // advertises needs the broker, and a key that does not resolve is worth saying either way.
-        var key = ReportKeyMaterial(target);
+        var key = ReportKeyMaterial(target, LocalSettings.Get);
         problems += key.Problems;
         warnings += key.Warnings;
 
@@ -214,21 +214,32 @@ public static class Preflight
         // "Ready to record." sent the reader off to run one and get an exit code 2.
         var cases = CaptureCatalog.For(target.Broker).Count + ManualCatalog.For(target.Broker).Count;
 
-        if (problems > 0 || warnings > 0)
-        {
-            Console.WriteLine($"{problems} problem(s), {warnings} warning(s).");
-        }
-        else if (cases == 0)
-        {
-            Console.WriteLine($"Configured. No case names {target.Display} yet, so capture, verify,");
-            Console.WriteLine("rehearse and session all refuse; nothing above is wrong.");
-        }
-        else
-        {
-            Console.WriteLine("Ready to record.");
-        }
+        Console.WriteLine(Verdict(problems, warnings, cases, target.Display));
 
         return problems == 0 ? 0 : 1;
+    }
+
+    /// <summary>
+    /// The line the report ends on, from the three numbers that decide it.
+    /// </summary>
+    /// <remarks>
+    /// Separate so it can be tested without a broker, a network or a configuration file - the
+    /// same reason <see cref="LocalSettings.ParseRedactions" /> is separate. It used to say
+    /// "Ready to record." whenever it found nothing wrong, which answers whether the
+    /// configuration is complete rather than whether anything can be recorded; those are the
+    /// same question only while every broker has cases.
+    /// </remarks>
+    public static string Verdict(int problems, int warnings, int cases, string display)
+    {
+        if (problems > 0 || warnings > 0)
+        {
+            return $"{problems} problem(s), {warnings} warning(s).";
+        }
+
+        return cases > 0
+            ? "Ready to record."
+            : $"Configured. No case names {display} yet, so capture, verify,{Environment.NewLine}"
+                + "rehearse and session all refuse; nothing above is wrong.";
     }
 
     /// <summary>
@@ -322,7 +333,7 @@ public static class Preflight
     /// a malformed object. Printing the thumbprint on this side makes it a glance rather than an
     /// afternoon.
     /// </remarks>
-    private static Tally ReportKeyMaterial(BrokerTarget target)
+    public static Tally ReportKeyMaterial(BrokerTarget target, Func<string, string?> resolve)
     {
         if (target.PrivateKeySetting is null)
         {
@@ -330,7 +341,7 @@ public static class Preflight
             return Tally.None;
         }
 
-        if (LocalSettings.Get(target.PrivateKeySetting) is not { Length: > 0 } path)
+        if (resolve(target.PrivateKeySetting) is not { Length: > 0 } path)
         {
             Console.WriteLine($"  {target.PrivateKeySetting} is not set, so nothing can be signed.");
             Console.WriteLine("           openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 \\");
@@ -367,7 +378,7 @@ public static class Preflight
 
         Console.WriteLine($"  {key.Algorithm}, {key.Size} bits, sha-256 {key.Thumbprint[..16]}...");
 
-        var keyId = target.KeyIdSetting is null ? null : LocalSettings.Get(target.KeyIdSetting);
+        var keyId = target.KeyIdSetting is null ? null : resolve(target.KeyIdSetting);
         if (keyId is null)
         {
             // A client holding one key may resolve it without being told, but that is a guess.

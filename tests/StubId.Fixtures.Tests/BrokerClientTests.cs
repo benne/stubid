@@ -172,6 +172,27 @@ public class BrokerClientTests
     }
 
     /// <summary>
+    /// And says whose, which is the half a name alone stopped carrying.
+    /// </summary>
+    /// <remarks>
+    /// Both brokers have a client called "hybrid". "Set ... to record with the hybrid client"
+    /// sends a reader to whichever dashboard they already had open, so the refusal names the
+    /// broker - and this is what would notice it being dropped again.
+    /// </remarks>
+    [Fact]
+    public void A_refusal_names_the_broker_because_two_of_them_share_a_name()
+    {
+        var signicat = Assert.Throws<InvalidOperationException>(
+            () => BrokerClient.Signicat.Hybrid.Secret(_ => null));
+        var neb = Assert.Throws<InvalidOperationException>(
+            () => BrokerClient.NetsEidBroker.Hybrid.Secret(_ => null));
+
+        Assert.Contains("Signicat", signicat.Message, StringComparison.Ordinal);
+        Assert.Contains("NetsEidBroker", neb.Message, StringComparison.Ordinal);
+        Assert.NotEqual(signicat.Message, neb.Message);
+    }
+
+    /// <summary>
     /// A missing setting still blocks exactly the steps it always blocked.
     /// </summary>
     /// <remarks>
