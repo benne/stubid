@@ -153,9 +153,14 @@ exchange containing something secret-shaped trips every scanner pointed at this 
 and "that one is published on purpose" does not survive review.
 
 The guard tests in `tests/StubId.Fixtures.Tests` fail the build on a credential, a signed
-token, or anything shaped like a CPR number. They are not hypothetical: the first capture run
-wrote a real secret into a fixture, because the scrubber ran after the form had been
-percent-encoded and a plain string replace no longer matched.
+token, anything shaped like a CPR number, an address that belongs to somebody, or a hostname
+that names a broker tenant. A sixth reads whatever the machine is configured to record with and
+searches every file for it, which is the only one of them that sees nothing on a fresh checkout
+— a client identifier has no shape, so it can only be found by somebody who has it.
+
+They are not hypothetical: the first capture run wrote a real secret into a fixture, because
+the scrubber ran after the form had been percent-encoded and a plain string replace no longer
+matched.
 
 ## Rights
 

@@ -190,9 +190,13 @@ that proves it. Run one complete throwaway login on the **published open code cl
 `capture.local.json` with a fake CPR, a fake organization name, a fake CVR and a fake client
 id, and feed those values to the broker as `state` and `nonce` so they come back echoed.
 
-Then attack the output. Run all three guard tests. Run `git status` and `git add -p`. Grep
-every written file — fixtures, sidecars, meta, the RP log, the HAR — for each canary by hand.
-A canary that survives anywhere means the corresponding item above is not actually done.
+Then attack the output. Run the guard tests and `git status`, and read the diff with
+`git add -p`. The grep this step used to ask for by hand is now one of those tests:
+`Nothing_committed_names_a_value_this_machine_is_configured_with` searches every text file in
+the working tree — fixtures, sidecars, meta, the RP log, the HAR, and anything untracked
+sitting beside them — for each value the redact block and the credential settings name. Seeding
+the canaries is therefore what arms it. A canary that survives anywhere means the corresponding
+item above is not actually done.
 
 This is the only recording whose purpose is to fail, and it is the only thing standing
 between a broken scrubber and an irreplaceable CPR-bearing fixture.
@@ -1100,7 +1104,7 @@ rather than from documentation.
   record the attempt and note that the expired case remains unrecorded rather than promising it.
 - Final glance at browser 2 (step 1/17). Record the elapsed time whatever the state.
 - Stop the harness. Run the staging pass (B7) over the complete set, then write the fixtures.
-- Run all three guard tests on the whole tree.
+- Run the guard tests on the whole tree.
 - `git status`, then read the diff with `git add -p`. A human reads it. Nothing is pushed until
   after this, so the captured session identifiers and cookies are already dead by the time they
   are anywhere public.

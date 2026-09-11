@@ -18,6 +18,15 @@
   "STUBID_NEB_PP_SSO_C_CLIENT_ID": "",
   "STUBID_NEB_PP_SSO_C_CLIENT_SECRET": "",
 
+  "//signicat": "The second broker's sandbox, whose tenant is its hostname. That is the difference worth knowing before you record anything: the first broker's pre-production host is public and shared, so no recording of it could say whose it was, while your Signicat subdomain sits in the issuer, in every absolute URL inside the discovery document, and in iss in every token. Register it before the first recording rather than after one.",
+  "//signicat-scan": "These four are also what the committed-file guard searches the working tree for, and it can only look for what is set here. A value left blank is replaced in nothing and searched for nowhere, which looks exactly like a value that was never needed - run `dotnet run --project tools/StubId.CaptureHarness -- check` to see which of them it can look for.",
+  "STUBID_SIGNICAT_DOMAIN": "the subdomain your sandbox answers on, without .sandbox.signicat.com",
+  "STUBID_SIGNICAT_CLIENT_ID": "",
+  "STUBID_SIGNICAT_CLIENT_SECRET": "",
+
+  "//signicat-key": "The key identifier of the signing key registered on the client, which is what a signed request object names in its header. Not a secret, and not the broker's either - it names a key on your client.",
+  "STUBID_SIGNICAT_KEY_ID": "",
+
   "redact": {
     "//": "Values that must not reach a fixture, as replacement-to-original. A personal number is replaced by the same number with 60 added to the day (01-09 to 61-69, 10-19 to 70-79, 20-29 to 80-89, 30-31 to 90-91), which cannot be anyone's and keeps the length and shape a fixture depends on. The example below uses the 31st of February, which nobody was born on, so it shows the mapping without printing a number that might be someone's. Register both the bare and the separated form: the scrubber matches exact strings. A transaction token names the receiving organization, so its name and CVR belong here before recording one, as does the test identity's name.",
     "//blanked": "Two claims are blanked by name and need no entry here: transaction_client_ip and mitid.geo_ip_distance_km, both of which describe the client rather than the broker. Neither value can be known in advance - one is handed out by a router, the other computed per sitting - so a rule keyed on the value would be right once. StubID reproduces neither, so nothing is lost. A test also fails on any routable address anywhere in the repository, and the client identifiers above resolve from the settings themselves.",

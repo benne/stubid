@@ -8,11 +8,22 @@ namespace StubId.Fixtures.Tests;
 /// Stops the fixtures from carrying anything they should not.
 /// </summary>
 /// <remarks>
+/// <para>
 /// These are not hypothetical. The first capture run wrote a real client secret into a
 /// fixture, because the scrubber ran after the form had been percent-encoded and a plain
 /// string replace no longer matched. The recorder was fixed; this is what would have caught
 /// it either way.
+/// </para>
+/// <para>
+/// In the collection because one of these guards reads what the machine is configured with, and
+/// three other classes in this project set those very variables around an action and clear them
+/// afterwards. Reading them from a class running beside those three finds whatever the other
+/// class had set a moment ago and searches the repository for it — which, the first time this
+/// ran, reported twelve files as leaking a client identifier that a test had invented two
+/// milliseconds earlier.
+/// </para>
 /// </remarks>
+[Collection(ProcessEnvironment.Name)]
 public class FixtureGuardTests
 {
     /// <summary>
@@ -34,11 +45,31 @@ public class FixtureGuardTests
                              && Path.GetExtension(f) == ".yml")
                         && Path.GetFileName(f) != "capture.local.json");
 
+    /// <summary>
+    /// The extensions worth reading, which is wider than what the harness itself writes.
+    /// </summary>
+    /// <remarks>
+    /// The first three are a recording and the next four are the repository's own text. The rest
+    /// are how something reaches the tree beside a recording: a sitting is a person at a browser,
+    /// and what comes out of that - an exported HAR, a saved response, a scratch log, a note to
+    /// self - are the files nobody thinks to look at afterwards, because none of them was going
+    /// to be committed on purpose.
+    /// <para>
+    /// Not the build output that happens to be text: a vendored script bundle is one long run of
+    /// alphanumerics, which is what the token check looks for, and it is somebody else's file.
+    /// </para>
+    /// </remarks>
+    private static readonly string[] Readable =
+    [
+        ".json", ".head", ".raw", ".md", ".cs", ".yml", ".yaml",
+        ".txt", ".log", ".har", ".http", ".csv", ".xml", ".toml", ".env", ".sh", ".py",
+    ];
+
     public static TheoryData<string> TextFiles()
     {
         var data = new TheoryData<string>();
         foreach (var file in AllFiles().Where(f =>
-                     Path.GetExtension(f) is ".json" or ".head" or ".md" or ".raw" or ".cs" or ".yml"))
+                     Readable.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase)))
         {
             data.Add(Path.GetRelativePath(Repository.Root, file).Replace('\\', '/'));
         }
@@ -99,8 +130,8 @@ public class FixtureGuardTests
         new(StringComparer.Ordinal)
         {
             ["tests/StubId.Fixtures.Tests/ScrubberTests.cs"] =
-                "samples proving each guard fires: a credential shape, signed tokens, and "
-                + "personal numbers from Denmark's published test range",
+                "samples proving each guard fires: a credential shape, signed tokens, "
+                + "personal numbers from Denmark's published test range, and a tenant hostname",
         };
 
     [Fact]
@@ -192,6 +223,115 @@ public class FixtureGuardTests
             + "An address recorded from a live sitting belongs to whoever took it, not to this "
             + "project - redact it and add it to the redact block in capture.local.json.");
     }
+
+    /// <summary>
+    /// Nothing committed names the account a recording was taken from.
+    /// </summary>
+    /// <remarks>
+    /// The first broker's pre-production host is public and shared, so no recording of it could
+    /// say whose it was. Signicat's tenant is the hostname, which puts the account's own subdomain
+    /// in the issuer, in every absolute URL inside the discovery document, and in <c>iss</c> in
+    /// every token — and, unlike a credential, in the prose of any document written about it.
+    /// <para>
+    /// This one needs no configuration, which is what separates it from the scan below. The
+    /// suffix is the shape, so it holds on a machine that has never recorded anything and on
+    /// every machine CI runs on.
+    /// </para>
+    /// </remarks>
+    [Theory]
+    [MemberData(nameof(TextFiles))]
+    public void No_tenant_host_reaches_the_repository(string relativePath)
+    {
+        if (MayContainSensitiveShapes.ContainsKey(relativePath))
+        {
+            return;
+        }
+
+        var text = File.ReadAllText(Path.Combine(Repository.Root, relativePath));
+
+        var finding = SensitiveContent.FindTenantHost(text);
+
+        Assert.False(finding.Found,
+            $"{relativePath} names the tenant host {finding.Value} ({finding.Location}). "
+            + "A tenant subdomain names somebody's account rather than the broker - write "
+            + "{{SIGNICAT_DOMAIN}} or <subdomain>, either of which this guard lets through.");
+    }
+
+    /// <summary>
+    /// The one file whose values are examples by construction.
+    /// </summary>
+    /// <remarks>
+    /// Its own list rather than the shared exemption, for the same reason the address scan keeps
+    /// one: excusing it there would switch off five other guards to fix one false report. A
+    /// redact block still carrying the example's own values is a real thing to know about, but
+    /// the file it would point at is the example rather than the copy.
+    /// </remarks>
+    private static readonly Dictionary<string, string> MayNameConfiguredValues = new()
+    {
+        ["capture.local.example.json"] =
+            "the file that documents the vocabulary. Every value in it is a placeholder or a "
+            + "worked example, and a copy of it left unedited would flag it rather than the copy.",
+    };
+
+    /// <summary>Every file excused from the configured-value scan still exists.</summary>
+    [Fact]
+    public void Every_file_excused_from_the_configured_value_scan_is_still_there()
+    {
+        Assert.All(MayNameConfiguredValues, entry =>
+            Assert.True(File.Exists(Path.Combine(Repository.Root, entry.Key)),
+                $"{entry.Key} is excused from the configured-value scan but does not exist."));
+    }
+
+    /// <summary>
+    /// What this machine can be configured to record with, it can also be configured to find.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Every guard above finds things by their shape, which is what lets them run everywhere. A
+    /// client identifier, a key identifier and an account word have no shape: they are somebody's
+    /// account and look like nothing in particular. So this scan sees exactly as much as the
+    /// machine running it is configured to see, and on a fresh checkout it sees nothing.
+    /// </para>
+    /// <para>
+    /// That is not the hole it looks like. The values are only knowable to the people who hold
+    /// them, and those are the same people who can commit them. This is the check that used to be
+    /// a person grepping every written file by hand after a sitting, which is a step that works
+    /// right up until the evening somebody is tired.
+    /// </para>
+    /// <para>
+    /// It reads the whole working tree rather than the index, so an untracked scratch file - a
+    /// browser session log, a saved response - is scanned too. Those are the ones nobody thinks
+    /// to look at, because they were never going to be committed on purpose.
+    /// </para>
+    /// </remarks>
+    [Theory]
+    [MemberData(nameof(TextFiles))]
+    public void Nothing_committed_names_a_value_this_machine_is_configured_with(string relativePath)
+    {
+        if (MayContainSensitiveShapes.ContainsKey(relativePath)
+            || MayNameConfiguredValues.ContainsKey(relativePath))
+        {
+            return;
+        }
+
+        var text = File.ReadAllText(Path.Combine(Repository.Root, relativePath));
+
+        var finding = SensitiveContent.FindConfigured(text, Configured);
+
+        // Names the setting, never the value. A failure message is read in a terminal, pasted
+        // into an issue and kept in a build log, and none of those is a place to put the thing
+        // this check exists to keep out of one file.
+        Assert.False(finding.Found,
+            $"{relativePath} carries the value of {finding.Value} ({finding.Location}). "
+            + "It is in the local configuration, which means it identifies this account "
+            + "rather than the broker - replace it with the placeholder that stands for it.");
+    }
+
+    /// <summary>
+    /// Read once. The theory runs per file, and re-reading the configuration for each of them
+    /// would parse the same document several hundred times.
+    /// </summary>
+    private static readonly (string Name, string Value)[] Configured = [.. Scrubber.Configured()];
 
     /// <summary>
     /// Both packs. The unattended one is rehashed by every <c>capture</c> run, so it drifts
