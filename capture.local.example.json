@@ -24,7 +24,10 @@
   "STUBID_SIGNICAT_CLIENT_ID": "",
   "STUBID_SIGNICAT_CLIENT_SECRET": "",
 
-  "//signicat-key": "The key identifier of the signing key registered on the client, which is what a signed request object names in its header. Not a secret, and not the broker's either - it names a key on your client.",
+  "//signicat-key": "Signicat verifies a request object against a key registered on the client rather than against the client secret: it advertises nine request-object algorithms and not one of them is symmetric. Generate a pair, register the public half with Import public key rather than Add public key - the second has Signicat generate the pair and show you the private half once, which is not something a recording can be re-made from - and point this at the private half. It lives outside the repository; a path rather than the key itself, because the guard that searches committed files reads every configured value as a substring to look for.\n\n  openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out ~/stubid-signicat.pem",
+  "STUBID_SIGNICAT_PRIVATE_KEY_PATH": "",
+
+  "//signicat-key-id": "The identifier Signicat gave that key when you imported it, which is what a signed request object names in its header. Not a secret, and not the broker's either - it names a key on your client.",
   "STUBID_SIGNICAT_KEY_ID": "",
 
   "redact": {

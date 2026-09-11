@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using StubId.Server;
 using StubId.Wire;
 using Signer = harness::StubId.CaptureHarness.RequestObject;
+using Signing = harness::StubId.CaptureHarness.RequestSigner;
 
 namespace StubId.Interop.AspNetCore;
 
@@ -55,7 +56,7 @@ public class SignedRequestTests : IClassFixture<WebApplicationFactory<Program>>
         });
 
     private static string Signed(Dictionary<string, string> parameters) =>
-        Signer.Build(parameters, CodeClient, Authority, Password, Issued);
+        Signer.Build(parameters, CodeClient, Authority, Signing.ClientSecret(Password), Issued);
 
     /// <summary>
     /// A compact JWS with a payload chosen by the caller, for the objects the writer will not

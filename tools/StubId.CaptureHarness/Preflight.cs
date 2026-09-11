@@ -27,7 +27,13 @@ public static class Preflight
         Console.WriteLine();
 
         Console.WriteLine("Authority");
-        if (target.TryResolveAuthority(out var authority))
+
+        // The boolean, not the string it hands back. A failed resolution returns the template
+        // it could not resolve, which is not empty - so testing the string reported everything
+        // below as reachable and then threw on the first fetch, which is the crash this whole
+        // section exists to avoid.
+        var live = target.TryResolveAuthority(out var authority);
+        if (live)
         {
             Console.WriteLine($"  {authority}");
         }
@@ -151,10 +157,16 @@ public static class Preflight
         }
 
         Console.WriteLine();
+        Console.WriteLine("Request objects");
+
+        // The key first, because reading it needs nothing but the file. What the broker
+        // advertises needs the broker, and a key that does not resolve is worth saying either way.
+        warnings += ReportKeyMaterial(target);
+        warnings += live ? await ReportRequestObjectsAsync(target, ct) : Skipped();
+
+        Console.WriteLine();
         Console.WriteLine("Signing keys");
-        warnings += authority is { Length: > 0 }
-            ? await ReportKeysAsync(target, ct)
-            : Skipped();
+        warnings += live ? await ReportKeysAsync(target, ct) : Skipped();
 
         Console.WriteLine();
         Console.WriteLine(problems == 0 && warnings == 0
@@ -174,6 +186,140 @@ public static class Preflight
     /// the key set. Finding a rotation here costs a minute; finding it after a sitting costs
     /// the sitting's only durable evidence of which key signed what.
     /// </remarks>
+    /// <summary>
+    /// Whether this broker takes the request objects the harness would send it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// One fetch, and it answers the question a sitting would otherwise answer the expensive way.
+    /// The harness signed HS256 because the first broker accepts it; the second advertises nine
+    /// algorithms and not one of them is symmetric, and nothing would have said so until a step
+    /// that needed a signed request came back refused by a page that declines to explain why.
+    /// </para>
+    /// <para>
+    /// The issuer comparison is here for a smaller reason and a commoner mistake: on a broker
+    /// whose tenant is its hostname, a wrong subdomain in the settings produces a document that
+    /// parses perfectly and belongs to somebody else.
+    /// </para>
+    /// </remarks>
+    private static async Task<int> ReportRequestObjectsAsync(BrokerTarget target, CancellationToken ct)
+    {
+        string document;
+        try
+        {
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+            document = await client.GetStringAsync(target.DiscoveryUrl, ct);
+        }
+        catch (Exception error) when (error is HttpRequestException or TaskCanceledException)
+        {
+            Console.WriteLine($"  WARNING  the discovery document could not be fetched: {error.Message}");
+            return 1;
+        }
+
+        var warnings = 0;
+
+        using var parsed = JsonDocument.Parse(document);
+        var root = parsed.RootElement;
+
+        var issuer = root.TryGetProperty("issuer", out var value) ? value.GetString() : null;
+        if (issuer == target.Authority)
+        {
+            Console.WriteLine($"  ok       the issuer is the authority this is configured with");
+        }
+        else
+        {
+            Console.WriteLine("  PROBLEM  the issuer is not the authority this is configured with.");
+            Console.WriteLine($"           configured {target.Authority}");
+            Console.WriteLine($"           serves     {issuer ?? "(no issuer member)"}");
+            warnings++;
+        }
+
+        var advertised = root.TryGetProperty("request_object_signing_alg_values_supported", out var algorithms)
+            && algorithms.ValueKind == JsonValueKind.Array
+                ? algorithms.EnumerateArray().Select(a => a.GetString()).ToList()
+                : [];
+
+        if (advertised.Count == 0)
+        {
+            Console.WriteLine("  WARNING  it advertises no request-object algorithms at all.");
+            warnings++;
+        }
+        else if (advertised.Contains(target.RequestObjectAlgorithm, StringComparer.Ordinal))
+        {
+            Console.WriteLine($"  ok       {target.RequestObjectAlgorithm} is among the {advertised.Count} it advertises");
+        }
+        else
+        {
+            Console.WriteLine($"  PROBLEM  it does not advertise {target.RequestObjectAlgorithm}.");
+            Console.WriteLine($"           it takes: {string.Join(" ", advertised)}");
+            warnings++;
+        }
+
+        return warnings;
+    }
+
+    /// <summary>
+    /// The key a signed step would use, and the public half to register.
+    /// </summary>
+    /// <remarks>
+    /// Registering a key is a copy between two windows, and the mistake it invites - a key
+    /// registered that is not the key being signed with - earns a refusal indistinguishable from
+    /// a malformed object. Printing the thumbprint on this side makes it a glance rather than an
+    /// afternoon.
+    /// </remarks>
+    private static int ReportKeyMaterial(BrokerTarget target)
+    {
+        if (target.PrivateKeySetting is null)
+        {
+            Console.WriteLine("  ok       signed with the client secret; there is no key to register");
+            return 0;
+        }
+
+        if (LocalSettings.Get(target.PrivateKeySetting) is not { Length: > 0 } path)
+        {
+            Console.WriteLine($"  {target.PrivateKeySetting} is not set, so nothing can be signed.");
+            Console.WriteLine("           openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 \\");
+            Console.WriteLine("               -out ~/stubid-signicat.pem");
+            return 1;
+        }
+
+        if (!File.Exists(path))
+        {
+            Console.WriteLine($"  PROBLEM  {target.PrivateKeySetting} names a file that is not there.");
+            return 1;
+        }
+
+        RequestSigner.KeyDescription key;
+        try
+        {
+            key = RequestSigner.Describe(File.ReadAllText(path));
+        }
+        catch (InvalidOperationException error)
+        {
+            Console.WriteLine($"  PROBLEM  {error.Message}");
+            return 1;
+        }
+
+        Console.WriteLine($"  {key.Algorithm}, {key.Size} bits, sha-256 {key.Thumbprint[..16]}...");
+
+        var keyId = target.KeyIdSetting is null ? null : LocalSettings.Get(target.KeyIdSetting);
+        if (keyId is null)
+        {
+            // A client holding one key may resolve it without being told, but that is a guess.
+            Console.WriteLine($"  WARNING  {target.KeyIdSetting} is not set, so the object names no key.");
+            Console.WriteLine("           A client holding exactly one may still resolve it.");
+        }
+
+        Console.WriteLine();
+        Console.WriteLine("  Register this half, and check the thumbprint afterwards:");
+        foreach (var line in key.PublicKeyPem.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            Console.WriteLine($"  {line.TrimEnd()}");
+        }
+
+        return keyId is null ? 1 : 0;
+    }
+
     private static int Skipped()
     {
         Console.WriteLine("  skipped: the authority does not resolve.");

@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Signer = harness::StubId.CaptureHarness.RequestObject;
+using Signing = harness::StubId.CaptureHarness.RequestSigner;
 
 namespace StubId.Interop.AspNetCore;
 
@@ -231,7 +232,7 @@ public class ResumeTests
                 ["state"] = "CAP-031",
                 ["nonce"] = "n",
             },
-            CodeClient, Authority, Password, Issued);
+            CodeClient, Authority, Signing.ClientSecret(Password), Issued);
 
         using var authorize = await client.GetAsync(
             $"/op/connect/authorize?client_id={CodeClient}&response_type=code"

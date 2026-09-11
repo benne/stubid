@@ -5,6 +5,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using StubId.Wire;
 using Signer = harness::StubId.CaptureHarness.RequestObject;
+using Signing = harness::StubId.CaptureHarness.RequestSigner;
 
 namespace StubId.Interop.AspNetCore;
 
@@ -328,7 +329,7 @@ public class TransactionTokenTests : IClassFixture<WebApplicationFactory<Program
         // that produced the recording's own request object.
         var query = signed
             ? $"client_id={CodeClient}&response_type=code&request="
-              + Uri.EscapeDataString(Signer.Build(parameters, CodeClient, Authority, Password, Issued))
+              + Uri.EscapeDataString(Signer.Build(parameters, CodeClient, Authority, Signing.ClientSecret(Password), Issued))
             : string.Join('&', parameters.Select(
                 p => $"{Uri.EscapeDataString(p.Key)}={Uri.EscapeDataString(p.Value)}"));
 

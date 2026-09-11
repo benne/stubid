@@ -225,6 +225,33 @@ public class FixtureGuardTests
     }
 
     /// <summary>
+    /// No private key is written into the tree.
+    /// </summary>
+    /// <remarks>
+    /// The second broker verifies a request object against a key registered on the client, so
+    /// the harness now holds a private key. It lives outside the repository and is named by a
+    /// setting — but a key pasted in to try something is exactly what gets committed by accident,
+    /// and unlike a credential it matches none of the shapes the other guards know.
+    /// </remarks>
+    [Theory]
+    [MemberData(nameof(TextFiles))]
+    public void No_private_key_reaches_the_repository(string relativePath)
+    {
+        if (MayContainSensitiveShapes.ContainsKey(relativePath))
+        {
+            return;
+        }
+
+        var text = File.ReadAllText(Path.Combine(Repository.Root, relativePath));
+
+        var finding = SensitiveContent.FindPrivateKey(text);
+
+        Assert.False(finding.Found,
+            $"{relativePath} carries {finding.Value}. A signing key belongs outside the "
+            + "repository, named by a setting - rotate it if this reached a commit.");
+    }
+
+    /// <summary>
     /// Nothing committed names the account a recording was taken from.
     /// </summary>
     /// <remarks>

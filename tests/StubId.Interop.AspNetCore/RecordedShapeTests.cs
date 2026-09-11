@@ -5,6 +5,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using StubId.Wire;
 using Signer = harness::StubId.CaptureHarness.RequestObject;
+using Signing = harness::StubId.CaptureHarness.RequestSigner;
 
 namespace StubId.Interop.AspNetCore;
 
@@ -79,7 +80,7 @@ public class RecordedShapeTests : IClassFixture<WebApplicationFactory<Program>>
                 ["idp_values"] = "mitid",
                 ["idp_params"] = identityProviderParameters,
             },
-            CodeClient, Authority, Password, Issued);
+            CodeClient, Authority, Signing.ClientSecret(Password), Issued);
 
         var authorize = await _client.GetAsync(
             $"/op/connect/authorize?client_id={CodeClient}&response_type=code"

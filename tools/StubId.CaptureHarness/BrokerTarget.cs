@@ -51,6 +51,30 @@ public sealed record BrokerTarget
     public required string KeySetCaptureId { get; init; }
 
     /// <summary>
+    /// The algorithm this broker advertises for a request object.
+    /// </summary>
+    /// <remarks>
+    /// What the broker says it takes, so <c>check</c> can compare it against the discovery
+    /// document rather than a sitting discovering the answer. The first broker advertises HS256
+    /// among others and accepts it, measured; the second advertises nine and not one of them is
+    /// symmetric.
+    /// </remarks>
+    public required string RequestObjectAlgorithm { get; init; }
+
+    /// <summary>
+    /// The setting naming a file that holds the private key, where signing is asymmetric.
+    /// </summary>
+    /// <remarks>
+    /// Null where the client secret signs. A path rather than the key itself: the guard that
+    /// searches committed files reads every configured value as a substring to look for, and a
+    /// multi-line PEM there would be meaningless.
+    /// </remarks>
+    public string? PrivateKeySetting { get; init; }
+
+    /// <summary>The setting holding the identifier the broker gave the registered key.</summary>
+    public string? KeyIdSetting { get; init; }
+
+    /// <summary>
     /// A substring of the subject of a certificate this broker must publish, or null.
     /// </summary>
     /// <remarks>
@@ -59,6 +83,35 @@ public sealed record BrokerTarget
     /// such key names nothing here, and the check is skipped rather than failed.
     /// </remarks>
     public string? CertificateSubjectMarker { get; init; }
+
+    /// <summary>What signs a request object for one of this broker's clients.</summary>
+    public RequestSigner SignerFor(BrokerClient client) => SignerFor(client, LocalSettings.Get);
+
+    /// <inheritdoc cref="SignerFor(BrokerClient)"/>
+    /// <remarks>With the resolver passed in, the way everything else here that reads settings does.</remarks>
+    public RequestSigner SignerFor(BrokerClient client, Func<string, string?> resolve)
+    {
+        if (PrivateKeySetting is null)
+        {
+            return RequestSigner.ClientSecret(client.Secret(resolve));
+        }
+
+        var path = resolve(PrivateKeySetting) is { Length: > 0 } configured
+            ? configured
+            : throw new InvalidOperationException(
+                $"Set {PrivateKeySetting} to the private key whose public half is registered on "
+                + $"the {client.Name} client. {Display} signs request objects with a key, not "
+                + "with a secret.");
+
+        if (!File.Exists(path))
+        {
+            throw new InvalidOperationException($"{PrivateKeySetting} names a file that is not there.");
+        }
+
+        return RequestSigner.PrivateKey(
+            File.ReadAllText(path),
+            KeyIdSetting is null ? null : resolve(KeyIdSetting));
+    }
 
     /// <summary>The registrations a sitting against this broker records with.</summary>
     public IReadOnlyList<BrokerClient> Clients => [.. BrokerClient.All.Where(c => c.Broker == Broker)];
@@ -101,6 +154,10 @@ public sealed record BrokerTarget
         AuthorityTemplate = "https://pp.netseidbroker.dk/op",
         KeySetCaptureId = "CAP-002",
         CertificateSubjectMarker = "Transact",
+
+        // Measured, and its recordings were made with it. Re-signing them differently would
+        // change the segment lengths the sitting's fixtures record.
+        RequestObjectAlgorithm = "HS256",
     };
 
     public static readonly BrokerTarget Signicat = new()
@@ -113,6 +170,11 @@ public sealed record BrokerTarget
         // The tenant is the hostname here, which is the whole reason this is a template.
         AuthorityTemplate = "https://{{SIGNICAT_DOMAIN}}.sandbox.signicat.com/auth/open",
         KeySetCaptureId = "CAP-002",
+
+        // Nine advertised and not one symmetric, so the client secret cannot sign here at all.
+        RequestObjectAlgorithm = "RS256",
+        PrivateKeySetting = "STUBID_SIGNICAT_PRIVATE_KEY_PATH",
+        KeyIdSetting = "STUBID_SIGNICAT_KEY_ID",
 
         // Nothing observed says this broker publishes a certificate for a separate signing key,
         // and a marker written from a guess would read as a check while checking nothing.

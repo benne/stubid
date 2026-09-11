@@ -3,6 +3,42 @@
 Notes accumulate here as changes land, and this file is renamed to the version when a release
 goes out. The dated files beside it are history and are never edited.
 
+## A request object is signed by a signer, not by a secret
+
+The harness signed HS256 over the client secret because that is what the first broker accepts,
+measured rather than assumed. The second advertises nine request-object algorithms and not one of
+them is symmetric, so the same code could not have reached its transaction consent flow at all —
+which is the one MitID feature in scope beyond login.
+
+`RequestObject.Build` now takes a `RequestSigner`. `ClientSecret` is what it always did and the
+first broker keeps it: its recordings were made with it, and re-signing them differently would
+contradict the segment lengths a sitting's fixtures record. `PrivateKey` reads a PEM and signs
+RS256 — or ES256 with the concatenated signature a JWS is read in, rather than the DER form every
+default overload writes, which verifies nowhere and presents as a bad key.
+
+The header gains a `kid` where there is one. That half has never been exercised: the extractor has
+always read a key identifier back out of a header and has never once found one, because nothing
+the harness signed had a registered key behind it. A broker holding one key for a client may
+resolve it without being told, so `check` says that is a guess rather than assuming either way.
+
+## `check` answers the question a sitting would answer expensively
+
+It now fetches the discovery document and says whether the broker advertises the algorithm the
+harness would sign with. That is the check that would have caught HS256 before a sitting instead
+of during one, and it keeps catching it the day a broker changes the list. It compares the
+document's `issuer` against the configured authority in the same fetch — a cheap way to notice a
+wrong tenant on a broker whose tenant is its hostname, where a wrong subdomain produces a document
+that parses perfectly and belongs to somebody else.
+
+Where signing needs a key, it reports what the key is and prints the public half with its
+thumbprint. Registering a key is a copy between two windows, and the mistake that invites — a key
+registered that is not the key being signed with — earns a refusal indistinguishable from a
+malformed object.
+
+A sixth guard joins the five over the working tree: no private key reaches the repository. It is a
+new class of secret, it matches none of the shapes the others know, and `*.pem` is gitignored
+beside it.
+
 ## A step names the client it records with
 
 `ClientProfile` was an enum of seven values whose every arm resolved to one broker's setting

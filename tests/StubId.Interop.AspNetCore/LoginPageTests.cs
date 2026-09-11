@@ -3,6 +3,7 @@ extern alias harness;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Signer = harness::StubId.CaptureHarness.RequestObject;
+using Signing = harness::StubId.CaptureHarness.RequestSigner;
 
 namespace StubId.Interop.AspNetCore;
 
@@ -199,7 +200,7 @@ public class LoginPageTests
                 ["idp_values"] = "mitid",
                 ["idp_params"] = IdpParams(RecordedText),
             },
-            CodeClient, Authority, Password, Issued);
+            CodeClient, Authority, Signing.ClientSecret(Password), Issued);
 
         using var authorize = await client.GetAsync(
             $"/op/connect/authorize?client_id={CodeClient}&response_type=code" +
