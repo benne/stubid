@@ -31,6 +31,17 @@ public enum Disposition
     /// </summary>
     BareJson,
 
+    /// <summary>
+    /// 4xx whose body is an OAuth error object that says more than the code.
+    /// </summary>
+    /// <remarks>
+    /// The first broker sends the bare form, which is a finding about that broker rather than a
+    /// fact about OAuth, and naming the member for it left nothing to classify the other shape
+    /// as. A client reading one and then the other gets a different amount of help, and which it
+    /// gets is exactly the sort of thing an emulator smooths over without meaning to.
+    /// </remarks>
+    DescribedJson,
+
     /// <summary>401 with a WWW-Authenticate challenge and an empty body.</summary>
     Challenge,
 
@@ -53,7 +64,8 @@ public enum Disposition
 
 public static class DispositionClassifier
 {
-    public static Disposition Classify(RecordedExchange exchange, string? clientRedirectUri = null)
+    public static Disposition Classify(
+        RecordedExchange exchange, BrokerTarget target, string? clientRedirectUri = null)
     {
         var location = exchange.Header("Location");
 
@@ -73,11 +85,17 @@ public static class DispositionClassifier
             404 => Disposition.NotFound,
             401 when exchange.Header("WWW-Authenticate") is not null
                      && exchange.ResponseBody.Length == 0 => Disposition.Challenge,
-            >= 300 and < 400 when location?.Contains("/Error?errorId=", StringComparison.Ordinal) == true
+            >= 300 and < 400 when location?.Contains(target.ErrorMarker, StringComparison.Ordinal) == true
                 => Disposition.ErrorPage,
-            >= 300 and < 400 when location?.Contains("/Account/Login", StringComparison.Ordinal) == true
+
+            // Nothing matches while a broker declares no login marker, which is the point: a
+            // 3xx to somewhere unrecognized stays Unclassified and the run says where it went.
+            >= 300 and < 400 when target.LoginMarkers.Any(
+                marker => location?.Contains(marker, StringComparison.Ordinal) == true)
                 => Disposition.LoginRedirect,
-            >= 400 when LooksLikeBareOAuthError(exchange.ResponseBody) => Disposition.BareJson,
+
+            >= 400 when LooksLikeOAuthError(exchange.ResponseBody, out var described) =>
+                described ? Disposition.DescribedJson : Disposition.BareJson,
             >= 200 and < 300 => Disposition.Success,
             _ => Disposition.Unclassified,
         };
@@ -90,10 +108,20 @@ public static class DispositionClassifier
             && text.Contains("method=\"post\"", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool LooksLikeBareOAuthError(byte[] body)
+    /// <summary>
+    /// An OAuth error object, and whether it says anything beyond the code.
+    /// </summary>
+    /// <remarks>
+    /// One predicate for both shapes. Asking only whether a body was the bare form meant the
+    /// other one - which the second broker is expected to send - fell through to Unclassified,
+    /// where it would read as a surprise rather than as the answer.
+    /// </remarks>
+    private static bool LooksLikeOAuthError(byte[] body, out bool described)
     {
         var text = System.Text.Encoding.UTF8.GetString(body).Trim();
-        return text.StartsWith("{\"error\":", StringComparison.Ordinal)
-            && !text.Contains("error_description", StringComparison.Ordinal);
+        described = text.Contains("error_description", StringComparison.Ordinal)
+            || text.Contains("error_uri", StringComparison.Ordinal);
+
+        return text.StartsWith("{\"error\":", StringComparison.Ordinal);
     }
 }

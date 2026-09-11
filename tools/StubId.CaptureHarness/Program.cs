@@ -94,6 +94,27 @@ switch (command)
         return 2;
 }
 
+// Where a redirect went, when the target has nothing to compare it against.
+//
+// A broker whose login path nobody has seen declares no marker for it, so an accepted authorize
+// request classifies as Unclassified rather than as anything wrong. Printing the location turns
+// the first run into the measurement: it is the one thing that says what to declare, and reading
+// it off a run costs nothing where guessing it costs a wrong classification nobody would notice.
+string WhereItWent(RecordedExchange exchange, Disposition actual)
+{
+    if (actual != Disposition.Unclassified
+        || target.LoginMarkers.Count > 0
+        || exchange.StatusCode is < 300 or >= 400
+        || exchange.Header("Location") is not { Length: > 0 } location)
+    {
+        return "";
+    }
+
+    return $"{Environment.NewLine}           Location: {location.Split('?')[0]}"
+        + $"{Environment.NewLine}           {target.Display} declares no login path. If that is where an"
+        + $"{Environment.NewLine}           accepted authorize request lands, add it to LoginMarkers.";
+}
+
 int? Refuse<T>(IReadOnlyList<T> selected)
 {
     if (selected.Count > 0)
@@ -129,10 +150,11 @@ async Task<int> CaptureAsync()
 
         await store.WriteAsync(@case, exchange, cancellation.Token);
 
-        var actual = DispositionClassifier.Classify(exchange);
+        var actual = DispositionClassifier.Classify(exchange, target);
         if (actual != @case.Expected)
         {
-            surprises.Add($"{@case.Id}: expected {@case.Expected}, got {actual}");
+            surprises.Add($"{@case.Id}: expected {@case.Expected}, got {actual}"
+                + WhereItWent(exchange, actual));
         }
 
         Console.WriteLine(
@@ -145,7 +167,8 @@ async Task<int> CaptureAsync()
         {
             await File.WriteAllTextAsync(
                 Path.Combine(repository, target.CertificateReportPath),
-                CertificateReport.Build(exchange.ResponseBody),
+                CertificateReport.Build(
+                    exchange.ResponseBody, target.EnvironmentDisplay, target.KeySetCaptureId),
                 cancellation.Token);
         }
     }
