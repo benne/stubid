@@ -3,6 +3,28 @@
 Notes accumulate here as changes land, and this file is renamed to the version when a release
 goes out. The dated files beside it are history and are never edited.
 
+## A step names the client it records with
+
+`ClientProfile` was an enum of seven values whose every arm resolved to one broker's setting
+names. It is now a roster of registrations — what the client is called, what configuration it is
+in, and which settings hold its identifier and secret — and a step names one rather than selecting
+from an enum that could only ever describe the first broker.
+
+Naming one is required, with no default. On the second broker a claim is a property of the client
+as much as of the broker: its dashboard aliases claims per client, and one setting decides whether
+a claim reaches the identity token at all. A step that did not say which client it used would
+record something nobody could read back.
+
+`check` reads the roster too. Asking which steps a missing setting blocks used to mean asking
+whether the setting's name contained `SSO_A`, which was the roster written a second time in string
+matching. That is now a lookup, and the answers are pinned against what the enum gave.
+
+Two things the compiler used to check are checked by tests instead, and one of them the enum never
+checked at all: that every registration still reads the settings its enum arm read, and that every
+step names a client belonging to the broker whose sitting it is. A third is new — every setting a
+registration names must be one the scrubber replaces, because a client identifier comes back
+echoed in a login redirect, and that is how a private one reached a fixture the first time round.
+
 ## The capture harness asks which broker it is recording
 
 Every command takes `--broker=`, and there is no default. The fixture root, the sitting's pack,

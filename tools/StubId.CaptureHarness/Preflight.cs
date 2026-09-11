@@ -265,26 +265,22 @@ public static class Preflight
     /// listed, so they are. Nothing records Signicat yet, so a missing value there costs coverage
     /// rather than a step - which the block says once rather than four times.
     /// </remarks>
+    /// <summary>
+    /// What a missing value costs, when it costs something nameable.
+    /// </summary>
+    /// <remarks>
+    /// Read from the roster: which registrations name this setting, and which steps use those
+    /// registrations. What this replaced asked whether the setting's name contained "SSO_A",
+    /// which was a second encoding of the roster written in string matching, and one that could
+    /// only ever describe the first broker's naming.
+    /// <para>
+    /// Where nothing is recorded yet no step is named, so a missing value costs coverage rather
+    /// than a recording and the block below says so once.
+    /// </para>
+    /// </remarks>
     private static int ReportCost(string name, BrokerTarget target)
     {
-        if (ManualCatalog.For(target.Broker).Count == 0)
-        {
-            return 0;
-        }
-
-        var needed = name switch
-        {
-            "STUBID_NEB_PP_CODE_CLIENT_SECRET" =>
-                Steps(target.Broker, c => c.Client is ClientProfile.OpenCode or ClientProfile.OpenImplicit),
-            var n when n.Contains("SSO_A", StringComparison.Ordinal) =>
-                Steps(target.Broker, c => c.Client is ClientProfile.SsoA or ClientProfile.Restricted),
-            var n when n.Contains("SSO_B", StringComparison.Ordinal) =>
-                Steps(target.Broker, c => c.Client == ClientProfile.SsoB),
-            var n when n.Contains("SSO_C", StringComparison.Ordinal) =>
-                Steps(target.Broker, c => c.Client == ClientProfile.Hybrid),
-            _ => Steps(target.Broker, c => c.Client == ClientProfile.Private),
-        };
-
+        var needed = ManualCatalog.StepsNeeding(target, name);
         if (needed.Count == 0)
         {
             return 0;
@@ -315,8 +311,6 @@ public static class Preflight
         return 1;
     }
 
-    private static List<string> Steps(Broker broker, Func<ManualCase, bool> predicate) =>
-        [.. ManualCatalog.For(broker).Where(predicate).Select(c => c.Id)];
 
     /// <summary>Enough to identify an entry without printing it.</summary>
     private static string Describe(string value) => value.Length <= 4

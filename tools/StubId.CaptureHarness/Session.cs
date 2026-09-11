@@ -226,7 +226,7 @@ public static class Session
 
         var parameters = new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["client_id"] = ClientId(@case.Client),
+            ["client_id"] = @case.Client.ClientId(),
             ["response_type"] = @case.ResponseType,
             ["redirect_uri"] = @case.RedirectUriOverride ?? RedirectUri,
             ["scope"] = @case.Scope,
@@ -264,11 +264,11 @@ public static class Session
         if (@case.SignRequest)
         {
             var signed = RequestObject.Build(
-                parameters, ClientId(@case.Client), broker.Authority, Secret(@case.Client));
+                parameters, @case.Client.ClientId(), broker.Authority, @case.Client.Secret());
 
             parameters = new Dictionary<string, string>(StringComparer.Ordinal)
             {
-                ["client_id"] = ClientId(@case.Client),
+                ["client_id"] = @case.Client.ClientId(),
                 ["response_type"] = @case.ResponseType,
                 ["request"] = signed,
             };
@@ -293,8 +293,8 @@ public static class Session
                 ["code"] = code,
                 ["redirect_uri"] = RedirectUri,
                 ["code_verifier"] = pending.Verifier,
-                ["client_id"] = ClientId(pending.Case.Client),
-                ["client_secret"] = Secret(pending.Case.Client),
+                ["client_id"] = pending.Case.Client.ClientId(),
+                ["client_secret"] = pending.Case.Client.Secret(),
             }), ct);
 
         var body = await response.Content.ReadAsStringAsync(ct);
@@ -343,8 +343,8 @@ public static class Session
                         ["code"] = code,
                         ["redirect_uri"] = RedirectUri,
                         ["code_verifier"] = pending.Verifier,
-                        ["client_id"] = ClientId(pending.Case.Client),
-                        ["client_secret"] = Secret(pending.Case.Client),
+                        ["client_id"] = pending.Case.Client.ClientId(),
+                        ["client_secret"] = pending.Case.Client.Secret(),
                     }), ct))
                 {
                 }
@@ -424,35 +424,6 @@ public static class Session
             return null;
         }
     }
-
-    private static string ClientId(ClientProfile profile) => profile switch
-    {
-        ClientProfile.OpenCode => CaptureCatalog.OpenCodeClient,
-        ClientProfile.OpenImplicit => "93ed8e0d-93ad-405c-b1ac-8bf13d484941",
-        ClientProfile.Restricted => Required("STUBID_NEB_PP_SSO_A_CLIENT_ID"),
-        ClientProfile.SsoA => Required("STUBID_NEB_PP_SSO_A_CLIENT_ID"),
-        ClientProfile.SsoB => Required("STUBID_NEB_PP_SSO_B_CLIENT_ID"),
-        ClientProfile.Hybrid => Required("STUBID_NEB_PP_SSO_C_CLIENT_ID"),
-        _ => LocalSettings.Get("STUBID_NEB_PP_CLIENT_ID")
-             ?? throw new InvalidOperationException(
-                 "Set STUBID_NEB_PP_CLIENT_ID to record with the private client."),
-    };
-
-    private static string Secret(ClientProfile profile) => profile switch
-    {
-        ClientProfile.OpenCode or ClientProfile.OpenImplicit =>
-            LocalSettings.Get("STUBID_NEB_PP_CODE_CLIENT_SECRET")
-            ?? throw new InvalidOperationException("Set STUBID_NEB_PP_CODE_CLIENT_SECRET."),
-        ClientProfile.Restricted => Required("STUBID_NEB_PP_SSO_A_CLIENT_SECRET"),
-        ClientProfile.SsoA => Required("STUBID_NEB_PP_SSO_A_CLIENT_SECRET"),
-        ClientProfile.SsoB => Required("STUBID_NEB_PP_SSO_B_CLIENT_SECRET"),
-        ClientProfile.Hybrid => Required("STUBID_NEB_PP_SSO_C_CLIENT_SECRET"),
-        _ => LocalSettings.Get("STUBID_NEB_PP_CLIENT_SECRET")
-             ?? throw new InvalidOperationException("Set STUBID_NEB_PP_CLIENT_SECRET."),
-    };
-
-    private static string Required(string setting) => LocalSettings.Get(setting)
-        ?? throw new InvalidOperationException($"Set {setting} to record this step.");
 
     private static string Base64UrlText(byte[] bytes) =>
         System.Buffers.Text.Base64Url.EncodeToString(bytes);

@@ -60,6 +60,9 @@ public sealed record BrokerTarget
     /// </remarks>
     public string? CertificateSubjectMarker { get; init; }
 
+    /// <summary>The registrations a sitting against this broker records with.</summary>
+    public IReadOnlyList<BrokerClient> Clients => [.. BrokerClient.All.Where(c => c.Broker == Broker)];
+
     /// <summary>The issuer with any configured value substituted in.</summary>
     /// <exception cref="InvalidOperationException">The settings do not hold it.</exception>
     public string Authority => Scrubber.Unscrub(AuthorityTemplate);
