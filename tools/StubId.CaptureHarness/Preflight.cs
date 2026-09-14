@@ -324,6 +324,20 @@ public static class Preflight
         return tally;
     }
 
+    /// <summary>The steps a key that cannot be read leaves unrecordable, where there are any.</summary>
+    /// <remarks>
+    /// Here rather than beside the other settings, because the key path is not a value the scrubber
+    /// knows and so is never in the loop that names what a missing credential costs.
+    /// </remarks>
+    private static void ReportUnsignable(BrokerTarget target)
+    {
+        var blocked = ManualCatalog.StepsNeeding(target, target.PrivateKeySetting!);
+        if (blocked.Count > 0)
+        {
+            Console.WriteLine($"           {string.Join(", ", blocked)} cannot be recorded without it");
+        }
+    }
+
     /// <summary>
     /// The key a signed step would use, and the public half to register.
     /// </summary>
@@ -344,6 +358,7 @@ public static class Preflight
         if (resolve(target.PrivateKeySetting) is not { Length: > 0 } path)
         {
             Console.WriteLine($"  {target.PrivateKeySetting} is not set, so nothing can be signed.");
+            ReportUnsignable(target);
             Console.WriteLine("           openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 \\");
             Console.WriteLine("               -out ~/stubid-signicat.pem");
             Console.WriteLine("           The shell expands ~ there. This setting does not, so write");
@@ -354,6 +369,7 @@ public static class Preflight
         if (!File.Exists(path))
         {
             Console.WriteLine($"  PROBLEM  {target.PrivateKeySetting} names a file that is not there.");
+            ReportUnsignable(target);
 
             // The likeliest reason, and one the message above reads as a lie: the file is
             // there, and the path was copied from a shell where the shell had expanded it.

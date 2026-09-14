@@ -92,13 +92,21 @@ public class PreflightTests
     }
 
     /// <summary>An unset key path is something to do, not something wrong.</summary>
+    /// <remarks>
+    /// It still says what it costs. The key path is not a value the scrubber knows, so it never
+    /// passes through the loop that names the steps a missing credential blocks.
+    /// </remarks>
     [Fact]
-    public void An_unset_key_path_is_a_warning()
+    public void An_unset_key_path_is_a_warning_that_names_the_steps_it_blocks()
     {
-        var (_, tally) = Capture(
+        var (report, tally) = Capture(
             () => Preflight.ReportKeyMaterial(BrokerTarget.Signicat, _ => null));
 
         Assert.Equal(new Preflight.Tally(0, 1), tally);
+        Assert.Contains(
+            "CAP-023, CAP-024, CAP-025, CAP-026, CAP-028, CAP-029 cannot be recorded without it",
+            report,
+            StringComparison.Ordinal);
     }
 
     /// <summary>

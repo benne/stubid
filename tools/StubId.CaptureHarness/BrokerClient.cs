@@ -36,6 +36,14 @@ public sealed record BrokerClient
     /// <summary>The setting holding the secret.</summary>
     public required string SecretSetting { get; init; }
 
+    /// <summary>Whether the broker refuses this registration a plain query.</summary>
+    /// <remarks>
+    /// A client setting on the second broker, and a refusal its error page does not explain. Declared
+    /// so a step that forgets to sign is caught by a test, rather than by a rehearsal reporting a
+    /// refusal it cannot give a reason for.
+    /// </remarks>
+    public bool RequiresRequestObject { get; init; }
+
     public string ClientId() => ClientId(LocalSettings.Get);
 
     public string Secret() => Secret(LocalSettings.Get);
@@ -178,6 +186,7 @@ public sealed record BrokerClient
                 + "single sign-on off",
             IdSetting = "STUBID_SIGNICAT_PRIMARY_CLIENT_ID",
             SecretSetting = "STUBID_SIGNICAT_PRIMARY_CLIENT_SECRET",
+            RequiresRequestObject = true,
         };
 
         /// <summary>Where MitID's own claims land, and whether they arrive at all.</summary>
@@ -194,6 +203,7 @@ public sealed record BrokerClient
                 + "and the mitid-extra scope",
             IdSetting = "STUBID_SIGNICAT_CLAIMS_CLIENT_ID",
             SecretSetting = "STUBID_SIGNICAT_CLAIMS_CLIENT_SECRET",
+            RequiresRequestObject = true,
         };
 
         public static readonly BrokerClient Hybrid = new()
@@ -204,6 +214,7 @@ public sealed record BrokerClient
                 + "advertises no pure-implicit response type",
             IdSetting = "STUBID_SIGNICAT_HYBRID_CLIENT_ID",
             SecretSetting = "STUBID_SIGNICAT_HYBRID_CLIENT_SECRET",
+            RequiresRequestObject = true,
         };
 
         /// <summary>The unattended pack's client, and the sitting's second party.</summary>

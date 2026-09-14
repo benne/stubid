@@ -19,11 +19,190 @@ public static class ManualCatalog
         _ => [],
     };
 
+    /// <summary>"StubID reference text", as the broker wants it: Base64.</summary>
+    private const string ReferenceText = "U3R1YklEIHJlZmVyZW5jZSB0ZXh0";
+
     /// <summary>
-    /// Nothing yet. Two of the first broker's steps have no counterpart here and one more may
-    /// have nowhere to stop, so this catalog waits on the clients it will be written against.
+    /// The second broker's sitting, in step order, which is also case order here.
     /// </summary>
-    private static IReadOnlyList<ManualCase> Signicat => [];
+    /// <remarks>
+    /// <para>
+    /// Every step on the primary, claims and hybrid clients signs its request, because those three
+    /// refuse a plain query. The partner client takes the aborts and the timeout, which have nothing
+    /// to sign for and cost least to lose, and single sign-on, which only it can take: it is the one
+    /// client with single sign-on left on.
+    /// </para>
+    /// <para>
+    /// Some of the first broker's sitting has no counterpart. This broker has no response type of
+    /// id_token alone and no CPR-match endpoint. End session without an id_token_hint is already in
+    /// the unattended pack, and a hint would put a token in a URL that nothing yet strips. An
+    /// unregistered redirect URI is refused before any login, so it belongs in that pack too. A
+    /// transaction text is signing, which is out of scope for this broker. Assurance level is asked
+    /// for once, at High.
+    /// </para>
+    /// </remarks>
+    private static IReadOnlyList<ManualCase> Signicat =>
+    [
+        new()
+        {
+            Id = "CAP-020",
+            Step = "Step S1",
+            Title = "Abort inside the MitID widget",
+            Settles = "Which OAuth error accompanies a user abort on this broker, and whether it "
+                + "redirects back to the client or shows its own page. No code for it can be "
+                + "quoted from the published error catalog.",
+            Operator = "Start the login, then cancel inside the MitID widget.",
+            Client = BrokerClient.Signicat.Partner,
+            Scope = "openid profile",
+            ExpectCode = false,
+            FollowUps = [],
+        },
+        new()
+        {
+            Id = "CAP-021",
+            Step = "Step S2",
+            Title = "Abort at the CPR number prompt",
+            Settles = "Whether canceling after MitID has authenticated the person, at the prompt "
+                + "for the CPR number, returns the same error as CAP-020, and whether it comes "
+                + "back to the client at all.",
+            Operator = "Approve in MitID. When the page asking for the CPR number appears, cancel "
+                + "there instead of typing it, and note whether that page is MitID's or Signicat's.",
+            Client = BrokerClient.Signicat.Partner,
+            Scope = "openid profile nin",
+            ExpectCode = false,
+            FollowUps = [],
+        },
+        new()
+        {
+            Id = "CAP-022",
+            Step = "Step S3",
+            Title = "A login left to time out",
+            Settles = "What a login that times out returns, where it lands, and roughly when. The "
+                + "research ranked it with the abort as the first thing a sitting has to answer, "
+                + "and no error for it can be quoted today.",
+            Operator = "In the second browser: start it, type nothing, note the time, and leave it on "
+                + "screen while the other steps go ahead. Force it at forty-five minutes if nothing "
+                + "has happened.",
+            Client = BrokerClient.Signicat.Partner,
+            Scope = "openid profile",
+            ExpectCode = false,
+            FollowUps = [],
+        },
+        new()
+        {
+            Id = "CAP-023",
+            Step = "Step S4",
+            Title = "The baseline login",
+            Settles = "The token response and the id_token's member set and order on a client "
+                + "with request objects on and ID token user data at StandardScopes; the values "
+                + "behind amr, idp and acr, which have only been seen as lengths; and what "
+                + "presenting the same code twice does.",
+            Operator = "Approve with the app simulator.",
+            Client = BrokerClient.Signicat.Primary,
+            Scope = "openid profile",
+            SignRequest = true,
+            FollowUps = [FollowUp.UserInfo, FollowUp.ReplayCode],
+        },
+        new()
+        {
+            Id = "CAP-024",
+            Step = "Step S5",
+            Title = "The login with the CPR number",
+            Settles = "nin and its two companion claims at userinfo, with their values and JSON "
+                + "types; idp_id; and whether asking for them changes the id_token.",
+            Operator = "Approve, then type the identity's CPR number when asked.",
+            Client = BrokerClient.Signicat.Primary,
+            Scope = "openid profile nin idp-id",
+            SignRequest = true,
+        },
+        new()
+        {
+            Id = "CAP-025",
+            Step = "Step S6",
+            Title = "Every claim in the identity token",
+            Settles = "Where MitID's own claims land on a client with ID token user data set to "
+                + "All and the mitid-extra scope: whether nin moves into the id_token, and which "
+                + "mitid_* claims exist at all. None has been seen from this broker.",
+            Operator = "Approve, then type the identity's CPR number when asked.",
+            Client = BrokerClient.Signicat.Claims,
+            Scope = "openid profile nin idp-id mitid-extra",
+            SignRequest = true,
+        },
+        new()
+        {
+            Id = "CAP-026",
+            Step = "Step S7",
+            Title = "Transaction consent with a reference text",
+            Settles = "Whether a reference text comes back to the client anywhere - in a claim, "
+                + "at userinfo, or not at all - and in what form. The day-zero probe proved it "
+                + "reaches the app; what the relying party receives has not been seen.",
+            Operator = "Before approving, expand the simulator's Flow Value Texts and check that "
+                + "Reference Text reads StubID reference text, exactly.",
+            Client = BrokerClient.Signicat.Primary,
+            Scope = "openid profile",
+
+            // Replaces the target's own acr_values rather than adding to it, so idp:mitid is
+            // written again here.
+            SignRequest = true,
+            Extra = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["acr_values"] = $"idp:mitid mitid_reference_text:{ReferenceText}",
+            },
+        },
+        new()
+        {
+            Id = "CAP-027",
+            Step = "Step S8",
+            Title = "Single sign-on, on a second client",
+            Settles = "Whether a second client on the same account is waved through without a "
+                + "prompt, riding the session CAP-026 left on a client that forces login, and "
+                + "whether sub and sid come back the same as CAP-026's. Discovery advertises "
+                + "public subjects, where the first broker scopes a subject to the organization.",
+            Operator = "Start it straight after S7, in the same browser. It should complete without "
+                + "asking. If it asks, single sign-on did not apply and that is the finding - say "
+                + "so rather than approving.",
+            Client = BrokerClient.Signicat.Partner,
+            Scope = "openid profile",
+            ForcesLogin = false,
+        },
+        new()
+        {
+            Id = "CAP-028",
+            Step = "Step S9",
+            Title = "Hybrid response, for c_hash",
+            Settles = "c_hash in the id_token that arrives through the front channel, at_hash in the "
+                + "one the token endpoint returns - where the first broker's hybrid recording has "
+                + "it - and the form_post envelope. This broker advertises no response type of "
+                + "id_token alone, so this is the only front-channel id_token it can show.",
+            Operator = "Approve as normal.",
+            Client = BrokerClient.Signicat.Hybrid,
+            Scope = "openid profile",
+            ResponseType = "code id_token",
+            ResponseMode = "form_post",
+            SignRequest = true,
+        },
+        new()
+        {
+            Id = "CAP-029",
+            Step = "Step S10",
+            Title = "Assurance level High",
+            Settles = "Whether loa:high changes acr, amr, mitid_loa and mitid_aal and the approval "
+                + "MitID asks for. On the claims client, so it compares with CAP-025. Signicat "
+                + "documents the key for every eID on its platform, lists MitID as supporting all "
+                + "three levels, and says a login below the requested level fails; no request has "
+                + "used it yet, and unknown keys are ignored here, so unchanged levels would mean "
+                + "it was not read.",
+            Operator = "Approve at the highest level the app simulator offers. If it offers "
+                + "nothing above the ordinary approval, cancel and say what it did offer.",
+            Client = BrokerClient.Signicat.Claims,
+            Scope = "openid profile mitid-extra",
+            SignRequest = true,
+            Extra = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["acr_values"] = "idp:mitid loa:high",
+            },
+        },
+    ];
 
     /// <summary>Everything the private client is entitled to ask for.</summary>
     private const string FullScope =
@@ -45,6 +224,7 @@ public static class ManualCatalog
                 + "redirects it back to the client or shows its own page.",
             Operator = "Start the login, then cancel inside the MitID widget.",
             Client = BrokerClient.NetsEidBroker.Private,
+            Scope = "openid mitid",
             ExpectCode = false,
             FollowUps = [],
         },
@@ -59,6 +239,7 @@ public static class ManualCatalog
             Operator = "Nothing. The browser should land on the broker's error page and the "
                 + "client should never be redirected back. Copy the error code the page shows.",
             Client = BrokerClient.NetsEidBroker.Restricted,
+            Scope = "openid mitid",
             RedirectUriOverride = "http://localhost:5099/not-registered",
             ExpectCode = false,
             FollowUps = [],
@@ -72,6 +253,7 @@ public static class ManualCatalog
                 + "the amr wire form, and the shape of a successful token response.",
             Operator = "Approve with the code app at its ordinary level.",
             Client = BrokerClient.NetsEidBroker.Private,
+            Scope = "openid mitid",
             FollowUps = [FollowUp.UserInfo, FollowUp.ReplayCode],
         },
         new()
@@ -137,6 +319,7 @@ public static class ManualCatalog
                 + "produces.",
             Operator = "Approve with the lowest-friction authenticator offered.",
             Client = BrokerClient.NetsEidBroker.Private,
+            Scope = "openid mitid",
             Extra = new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["idp_params"] = """{"mitid":{"loa_value":"low"}}""",
@@ -151,6 +334,7 @@ public static class ManualCatalog
                 + "ordinary login; its value is what CAP-029 does afterwards.",
             Operator = "Approve as normal.",
             Client = BrokerClient.NetsEidBroker.SsoA,
+            Scope = "openid mitid",
         },
         new()
         {
@@ -164,6 +348,7 @@ public static class ManualCatalog
             Operator = "Nothing. It should complete without asking. If it asks, single sign-on "
                 + "did not apply and that is the finding - say so rather than approving.",
             Client = BrokerClient.NetsEidBroker.SsoB,
+            Scope = "openid mitid",
             ForcesLogin = false,
         },
         new()
@@ -175,6 +360,7 @@ public static class ManualCatalog
                 + "whenever an id_token arrives through the front channel.",
             Operator = "Approve as normal.",
             Client = BrokerClient.NetsEidBroker.OpenImplicit,
+            Scope = "openid mitid",
             ResponseType = "id_token",
             ResponseMode = "form_post",
             FollowUps = [],
@@ -190,6 +376,7 @@ public static class ManualCatalog
                 + "so this is the only way to see it.",
             Operator = "Approve as normal.",
             Client = BrokerClient.NetsEidBroker.Hybrid,
+            Scope = "openid mitid",
             ResponseType = "id_token code",
             ResponseMode = "form_post",
         },
@@ -202,6 +389,7 @@ public static class ManualCatalog
                 + "post_logout_redirect_uri is honored either way.",
             Operator = "Follow the logout through to wherever it lands.",
             Client = BrokerClient.NetsEidBroker.Private,
+            Scope = "openid mitid",
             FollowUps = [FollowUp.EndSession],
         },
     ];
@@ -221,7 +409,14 @@ public static class ManualCatalog
             .Where(client => client.IdSetting == setting || client.SecretSetting == setting)
             .ToList();
 
-        return [.. For(target.Broker).Where(c => clients.Contains(c.Client)).Select(c => c.Id)];
+        // The key signs every signed step on a broker that signs with one, whichever client the
+        // step records with. Not its identifier: without one the object is still signed, and a
+        // client holding a single key may still resolve it. The first broker names no key setting.
+        var signs = setting == target.PrivateKeySetting;
+
+        return [.. For(target.Broker)
+            .Where(c => clients.Contains(c.Client) || (signs && c.SignRequest))
+            .Select(c => c.Id)];
     }
 
     /// <summary>

@@ -1,4 +1,6 @@
 using System.Net;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace StubId.CaptureHarness;
 
@@ -11,7 +13,7 @@ namespace StubId.CaptureHarness;
 /// second sitting. Nothing here authenticates anybody: each request stops at the point where
 /// a person would take over.
 /// </remarks>
-public static class Rehearsal
+public static partial class Rehearsal
 {
     public static async Task<int> RunAsync(
         BrokerTarget broker, IReadOnlyList<ManualCase> cases, CancellationToken ct)
@@ -33,7 +35,10 @@ public static class Rehearsal
             }
             catch (InvalidOperationException error)
             {
-                Console.WriteLine($"  {@case.Id}  skipped   {error.Message.Split('.')[0]}");
+                // A problem, not a pass: the summary used to say every step was ready after skipping
+                // the seven a missing key made unbuildable.
+                Console.WriteLine($"  {@case.Id}  PROBLEM   not sent: {error.Message.Split('.')[0]}");
+                problems++;
                 continue;
             }
 
@@ -61,9 +66,14 @@ public static class Rehearsal
         }
 
         Console.WriteLine();
+        Console.WriteLine("Asking the token endpoint about each client that exchanges a code, with a code that is not real.");
+        Console.WriteLine();
+        problems += await CheckSecretsAsync(broker, client, cases, ct);
+
+        Console.WriteLine();
         Console.WriteLine(problems == 0
             ? "Every step reaches the point where a person takes over."
-            : $"{problems} step(s) refused before reaching the login page. Fix before sitting down.");
+            : $"{problems} problem(s) above. Fix them before sitting down.");
 
         return problems == 0 ? 0 : 1;
     }
@@ -97,6 +107,22 @@ public static class Rehearsal
         using var response = await client.GetAsync(url, ct);
         var location = response.Headers.Location?.ToString() ?? "";
 
+        // A form_post step is answered with a page that posts back, not with a redirect, so a 200 is
+        // how the answer arrives. The second broker's hybrid step was reported as a problem for it.
+        if (@case.ResponseMode == "form_post" && response.StatusCode == HttpStatusCode.OK)
+        {
+            var (action, state) = FormPostTarget(await response.Content.ReadAsStringAsync(ct));
+
+            if (action is null || !action.StartsWith(Session.RedirectUri, StringComparison.Ordinal))
+            {
+                return ("PROBLEM", "  answered 200 with no form posting back to the client");
+            }
+
+            return state == @case.Id
+                ? ("ready", "")
+                : ("PROBLEM", "  posted back without it - the sitting's callback cannot match on state");
+        }
+
         if (!location.StartsWith(Session.RedirectUri, StringComparison.Ordinal))
         {
             return ("PROBLEM", location.Length == 0
@@ -108,6 +134,106 @@ public static class Rehearsal
             ? ("ready", "")
             : ("PROBLEM", "  came back without it - the sitting's callback cannot match on state");
     }
+
+    /// <summary>
+    /// Whether the broker accepts each client's secret, asked before a login is spent finding out.
+    /// </summary>
+    /// <remarks>
+    /// A signed step never sends its secret until the code is exchanged, which is after the login. A
+    /// code that is not real is refused for what it is only once the client has authenticated, so
+    /// invalid_grant says the secret is good and invalid_client says it is not - which is the pair
+    /// the unattended pack records for the partner client.
+    /// </remarks>
+    private static async Task<int> CheckSecretsAsync(
+        BrokerTarget broker, HttpClient client, IReadOnlyList<ManualCase> cases, CancellationToken ct)
+    {
+        var problems = 0;
+
+        var exchanging = cases
+            .Where(c => c.ExpectCode && c.ResponseType.Split(' ').Contains("code"))
+            .Select(c => c.Client)
+            .Distinct();
+
+        foreach (var registration in exchanging)
+        {
+            Dictionary<string, string> form;
+            try
+            {
+                form = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["grant_type"] = "authorization_code",
+                    ["code"] = "not-a-real-code",
+                    ["redirect_uri"] = Session.RedirectUri,
+                    ["client_id"] = registration.ClientId(),
+                    ["client_secret"] = registration.Secret(),
+                };
+            }
+            catch (InvalidOperationException error)
+            {
+                Console.WriteLine($"  PROBLEM   the {registration.Name} client: {error.Message.Split('.')[0]}");
+                problems++;
+                continue;
+            }
+
+            using var response = await client.PostAsync(
+                $"{broker.Authority}/connect/token", new FormUrlEncodedContent(form), ct);
+            var (verdict, note) = SecretVerdict((int)response.StatusCode, await response.Content.ReadAsStringAsync(ct));
+
+            Console.WriteLine($"  {verdict,-8}  the {registration.Name} client's secret{note}");
+            if (verdict == "PROBLEM")
+            {
+                problems++;
+            }
+        }
+
+        return problems;
+    }
+
+    /// <summary>What the token endpoint's answer to a code that is not real says about the secret.</summary>
+    public static (string Verdict, string Note) SecretVerdict(int status, string body)
+    {
+        string? error = null;
+        try
+        {
+            using var document = JsonDocument.Parse(body);
+            if (document.RootElement.ValueKind == JsonValueKind.Object
+                && document.RootElement.TryGetProperty("error", out var member)
+                && member.ValueKind == JsonValueKind.String)
+            {
+                error = member.GetString();
+            }
+        }
+        catch (JsonException)
+        {
+            // Not an OAuth error at all, which is reported below as such.
+        }
+
+        return error switch
+        {
+            "invalid_grant" => ("ready", ""),
+            "invalid_client" => ("PROBLEM", "  is refused, so the exchange after a login would fail"),
+            null => ("PROBLEM", $"  could not be checked: {status} with no OAuth error"),
+            _ => ("PROBLEM", $"  could not be checked: {error}"),
+        };
+    }
+
+    /// <summary>Where a form_post page sends the browser, and the state it sends along.</summary>
+    /// <remarks>Either quote style, and entity-encoded values decoded, since the page is HTML.</remarks>
+    public static (string? Action, string? State) FormPostTarget(string html)
+    {
+        var action = FormAction().Match(html);
+        var state = StateInput().Match(html);
+
+        return (
+            action.Success ? WebUtility.HtmlDecode(action.Groups["value"].Value) : null,
+            state.Success ? WebUtility.HtmlDecode(state.Groups["value"].Value) : null);
+    }
+
+    [GeneratedRegex("""<form\b[^>]*\baction\s*=\s*(['"])(?<value>.*?)\1""", RegexOptions.IgnoreCase)]
+    private static partial Regex FormAction();
+
+    [GeneratedRegex("""<input\b(?=[^>]*\bname\s*=\s*(['"])state\1)[^>]*\bvalue\s*=\s*(['"])(?<value>.*?)\2""", RegexOptions.IgnoreCase)]
+    private static partial Regex StateInput();
 
     /// <summary>
     /// What a location means, read from the broker rather than from two literals kept here.

@@ -15,8 +15,9 @@ namespace StubId.CaptureHarness;
 /// <param name="SegmentLengths">The real lengths, which a placeholder would otherwise lose.</param>
 /// <param name="SignatureVerified">
 /// Whether the signature checked out against the broker's published key at the moment of
-/// recording. That answer cannot be recovered later: the broker rotates its keys, and the
-/// transaction-signing certificate already rotated once in May 2026.
+/// recording, or null where it was not checked - no key set, or none with the token's kid. That
+/// answer cannot be recovered later: the broker rotates its keys, and the transaction-signing
+/// certificate already rotated once in May 2026.
 /// </param>
 public sealed record ExtractedToken(
     string Placeholder,
@@ -50,7 +51,7 @@ public static partial class TokenFixtures
         ["id_token", "access_token", "userinfo_token", "transaction_token", "refresh_token"];
 
     public static (string Body, IReadOnlyDictionary<string, ExtractedToken> Tokens) Extract(
-        string body, Func<string, bool>? verify = null)
+        string body, Func<string, bool?>? verify = null)
     {
         var extracted = new Dictionary<string, ExtractedToken>(StringComparer.Ordinal);
 
@@ -145,7 +146,7 @@ public static partial class TokenFixtures
     /// flow returns its id_token this way, and a JSON-only extractor left it in the fixture.
     /// </summary>
     private static (string Body, IReadOnlyDictionary<string, ExtractedToken> Tokens) ExtractFromFields(
-        string body, Dictionary<string, ExtractedToken> extracted, Func<string, bool>? verify)
+        string body, Dictionary<string, ExtractedToken> extracted, Func<string, bool?>? verify)
     {
         foreach (var line in body.Split('\n'))
         {
@@ -170,7 +171,7 @@ public static partial class TokenFixtures
         return (body, extracted);
     }
 
-    private static ExtractedToken Describe(string name, string value, Func<string, bool>? verify)
+    private static ExtractedToken Describe(string name, string value, Func<string, bool?>? verify)
     {
         var parts = value.Split('.');
 
@@ -265,11 +266,45 @@ public static partial class TokenFixtures
         }
     }
 
+    /// <summary>Several fetches of a key set as one, each kid once, in the order first seen.</summary>
+    public static string MergeKeySets(IEnumerable<string> keySets)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var keys = new List<JsonElement>();
+
+        foreach (var keySet in keySets)
+        {
+            using var document = JsonDocument.Parse(keySet);
+            foreach (var key in document.RootElement.GetProperty("keys").EnumerateArray())
+            {
+                if (key.TryGetProperty("kid", out var kid) && kid.GetString() is { } id && seen.Add(id))
+                {
+                    keys.Add(key.Clone());
+                }
+            }
+        }
+
+        return JsonSerializer.Serialize(new { keys });
+    }
+
+    /// <summary>How many keys a key set holds.</summary>
+    public static int KeyCount(string keySet)
+    {
+        using var document = JsonDocument.Parse(keySet);
+        return document.RootElement.GetProperty("keys").GetArrayLength();
+    }
+
     /// <summary>
     /// Checks a token against the broker's published key set, by the kid in its header. Run
     /// at capture time because it cannot be run afterwards.
     /// </summary>
-    public static bool Verify(string compact, string jwksJson)
+    /// <returns>
+    /// Whether the signature verifies, or null where there was nothing to check it with: no key
+    /// under that kid, or one that is not RSA. "False" is a claim that a fixture's token did not
+    /// verify, and a key set that simply left the key out - the second broker's leaves out a
+    /// different few on every request - is not evidence of that.
+    /// </returns>
+    public static bool? Verify(string compact, string jwksJson)
     {
         try
         {
@@ -281,9 +316,11 @@ public static partial class TokenFixtures
                 .FirstOrDefault(k => k.TryGetProperty("kid", out var candidate)
                                      && candidate.GetString() == kid);
 
-            if (key.ValueKind != JsonValueKind.Object)
+            if (key.ValueKind != JsonValueKind.Object
+                || !key.TryGetProperty("kty", out var kty)
+                || kty.GetString() != "RSA")
             {
-                return false;
+                return null;
             }
 
             using var rsa = RSA.Create();
