@@ -112,6 +112,22 @@ public sealed record BrokerTarget
     /// </remarks>
     public IReadOnlyList<string> LoginMarkers { get; init; } = [];
 
+    /// <summary>The authorize parameters that send a login to MitID.</summary>
+    /// <remarks>
+    /// The first broker takes <c>idp_values</c>. The second ignores that parameter and selects the
+    /// identity provider with an <c>idp:</c> entry in <c>acr_values</c>, which is also where its MitID
+    /// options travel. A step's own parameters replace these, so a step that adds to
+    /// <c>acr_values</c> carries <c>idp:mitid</c> itself - which a test holds it to.
+    /// </remarks>
+    public required IReadOnlyDictionary<string, string> SelectsMitId { get; init; }
+
+    /// <summary>Where the broker matches a CPR number against a login, or null where it has no such endpoint.</summary>
+    /// <remarks>
+    /// The second broker has none: the number arrives through the <c>nin</c> scope in the login
+    /// itself.
+    /// </remarks>
+    public string? CprMatchPath { get; init; }
+
     /// <summary>
     /// Whether two requests for the key set can be answered with different keys.
     /// </summary>
@@ -204,6 +220,8 @@ public sealed record BrokerTarget
         AuthorityTemplate = "https://pp.netseidbroker.dk/op",
         KeySetCaptureId = "CAP-002",
         CertificateSubjectMarker = "Transact",
+        SelectsMitId = new Dictionary<string, string>(StringComparer.Ordinal) { ["idp_values"] = "mitid" },
+        CprMatchPath = "/api/v1/mitid/matchCpr",
 
         // Measured, and its recordings were made with it. Re-signing them differently would
         // change the segment lengths the sitting's fixtures record.
@@ -229,6 +247,7 @@ public sealed record BrokerTarget
         PrivateKeySetting = "STUBID_SIGNICAT_PRIVATE_KEY_PATH",
         KeyIdSetting = "STUBID_SIGNICAT_KEY_ID",
         KeySetVariesPerRequest = true,
+        SelectsMitId = new Dictionary<string, string>(StringComparer.Ordinal) { ["acr_values"] = "idp:mitid" },
 
         // Measured on the sandbox: an accepted authorize lands here, on the tenant host.
         LoginMarkers = ["/Authentication/Login"],

@@ -15,6 +15,9 @@ rewritten in the past tense: the reasoning is what makes the next one cheap. Par
 it settled and what it did not, and one row of it cost another sitting — Part 6, which ran on
 2026-09-02 and took CAP-031.
 
+Part 7 is the second broker's sitting, against Signicat's sandbox. It has not happened yet, and
+it reuses the discipline of the parts before it rather than repeating it.
+
 Read the whole document before starting. The ordering constraints are not stylistic; several
 steps destroy the state a later step needs, and two of them are irreversible within the
 sitting.
@@ -1311,3 +1314,247 @@ Afterwards, and not before: the transaction token has no section in
 member order, `auth_time` as a string, `transaction_actions` as a string or an array — lives
 only in fixture files. That write-up is where CAP-031's result belongs, together with the
 divergence entry it either closes or makes permanent.
+
+---
+
+## Part 7 — The Signicat sitting
+
+Ten steps against the sandbox account's four clients, written into
+`fixtures/signicat/sandbox-session/` as CAP-020 to CAP-029. The numbers restart per broker, so
+these are not the cases of the same numbers in Parts 3 and 6. Budget about an hour: seven steps
+need a MitID authentication, and the timeout runs underneath the rest in a second browser.
+
+What carries over from the first broker's sitting, and is not repeated here: the HAR and
+transcription conventions in [P7](#p7-conventions-for-every-step), the redact-list rules in
+[P2](#p2-freeze-the-redact-list), the second browser from [P6](#p6-the-browser-matrix) and the way
+[step 1](#step-1-park-the-abandoned-login-browser-2) and [step 17](#step-17-timeout-checkpoint) use
+it for a timeout, and most of [Part 4](#part-4--if-something-goes-wrong).
+
+### What is different about this broker
+
+**Four clients, each for a reason.** A claim here is a property of the client as much as of the
+broker, so every step names the one it uses.
+
+| Client | Configuration | Steps |
+| --- | --- | --- |
+| primary | request object required, PKCE, ID token user data `StandardScopes`, force login | S4, S5, S7 |
+| claims | as primary, with ID token user data `All` and the `mitid-extra` scope | S6, S10 |
+| hybrid | as primary, with the hybrid grant | S9 |
+| partner | no request object, no PKCE, single sign-on left on | S1, S2, S3, S8 |
+
+**Three of the four refuse a plain query**, so every step on them sends a request object, signed
+RS256 with the key registered on those clients. `rehearse` confirmed on 2026-09-14 that the
+broker accepts the harness's objects, and that the redirect back carries the step's `state` —
+through `form_post` too, which is how the hybrid step answers.
+
+**MitID is selected with `acr_values=idp:mitid`**, not with the first broker's `idp_values`, and
+MitID's options travel in the same parameter. A step that sets `acr_values` itself writes
+`idp:mitid` again; a test holds every step to that.
+
+**The authorization code lives 60 seconds**, raised from the default of 15 on all four clients.
+The harness exchanges it the moment the callback arrives, so this only matters if something
+pauses the harness — a breakpoint will cost the login.
+
+**The signing key expires.** It was imported on 2026-09-11 with the default validity of about
+three months, so treat it as expiring around 10 December 2026; the dashboard shows the exact date.
+After that, import a new key on all three signing clients — primary, claims and hybrid, the same
+key on each — update `STUBID_SIGNICAT_KEY_ID` and the key path, and run `rehearse` again.
+
+**The key set is not one document.** Each request for it returns a different subset of the
+broker's keys, so the session fetches it until three requests in a row add nothing and merges
+them, keeping what it has if a later request fails. A token whose `kid` is still missing is
+recorded as `SignatureVerified: null` — unchecked, not failed.
+
+### Preparation
+
+**One identity, with a CPR number**, created in the MitID test tool as in
+[P1](#p1-create-all-three-test-identities-in-advance). Write down its CPR number, user ID and
+UUID.
+
+**The redact list**, in `capture.local.json`, before the harness starts:
+
+- The CPR number in both forms, mapped to the day-shifted replacement described in P2.
+- The identity's names, as fixed fictional replacements of the same length.
+- The birth date as `YYYY-MM-DD`. `birthdate` arrives in the id_token, and its digits are the
+  first six of the CPR number in another order.
+- The UUID. Nothing observed so far says `idp_id` or a `mitid_*` claim carries it, and nothing
+  says they do not.
+
+**Restart the harness after any edit to that file.** A value added to a running process is never
+redacted.
+
+**A second browser**, as in P6: a different browser application rather than another window of the
+first, so the timeout it holds shares no cookies with the logins.
+
+**The day before, or the morning of:**
+
+```
+dotnet run --project tools/StubId.CaptureHarness -- check --broker=signicat
+dotnet run --project tools/StubId.CaptureHarness -- rehearse --broker=signicat
+```
+
+`check` must end `Ready to record.` `rehearse` must report every step `ready`, and every signed
+step `ready` a second time for the redirect back. It then asks the token endpoint about each client
+that exchanges a code, with a code that is not real: `invalid_grant` means the secret is accepted,
+and anything else is reported before a login is spent finding out. Neither command completes a
+login, and both can be run as often as you like.
+
+**Expect "Signicat demo" in the app.** The simulator's `Service Provider` and
+`Reference Text Header` show the platform's defaults for an account that has not asked for its
+own. That is not a finding about this sitting.
+
+### The sitting
+
+```
+dotnet run --project tools/StubId.CaptureHarness -- session --broker=signicat
+```
+
+Work down the launchpad in order. The aborts and the timeout start before the first successful
+login, so that nothing they record is shaped by a session left behind.
+
+### Step S1. Abort inside the MitID widget
+
+Start the step, wait for the widget, and cancel inside it. Let the browser land wherever it lands.
+
+*Settles:* which OAuth error accompanies a user abort on this broker, and whether it comes back to
+the client or stops on a page of the broker's own. The published error catalog quotes nothing for
+it.
+
+*This went wrong if:* the browser never leaves Signicat's hosts. Record the page it stops on; that
+is the finding.
+
+### Step S2. Abort at the CPR number prompt
+
+Approve in MitID, then cancel on the page that asks for the CPR number instead of typing it. Note
+from the address bar whether that page is MitID's or Signicat's.
+
+*Settles:* whether an abort after MitID has authenticated the person returns the same error as
+S1, and whether it comes back to the client at all.
+
+*This went wrong if:* no CPR prompt appears. The partner client holds `nin`, so that would itself
+be worth writing down.
+
+### Step S3. A login left to time out
+
+In the second browser, open the launchpad and start S3 there. Wait for the widget, type nothing,
+and write down the time. Leave that window open and on screen, and go on with S4 in the first
+browser. Glance at it at five, ten, fifteen, twenty, thirty and forty-five minutes, and note the
+time of any change.
+
+If nothing has visibly happened by forty-five minutes, force it: type a user ID or press the
+widget's button, because an expiry on the server is usually invisible until the next request. Let
+it land, and save the page if it stops on one. If the sitting is ready to finish before anything
+has happened, write down "still alive after N minutes" and what the screen shows, then finish.
+
+*Settles:* what a timed-out login returns, where it lands, and roughly when.
+
+*This went wrong if:* the window was minimized or covered, which throttles its timers, or it
+shares cookies with the first browser, where a later login can replace its context.
+
+### Step S4. The baseline login
+
+Approve with the app simulator.
+
+*Settles:* the token response and the id_token's members and their order on the primary client;
+the values behind `amr`, `idp` and `acr`, which have only been seen as lengths; and what presenting
+the same code twice does, which the harness tries by itself afterwards.
+
+*This went wrong if:* the token exchange fails. See below before retrying.
+
+### Step S5. The login with the CPR number
+
+Approve, then type the identity's CPR number when asked.
+
+*Settles:* `nin`, `nin_type` and `nin_issuing_country` at userinfo, with their values and types;
+`idp_id`; and whether asking for them changes the id_token.
+
+### Step S6. Every claim in the identity token
+
+The same login on the claims client.
+
+*Settles:* where MitID's own claims land when ID token user data is `All` and `mitid-extra` is
+asked for: whether `nin` moves into the id_token, and which `mitid_*` claims exist at all. None has
+been seen from this broker.
+
+### Step S7. Transaction consent with a reference text
+
+Before approving, expand the simulator's `Flow Value Texts` and check that `Reference Text` reads
+`StubID reference text`, exactly. Then approve.
+
+*Settles:* whether the reference text comes back to the client anywhere — a claim, userinfo, or
+nowhere — and in what form. That it reaches the app was proved at day zero; what the relying party
+receives has not been seen.
+
+*This went wrong if:* `Reference Text` is empty. The request was accepted without the text being
+used. Say so and move on; do not spend the sitting hunting for why.
+
+### Step S8. Single sign-on, on a second client
+
+Start it straight after S7, in the same browser. It is the partner client riding the session S7's
+login left behind, so there should be nothing to approve.
+
+*Settles:* whether a second client on the same account is waved through without a prompt when the
+first forces login, and whether `sub` and `sid` come back the same as S7's. Discovery advertises
+public subjects, where the first broker scopes a subject to the organization.
+
+*This went wrong if:* it asks for anything. Do not approve it — single sign-on did not apply, and
+that is the recording. If S7 was abandoned before its login completed, there was no session to
+ride, and a prompt says nothing; note that instead.
+
+### Step S9. Hybrid response, for c_hash
+
+Approve as normal. The answer arrives as a form posted to the harness rather than a redirect.
+
+*Settles:* `c_hash` in the id_token delivered through the front channel, `at_hash` in the one the
+token endpoint returns — which is where the first broker's hybrid recording has it — and the
+`form_post` envelope. This broker advertises no response type of `id_token` alone, so this is the
+only front-channel id_token it can show.
+
+### Step S10. Assurance level High
+
+On the claims client again, asking for `loa:high`. Approve at the highest level the simulator
+offers. If it offers nothing above the ordinary approval, cancel and note what it did offer.
+
+*Settles:* whether `loa:high` changes `acr`, `amr`, `mitid_loa` and `mitid_aal`, and what MitID
+asks for. Signicat's
+[levels of assurance](https://developer.signicat.com/docs/eid-hub/concepts/levels-of-assurance/)
+page documents the key for every eID on its platform, lists MitID as supporting all three levels,
+and says a login below the requested level fails rather than returning. No request has used it
+yet. Unknown keys are ignored here, so levels unchanged from S6 mean it was not read.
+
+*This went wrong if:* the login completes at a lower level than asked. That contradicts the page
+above; record what came back rather than repeating the step.
+
+### What has no step here
+
+- **An id_token alone.** Not advertised; S9 is the front-channel recording.
+- **CPR match.** There is no endpoint. The number arrives through `nin` in the login itself.
+- **End session.** Without an `id_token_hint` it is already in the unattended pack as CAP-043.
+  With one, the harness would be carrying a token in a URL, which nothing yet strips.
+- **An unregistered redirect URI.** Refused before any login, so it belongs in the unattended
+  pack. A sitting step would capture nothing at the callback, which is all the first broker's
+  CAP-028 holds.
+- **A transaction text.** On the first broker it is a signing flow, and signing is out of scope
+  for this one.
+
+### If something goes wrong here
+
+**The token exchange fails with `invalid_client`.** The broker does not accept that client's
+secret. `rehearse` asks about every secret and would have said so; fix the setting, restart, and
+redo the step.
+
+**The first token exchange fails with `invalid_grant`.** The PKCE challenge travels inside the
+request object and is only compared at the token endpoint, which no rehearsal reaches. Suspect it
+first. The login is spent; redo the step once, and stop if it fails the same way.
+
+**An authorize lands on `/auth/open/Error`.** `rehearse` would have caught it the day before. The
+error page never says why; a pushed authorization request with the same object is the only surface
+that does. If every signed step on a client lands there, suspect the key first: expired, or
+imported on some of the three signing clients and not the others.
+
+**The launchpad shows "Unexpected callback".** A reload or a resubmitted form lands there and
+records nothing, which is the point. The page shows the `state` and any error that arrived: if it
+names a step still outstanding, such as S3, write the error down.
+
+**A token records `SignatureVerified: null`.** Its `kid` was in none of the key set fetches. That is
+unchecked, not a bad signature, and it does not invalidate the recording.

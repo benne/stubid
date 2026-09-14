@@ -217,6 +217,27 @@ public class BrokerClientTests
             ManualCatalog.StepsNeeding(BrokerTarget.NetsEidBroker, setting));
     }
 
+    /// <summary>
+    /// On the second broker a missing key blocks every signed step, whichever client it uses.
+    /// </summary>
+    /// <remarks>
+    /// The key's identifier blocks nothing: the object is signed without one, and a client holding a
+    /// single registered key may still resolve it.
+    /// </remarks>
+    [Theory]
+    [InlineData("STUBID_SIGNICAT_PARTNER_CLIENT_ID", "CAP-020,CAP-021,CAP-022,CAP-027")]
+    [InlineData("STUBID_SIGNICAT_PRIMARY_CLIENT_SECRET", "CAP-023,CAP-024,CAP-026")]
+    [InlineData("STUBID_SIGNICAT_CLAIMS_CLIENT_ID", "CAP-025,CAP-029")]
+    [InlineData("STUBID_SIGNICAT_HYBRID_CLIENT_ID", "CAP-028")]
+    [InlineData("STUBID_SIGNICAT_PRIVATE_KEY_PATH", "CAP-023,CAP-024,CAP-025,CAP-026,CAP-028,CAP-029")]
+    [InlineData("STUBID_SIGNICAT_KEY_ID", "")]
+    public void A_missing_setting_blocks_the_second_brokers_steps_that_need_it(string setting, string blocked)
+    {
+        Assert.Equal(
+            blocked.Split(',', StringSplitOptions.RemoveEmptyEntries),
+            ManualCatalog.StepsNeeding(BrokerTarget.Signicat, setting));
+    }
+
     /// <summary>A published identifier needs nothing configured at all.</summary>
     [Fact]
     public void A_published_client_resolves_with_no_settings()

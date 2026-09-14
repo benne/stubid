@@ -23,7 +23,10 @@ public sealed class ManualCase
 {
     public required string Id { get; init; }
 
-    /// <summary>The step number in docs/capture-session.md, so the two stay aligned.</summary>
+    /// <summary>
+    /// The step heading in docs/capture-session.md, so the two stay aligned: the first broker's in
+    /// Parts 3 and 6, the second's in Part 7.
+    /// </summary>
     public required string Step { get; init; }
 
     public required string Title { get; init; }
@@ -52,7 +55,13 @@ public sealed class ManualCase
     /// </summary>
     public required BrokerClient Client { get; init; }
 
-    public string Scope { get; init; } = "openid mitid";
+    /// <summary>What the step asks for.</summary>
+    /// <remarks>
+    /// Required, like the client. It used to default to the first broker's <c>openid mitid</c>, and
+    /// <c>mitid</c> is not a scope on the second: a step that forgot to say would have been refused
+    /// for asking.
+    /// </remarks>
+    public required string Scope { get; init; }
 
     public string ResponseType { get; init; } = "code";
 
@@ -63,14 +72,15 @@ public sealed class ManualCase
         new Dictionary<string, string>(StringComparer.Ordinal);
 
     /// <summary>
-    /// Sends the whole request as a JWT signed with the client secret, instead of as query
-    /// parameters.
+    /// Sends the whole request as a signed JWT instead of as query parameters: HS256 over the client
+    /// secret on the first broker, and with the registered key on the second.
     /// </summary>
     /// <remarks>
-    /// The broker limits the transaction-text flow to signed requests, so a step that wants
-    /// the transaction-text claims has to set this. The query then carries only client_id,
-    /// response_type and request, and everything else - scope, redirect_uri, nonce, PKCE and
-    /// the step's own Extra - travels inside the object. That the broker reads them from
+    /// The first broker limits the transaction-text flow to signed requests, so a step that wants
+    /// the transaction-text claims has to set this. On the second, three of the four clients refuse
+    /// anything else, and <see cref="BrokerClient.RequiresRequestObject" /> says which. The query
+    /// then carries only client_id, response_type and request, and everything else - scope,
+    /// redirect_uri, nonce, PKCE and the step's own Extra - travels inside the object. That the broker reads them from
     /// there was measured rather than assumed: docs/research/signed-requests.md.
     /// </remarks>
     public bool SignRequest { get; init; }

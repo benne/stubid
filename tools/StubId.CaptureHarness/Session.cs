@@ -90,34 +90,30 @@ public static class Session
             Pending? pending = null;
             string? note = null;
 
-            if (state is not null && Pendings.TryRemove(state, out var matched))
+            if (CallbackStep(state, [.. Pendings.Values.Select(p => p.Case)]) is { } id
+                && Pendings.TryRemove(id, out var matched))
             {
-                pending = matched;
-            }
-            else if (Pendings.Count == 1 && Pendings.TryRemove(Pendings.Keys.First(), out matched))
-            {
-                // A signed step's state travels inside the request object instead of in the
-                // query, and whether the broker echoes it back has never been observed: every
-                // measurement of a signed request stopped at the authorize response. If it does
-                // not, matching on state alone would strand an authorization code that expires
-                // in seconds, and the authentication that produced it is gone. With one step
-                // outstanding there is nothing to confuse it with, so the recording is taken
-                // and the absence is written into meta.json - it is a fact about signed
-                // requests rather than an error to swallow.
                 pending = matched;
                 note = state is null
-                    ? "The callback carried no state, and was matched to the only step outstanding."
-                    : "The callback carried a state matching no step, and was matched to the "
-                      + "only step outstanding.";
+                    ? "The callback carried no state, and was matched to the only step outstanding "
+                      + "that expects a code."
+                    : null;
             }
 
             if (pending is null)
             {
+                // What arrived, so a refusal nobody was waiting for can still be written down. Never
+                // the code.
+                var arrived = string.Join("<br>", new[] { "state", "error", "error_description" }
+                    .Where(parameters.ContainsKey)
+                    .Select(name => $"<code>{name}={WebUtility.HtmlEncode(parameters[name])}</code>"));
+
                 return Results.Text(
                     Page("Unexpected callback",
                         "<p>No pending request matches this state. Start the step from the list "
                         + "rather than reloading this page: a step is consumed once it "
                         + "completes, so a reload cannot record it twice.</p>"
+                        + (arrived.Length == 0 ? "" : $"<p>{arrived}</p>")
                         + "<p><a href=\"/\">Back to the list</a></p>"),
                     "text/html; charset=utf-8");
             }
@@ -174,7 +170,7 @@ public static class Session
 
             return Results.Text(
                 Page("Broker session ended", "<p>The next step will authenticate from scratch. "
-                    + "This was not recorded: the logout StubID needs to reproduce is CAP-027.</p>"
+                    + "This was not recorded, and is not the logout StubID reproduces.</p>"
                     + "<p><a href=\"/\">Back to the list</a></p>"),
                 "text/html; charset=utf-8");
         });
@@ -187,9 +183,11 @@ public static class Session
                 return Results.Text(
                     Page("Something is unaccounted for",
                         string.Join("<br>", suspicious.Select(WebUtility.HtmlEncode))
-                        + "<br><br>Add it to the redact block in capture.local.json and restart, "
-                        + "or continue with <a href=\"/finish?anyway=1\">/finish?anyway=1</a> "
-                        + "if you are sure."),
+                        + "<br><br>Nothing has been written. A restart discards everything staged, so "
+                        + "either add it to the redact block in capture.local.json, restart and record "
+                        + "the affected steps again, or continue with "
+                        + "<a href=\"/finish?anyway=1\">/finish?anyway=1</a> if you are sure it is "
+                        + "neither personal data nor a token."),
                     "text/html; charset=utf-8");
             }
 
@@ -212,6 +210,26 @@ public static class Session
         return 0;
     }
 
+    /// <summary>Which outstanding step a callback belongs to, or null for none.</summary>
+    /// <remarks>
+    /// <para>
+    /// By state wherever there is one. A state that matches nothing outstanding belongs to a step
+    /// already consumed - a reload, a resubmitted form - and is not handed to whatever is still
+    /// waiting. The second broker's timeout step waits for most of its sitting, and a stray callback
+    /// filed under it would have staged another step's exchange there and left the real timeout
+    /// nowhere to land.
+    /// </para>
+    /// <para>
+    /// With no state at all, the one outstanding step that expects a code takes it, if there is
+    /// exactly one. That fallback is older than the measurement: both brokers have since been seen to
+    /// echo a signed step's state, and rehearse checks it on every run.
+    /// </para>
+    /// </remarks>
+    public static string? CallbackStep(string? state, IReadOnlyCollection<ManualCase> outstanding) =>
+        state is not null
+            ? outstanding.Any(c => c.Id == state) ? state : null
+            : outstanding.Where(c => c.ExpectCode).ToList() is [var only] ? only.Id : null;
+
     /// <summary>
     /// Builds the authorize request for a step. Shared with the rehearsal, so what is checked
     /// beforehand is exactly what the sitting sends.
@@ -232,10 +250,16 @@ public static class Session
             ["scope"] = @case.Scope,
             ["state"] = @case.Id,
             ["nonce"] = nonce,
-            ["idp_values"] = "mitid",
-            ["code_challenge"] = Base64UrlText(SHA256.HashData(Encoding.ASCII.GetBytes(verifier))),
-            ["code_challenge_method"] = "S256",
         };
+
+        // Where the first broker's idp_values always sat, so its requests are the bytes they were.
+        foreach (var (key, value) in broker.SelectsMitId)
+        {
+            parameters[key] = value;
+        }
+
+        parameters["code_challenge"] = Base64UrlText(SHA256.HashData(Encoding.ASCII.GetBytes(verifier)));
+        parameters["code_challenge_method"] = "S256";
 
         if (@case.ResponseMode is not null)
         {
@@ -351,9 +375,8 @@ public static class Session
 
                 break;
 
-            case FollowUp.CprMatch when accessToken is not null:
-                using (var request = new HttpRequestMessage(
-                    HttpMethod.Post, $"{Authority}/api/v1/mitid/matchCpr"))
+            case FollowUp.CprMatch when accessToken is not null && Target.CprMatchPath is { } cprMatch:
+                using (var request = new HttpRequestMessage(HttpMethod.Post, $"{Authority}{cprMatch}"))
                 {
                     request.Headers.Authorization = new("Bearer", accessToken);
                     request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
@@ -432,18 +455,52 @@ public static class Session
     /// The broker's key set, as it stands today.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// A missing key set is not a reason to refuse a sitting. It costs the signature check,
     /// which is recorded as unchecked rather than as failed, and the sitting is worth more
     /// than that one member.
+    /// </para>
+    /// <para>
+    /// Where the broker answers each request with a different subset of its keys, one fetch would
+    /// leave a token's kid out often enough to matter. So the set is fetched until three requests
+    /// in a row add nothing, and merged. A kid still missing after that is reported as unchecked by
+    /// the verifier, never as a failed signature.
+    /// </para>
     /// </remarks>
     private static async Task<string?> FetchJwksAsync()
     {
         try
         {
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
-            return await client.GetStringAsync($"{Authority}/.well-known/openid-configuration/jwks");
+            var url = $"{Authority}/.well-known/openid-configuration/jwks";
+            var keySet = await client.GetStringAsync(url);
+            var count = TokenFixtures.KeyCount(keySet);
+
+            for (var (requests, quiet) = (1, 0); Target.KeySetVariesPerRequest && quiet < 3 && requests < 20; requests++)
+            {
+                try
+                {
+                    var merged = TokenFixtures.MergeKeySets([keySet, await client.GetStringAsync(url)]);
+                    var mergedCount = TokenFixtures.KeyCount(merged);
+                    quiet = mergedCount == count ? quiet + 1 : 0;
+                    (keySet, count) = (merged, mergedCount);
+                }
+                catch (Exception error) when (error is HttpRequestException or TaskCanceledException
+                                                  or JsonException or KeyNotFoundException
+                                                  or InvalidOperationException)
+                {
+                    // The keys already in hand are worth more than a complete set nobody got.
+                    Console.Error.WriteLine(
+                        $"  a further key set request failed, keeping the {count} keys fetched so far: {error.Message}");
+                    break;
+                }
+            }
+
+            return keySet;
         }
-        catch (Exception error) when (error is HttpRequestException or TaskCanceledException)
+        catch (Exception error) when (error is HttpRequestException or TaskCanceledException
+                                          or JsonException or KeyNotFoundException
+                                          or InvalidOperationException)
         {
             Console.Error.WriteLine($"  could not fetch the key set: {error.Message}");
             return null;

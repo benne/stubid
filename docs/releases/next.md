@@ -3,6 +3,43 @@
 Notes accumulate here as changes land, and this file is renamed to the version when a release
 goes out. The dated files beside it are history and are never edited.
 
+## Signicat's sitting can be booked
+
+The second broker's manual catalog has ten steps, CAP-020 to CAP-029, and the runbook has a Part 7
+for them: two aborts and a timeout, a baseline login and one with the CPR number, the same login on
+the client that puts every claim in the identity token, transaction consent with a reference text,
+single sign-on on a second client, a hybrid response for `c_hash`, and assurance level High.
+Nothing is recorded yet. `rehearse --broker=signicat` reports every step ready: the six steps that
+send a request object signed with the key registered for them reach the login page, and the
+redirect back from each carries its `state`.
+
+Five things in the harness would have cost this sitting:
+
+- Every authorize request sent `idp_values=mitid`, which Signicat ignores. Logins reached MitID
+  anyway only because the sandbox account has one eID. The broker now says how MitID is selected —
+  `acr_values=idp:mitid` here — and the first broker's requests match what its sitting recorded,
+  parameter for parameter.
+- A step's scope defaulted to `openid mitid`, and `mitid` is not a scope on the second broker. A
+  step now has to say what it asks for.
+- A callback whose `state` matched nothing outstanding was handed to the one step still waiting.
+  The timeout step waits for most of this sitting, so a reloaded callback from another step would
+  have been filed under it and left the real timeout nowhere to land. Only a callback with no
+  `state` is matched that way now, and only to a step that expects a code; an unmatched callback
+  shows what arrived.
+- A signature was called unverified whenever the token's `kid` was missing from the one key set the
+  session fetched, and Signicat leaves a different few keys out of every answer. The session now
+  merges several fetches, keeps what it has if a later one fails, and records a `kid` that is still
+  missing as unchecked rather than as a failure.
+- `rehearse` expected every answer to be a redirect. A `form_post` step is answered with a page that
+  posts back, and it now reads where that page posts and with which `state`.
+
+`rehearse` also asks the token endpoint about every client that exchanges a code, with a code that
+is not real, so a wrong secret is found before a login is spent on it; and a step it cannot build is
+now a problem rather than a quiet skip. A client that refuses a plain query says so, and a test
+fails any step on it that does not sign. `check` names the steps a missing signing key blocks, and
+a follow-up a broker has no endpoint for — the first broker's CPR match — cannot be declared on the
+other.
+
 ## Signicat's sandbox is recorded
 
 `fixtures/signicat/sandbox/` holds twenty-three recordings made against a sandbox tenant: CAP-001 to

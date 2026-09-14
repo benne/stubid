@@ -94,6 +94,7 @@ public class RequestObjectTests
             Settles = "Nothing; this one is a test.",
             Operator = "Nothing.",
             Client = BrokerClient.NetsEidBroker.OpenCode,
+            Scope = "openid mitid",
             SignRequest = true,
         }).Url);
 
@@ -121,6 +122,7 @@ public class RequestObjectTests
             Settles = "Nothing; this one is a test.",
             Operator = "Nothing.",
             Client = BrokerClient.NetsEidBroker.OpenCode,
+            Scope = "openid mitid",
         });
 
         Assert.DoesNotContain("request=", url, StringComparison.Ordinal);
