@@ -3,6 +3,27 @@
 Notes accumulate here as changes land, and this file is renamed to the version when a release
 goes out. The dated files beside it are history and are never edited.
 
+## A pack is found, and a citation belongs to its broker
+
+Two checks named the recording packs by hand, and both named only the first broker's. The manifest
+guard hashed `neb/pp` and `neb/pp-session` and nothing else, so a second broker's pack would have
+arrived carrying a manifest that nothing verified. It now walks `fixtures/` for the `MANIFEST.json`
+that makes a directory a pack, beside a check that the walk still finds the two packs known to be
+there — a theory over a walk looking in the wrong place passes, and looks exactly like an empty
+tree.
+
+The documentation check needed more than a longer list, because the numbering restarts per broker.
+`CAP-001` is each pack's own discovery document, so resolving a citation against every pack would
+have let a page about the second broker cite a recording its own pack did not have and pass against
+the first broker's instead — a check that got weaker the day a broker was added. A page under
+`docs/brokers/<key>/` now resolves only against `fixtures/<key>/`. A page under no broker, such as a
+research note or the roadmap, still resolves against every pack, because nothing in its path says
+whose recording it means; that rule is weaker and is stated rather than guessed from a file name.
+
+No second broker has a page or a pack yet, so the real documentation cannot exercise the half of the
+rule that matters. A negative control does: a broker page citing a capture that only another
+broker's pack holds does not resolve.
+
 ## The second broker's clients are four registrations
 
 They were a plan with a setting name attached, and now they are a roster: a primary, a claims

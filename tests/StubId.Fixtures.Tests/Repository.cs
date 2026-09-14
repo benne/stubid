@@ -7,6 +7,22 @@ public static class Repository
 
     public static string Fixtures => Path.Combine(Root, "fixtures");
 
+    /// <summary>
+    /// Every pack in the tree, as a path under <see cref="Fixtures" />: <c>neb/pp</c>.
+    /// </summary>
+    /// <remarks>
+    /// Found by the <c>MANIFEST.json</c> that makes a directory a pack rather than listed, so a
+    /// pack recorded later is covered the day it arrives. Walks <c>fixtures/</c> rather than the
+    /// whole tree, which keeps it clear of any build output a manifest might ever be copied into.
+    /// </remarks>
+    public static IReadOnlyList<string> Packs { get; } =
+    [
+        .. Directory.EnumerateFiles(Fixtures, "MANIFEST.json", SearchOption.AllDirectories)
+            .Select(manifest => Path.GetRelativePath(Fixtures, Path.GetDirectoryName(manifest)!)
+                .Replace('\\', '/'))
+            .Order(StringComparer.Ordinal),
+    ];
+
     public static string NebPreProduction => Path.Combine(Fixtures, "neb", "pp");
 
     public static string Fixture(string captureId, string file) =>

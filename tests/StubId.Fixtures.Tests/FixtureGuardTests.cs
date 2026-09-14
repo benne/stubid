@@ -360,18 +360,47 @@ public class FixtureGuardTests
     /// </summary>
     private static readonly (string Name, string Value)[] Configured = [.. Scrubber.Configured()];
 
+    public static TheoryData<string> Packs()
+    {
+        var data = new TheoryData<string>();
+        foreach (var pack in Repository.Packs)
+        {
+            data.Add(pack);
+        }
+
+        return data;
+    }
+
     /// <summary>
-    /// Both packs. The unattended one is rehashed by every <c>capture</c> run, so it drifts
-    /// only briefly; the sitting's manifest is written when somebody finishes a sitting and
-    /// not again, and those recordings are the ones no run can reproduce. This test was
-    /// covering only the pack that could be recaptured.
+    /// The walk finds the packs known to be there.
     /// </summary>
+    /// <remarks>
+    /// A theory over a walk passes vacuously when the walk looks in the wrong place, and that looks
+    /// exactly like a tree with nothing in it. Naming today's two is what makes discovery a check
+    /// rather than a hope; a third arriving needs no edit here.
+    /// </remarks>
+    [Fact]
+    public void The_packs_found_include_the_ones_known_to_exist()
+    {
+        Assert.Contains("neb/pp", Repository.Packs);
+        Assert.Contains("neb/pp-session", Repository.Packs);
+    }
+
+    /// <summary>
+    /// Every pack in the tree, found rather than listed.
+    /// </summary>
+    /// <remarks>
+    /// The unattended pack is rehashed by every <c>capture</c> run, so it drifts only briefly; a
+    /// sitting's manifest is written when somebody finishes a sitting and not again, and those
+    /// recordings are the ones no run can reproduce. This test once covered only the pack that
+    /// could be recaptured, and then two packs named by hand under one broker - so a second
+    /// broker's pack would have arrived carrying a manifest that nothing checked.
+    /// </remarks>
     [Theory]
-    [InlineData("pp")]
-    [InlineData("pp-session")]
+    [MemberData(nameof(Packs))]
     public void Manifest_covers_every_file_and_the_hashes_still_match(string pack)
     {
-        var root = Path.Combine(Repository.Fixtures, "neb", pack);
+        var root = Path.Combine(Repository.Fixtures, pack);
         using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "MANIFEST.json")));
         var recorded = manifest.RootElement.GetProperty("files");
 
