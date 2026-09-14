@@ -20,8 +20,8 @@ Today that is `fixtures/neb/pp` and `fixtures/neb/pp-session`. Every harness com
 broker with `--broker=`, and there is no default: the two write into different packs, and a run
 that guessed would put one broker's recordings where the other's belong.
 
-**The numbering restarts per broker.** `CAP-001` is each pack's own discovery document, so a
-citation only means something beside the broker it belongs to.
+**The numbering restarts per broker.** Each broker's unattended pack starts at `CAP-001` with its
+own discovery document, so a citation only means something beside the broker it belongs to.
 
 Bodies are stored as served: no decompression, no reformatting, no reserializing. Member
 order and whitespace are part of what is being pinned, and a JSON round-trip would quietly

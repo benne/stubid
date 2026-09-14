@@ -9,11 +9,12 @@ Two checks named the recording packs by hand, and both named only the first brok
 guard hashed `neb/pp` and `neb/pp-session` and nothing else, so a second broker's pack would have
 arrived carrying a manifest that nothing verified. It now walks `fixtures/` for the `MANIFEST.json`
 that makes a directory a pack, beside a check that the walk still finds the two packs known to be
-there — a theory over a walk looking in the wrong place passes, and looks exactly like an empty
-tree.
+there. A walk that finds nothing was never the risk, since a theory with no data fails rather than
+passes; the case nothing else would notice is a walk that finds one pack and misses another.
 
 The documentation check needed more than a longer list, because the numbering restarts per broker.
-`CAP-001` is each pack's own discovery document, so resolving a citation against every pack would
+Each broker's unattended pack starts at `CAP-001` with its own discovery document, so resolving a
+citation against every pack would
 have let a page about the second broker cite a recording its own pack did not have and pass against
 the first broker's instead — a check that got weaker the day a broker was added. A page under
 `docs/brokers/<key>/` now resolves only against `fixtures/<key>/`. A page under no broker, such as a
