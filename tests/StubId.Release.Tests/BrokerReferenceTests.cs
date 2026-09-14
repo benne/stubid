@@ -139,11 +139,16 @@ public class BrokerReferenceTests
     /// number for the next unattended batch - so naming one that does not exist is what it is
     /// for. Every other document cites a recording as evidence, and evidence has to be there.
     /// </para>
+    /// <para>
+    /// Where it has to be depends on whose recording it is, because the numbering restarts per
+    /// broker - see <see cref="PacksFor" />. The packs themselves are found rather than listed, so
+    /// one recorded later is resolved against the day it arrives.
+    /// </para>
     /// </remarks>
     [Fact]
     public void Every_capture_the_documentation_cites_is_one_that_exists()
     {
-        var packs = new[] { "fixtures/neb/pp", "fixtures/neb/pp-session" };
+        var packs = Packs();
 
         var missing = Markdown(Docs)
             .Where(file => file.Relative != "docs/capture-session.md")
@@ -151,7 +156,7 @@ public class BrokerReferenceTests
                 .Matches(File.ReadAllText(file.Full), @"\bCAP-\d{3}\b")
                 .Select(m => m.Value)
                 .Distinct(StringComparer.Ordinal)
-                .Where(id => !packs.Any(pack =>
+                .Where(id => !PacksFor(file.Relative, packs).Any(pack =>
                     Directory.Exists(Path.Combine(Repository.Root, pack, id))))
                 .Select(id => $"{file.Relative}  {id}"))
             .ToList();
@@ -163,6 +168,114 @@ public class BrokerReferenceTests
         Assert.True(
             Markdown(Docs).Any(f => Regex.IsMatch(File.ReadAllText(f.Full), @"\bCAP-\d{3}\b")),
             "No capture citation was found at all, so this test is checking nothing.");
+
+        Assert.True(
+            Markdown(Docs).Any(f => f.Relative.StartsWith("docs/brokers/", StringComparison.Ordinal)
+                && Regex.IsMatch(File.ReadAllText(f.Full), @"\bCAP-\d{3}\b")),
+            "No broker page cites a capture, so the rule scoping a citation to its broker checks nothing.");
+    }
+
+    /// <summary>
+    /// The packs a document's citations may resolve against.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>CAP-001</c> is each pack's own discovery document, so a capture id means nothing apart
+    /// from the broker it belongs to. Resolved against every pack, a citation on a second broker's
+    /// page would pass against the first broker's recording while its own pack lacked the file -
+    /// a check that got weaker the day a broker was added. A page under
+    /// <c>docs/brokers/&lt;key&gt;/</c> therefore resolves against <c>fixtures/&lt;key&gt;/</c> and
+    /// nothing else.
+    /// </para>
+    /// <para>
+    /// A page under no broker - the research notes, the roadmap, the release notes - still
+    /// resolves against every pack, because nothing in its path says whose recording it means.
+    /// That is the weaker rule, and it is left stated rather than guessed from a file name.
+    /// </para>
+    /// </remarks>
+    private static IEnumerable<string> PacksFor(string document, IReadOnlyList<string> packs)
+    {
+        // Four segments at least: a page sitting directly under docs/brokers/ belongs to no broker
+        // rather than to one named like its file. The trailing slash is what makes the key a
+        // directory rather than a prefix - "ne" must not find "neb".
+        if (document.Split('/') is ["docs", "brokers", var broker, _, ..])
+        {
+            return packs.Where(pack => pack.StartsWith($"fixtures/{broker}/", StringComparison.Ordinal));
+        }
+
+        return packs;
+    }
+
+    /// <summary>Every pack in the tree, found by its manifest: <c>fixtures/neb/pp</c>.</summary>
+    private static IReadOnlyList<string> Packs() =>
+    [
+        .. Directory.EnumerateFiles(
+                Path.Combine(Repository.Root, "fixtures"), "MANIFEST.json", SearchOption.AllDirectories)
+            .Select(manifest => Path.GetRelativePath(Repository.Root, Path.GetDirectoryName(manifest)!)
+                .Replace('\\', '/'))
+            .Order(StringComparer.Ordinal),
+    ];
+
+    /// <summary>
+    /// A pack is a broker and an environment, which is what scoping reads the broker from.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="PacksFor" /> takes a pack's second segment as its broker. A manifest written one
+    /// level too deep or too shallow would be assigned to the wrong broker or to none, and every
+    /// citation of it would quietly stop resolving where it should.
+    /// </remarks>
+    [Fact]
+    public void Every_pack_is_a_broker_and_an_environment()
+    {
+        var packs = Packs();
+
+        Assert.Contains("fixtures/neb/pp", packs);
+        Assert.Contains("fixtures/neb/pp-session", packs);
+
+        var misplaced = packs.Where(pack => pack.Split('/').Length != 3).ToList();
+        Assert.True(misplaced.Count == 0,
+            "These manifests do not sit at fixtures/<broker>/<env>: " + string.Join(", ", misplaced));
+    }
+
+    /// <summary>
+    /// The negative control: a broker page does not resolve against another broker's recording.
+    /// </summary>
+    /// <remarks>
+    /// No second broker has a page or a pack yet, so the real documentation cannot exercise the
+    /// half of the rule that matters. This does.
+    /// </remarks>
+    [Fact]
+    public void A_broker_page_does_not_resolve_against_another_brokers_recording()
+    {
+        Assert.Empty(PacksFor("docs/brokers/signicat/errors.md", ["fixtures/neb/pp", "fixtures/neb/pp-session"]));
+    }
+
+    [Fact]
+    public void A_broker_page_resolves_against_its_own_packs_only()
+    {
+        Assert.Equal(
+            ["fixtures/neb/pp", "fixtures/neb/pp-session"],
+            PacksFor(
+                "docs/brokers/neb/errors.md",
+                ["fixtures/neb/pp", "fixtures/neb/pp-session", "fixtures/signicat/sandbox"]));
+    }
+
+    /// <summary>"ne" is a prefix of "neb" as text, and names nothing as a directory.</summary>
+    [Fact]
+    public void A_broker_key_is_matched_as_a_whole_directory()
+    {
+        Assert.Empty(PacksFor("docs/brokers/ne/errors.md", ["fixtures/neb/pp"]));
+    }
+
+    [Theory]
+    [InlineData("docs/research/signed-requests.md")]
+    [InlineData("docs/roadmap.md")]
+    [InlineData("docs/brokers/index.md")]
+    public void A_page_under_no_broker_resolves_against_every_pack(string document)
+    {
+        string[] packs = ["fixtures/neb/pp", "fixtures/signicat/sandbox"];
+
+        Assert.Equal(packs, PacksFor(document, packs));
     }
 
     /// <summary>
