@@ -1,0 +1,11 @@
+{
+  "id": "CAP-018",
+  "description": "Token endpoint with no parameters at all",
+  "settles": "Which error an empty request earns. Client authentication and the grant are both missing, and only the broker can say which it complains about first.",
+  "disposition": "DescribedJson",
+  "status": 400,
+  "contentType": "application/json; charset=UTF-8",
+  "byteLength": 173,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}

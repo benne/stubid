@@ -1,0 +1,17 @@
+HTTP 302 Found
+Date: Mon, 14 Sep 2026 10:37:12 GMT
+Location: https://{{SIGNICAT_DOMAIN}}.sandbox.signicat.com/auth/open/Error?errorId=CfDJ8PAEkPSZAIRAtfEFXUjMgJA0vY6kHRfwLzLNl5k0r22o3Skn3FWA8WWb3EBm31oRI2GWXgsQJNTplRTsUF5lj_qIpe1MH7y1aZb-Ksrqp7y3PLBDQGX0Y9EEpATrwowNODcTu0opfO82oLt_URVdYCTuwvJrhHI4H8IcTbi0jiyWGGL0iQhcEul1Ty-RSZmU6s_PgKq6JZJ-Ml81n9QBBOrBc8UBy8n492m9Ea8qFBf711BE3O79V09Q_xz_oeJcJEL03BnQ7tq5yt-jg8UnNLA-isq0GCEd2tjQeqfXm2aqS2YgE2O1bjm0ggp3EXhULoamDeLVawGQFAA9YSNXNpGBHaaCi9KliNrD5ZaPkc7fyyXA51LhkVfamvA25SJ1cRZPnPf-043xwg45oYP23IqERTwFYNVnSAWkB6WYlQD_xbm3vxQO8bYqbCQ8EmK49nW0DbHUYGA5Yh7jIv9cktPjmc4OJAWy3_LE2CLp7cOeJ5T0fFdyTF2TJfItjubbJEmvUOthOBg3pX_-dqzetRZRH_rakP2XZvpy4V9xJRGZ1l6v8_LNfW1JuAN1juSBCG6jwyKJA_-nNA625_tfkeYu34-i_m2qpWXtX1fESWUM9eeIX8F96uGxTPJ3DI-IEQ
+X-XSS-Protection: 1; mode=block
+X-Frame-Options: SAMEORIGIN
+Referrer-Policy: same-origin
+permissions-policy: accelerometer=(),camera=(),geolocation=(),gyroscope=(),magnetometer=(),microphone=(),usb=()
+feature-policy: accelerometer 'none';camera 'none';geolocation 'none';gyroscope 'none';magnetometer 'none';microphone 'none';usb 'none'
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+report-to: {"group":"csp-endpoint","max_age":86400,"endpoints":[{"url":"https://o202030.ingest.us.sentry.io/api/4508772389093376/security/?sentry_key=6a25c13d5adaf23097642a7299b3d285&sentry_environment=prod"}],"include_subdomains":true}
+reporting-endpoints: csp-endpoint='https://o202030.ingest.us.sentry.io/api/4508772389093376/security/?sentry_key=6a25c13d5adaf23097642a7299b3d285&sentry_environment=prod'
+Content-Security-Policy: default-src 'self' *.signicat.com *.signicat.io *.idfy.io *.idfy.no cdn.connectis.io;frame-ancestors 'self' *.signicat.com *.signicat.io *.idfy.io *.idfy.no cdn.connectis.io;img-src 'self' *.signicat.com *.signicat.io *.idfy.io *.idfy.no cdn.connectis.io;script-src 'self' 'unsafe-inline' *.signicat.com *.signicat.io *.idfy.io *.idfy.no cdn.connectis.io;style-src 'self' 'unsafe-inline' *.signicat.com *.signicat.io *.idfy.io *.idfy.no cdn.connectis.io fonts.googleapis.com fonts.gstatic.com; report-uri https://o202030.ingest.us.sentry.io/api/4508772389093376/security/?sentry_key=6a25c13d5adaf23097642a7299b3d285&sentry_environment=prod; report-to csp-endpoint
+x-permitted-cross-domain-policies: none
+X-Content-Type-Options: nosniff
+Via: 1.1 google
+Alt-Svc: h3=":443"; ma=2592000
+Content-Length: 0

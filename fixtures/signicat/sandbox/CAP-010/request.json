@@ -1,0 +1,5 @@
+{
+  "method": "GET",
+  "url": "https://{{SIGNICAT_DOMAIN}}.sandbox.signicat.com/auth/open/connect/authorize?client_id={{SIGNICAT_PARTNER_CLIENT_ID}}\u0026response_type=code\u0026redirect_uri=http%3A%2F%2Flocalhost%3A5099%2Fcallback\u0026scope=openid%20profile\u0026state=capture\u0026nonce=capture\u0026acr_values=idp%3Anosuchidp",
+  "headers": []
+}

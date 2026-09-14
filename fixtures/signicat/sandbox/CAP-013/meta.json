@@ -1,0 +1,21 @@
+{
+  "id": "CAP-013",
+  "description": "Authorize with a valid request",
+  "settles": "The accepted path. The first redirect stays on the tenant host, at /auth/open/Authentication/Login, and its ReturnUrl carries the request as an authzId token the broker signed rather than as the query itself. The token\u0027s halves are written beside the recording: every parameter becomes an array, and the issuer is the broker\u0027s shared API host rather than the tenant.",
+  "disposition": "LoginRedirect",
+  "status": 302,
+  "byteLength": 0,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": [],
+  "tokens": {
+    "authzId": {
+      "Algorithm": "RS256",
+      "Kid": "signing-key-37133d757371f543a739ef5d1d342931",
+      "SegmentLengths": [
+        111,
+        530,
+        342
+      ]
+    }
+  }
+}

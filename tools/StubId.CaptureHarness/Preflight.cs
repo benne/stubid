@@ -436,7 +436,13 @@ public static class Preflight
         }
 
         var committed = CommittedKids(target);
-        if (committed is not null && !committed.SequenceEqual(live, StringComparer.Ordinal))
+        if (committed is not null && target.KeySetVariesPerRequest)
+        {
+            Console.WriteLine(
+                $"  {target.Display} serves a different key set from one request to the next, so the "
+                + $"committed {target.KeySetCaptureId} is not compared against this one.");
+        }
+        else if (committed is not null && !committed.SequenceEqual(live, StringComparer.Ordinal))
         {
             Console.WriteLine(
                 $"  WARNING  the committed {target.KeySetCaptureId} key set is not what the broker serves.");
@@ -479,14 +485,6 @@ public static class Preflight
         }
     }
 
-    /// <summary>
-    /// What a missing value costs, when it costs something nameable.
-    /// </summary>
-    /// <remarks>
-    /// A missing Nets eID Broker credential blocks named steps of a sitting, and the steps can be
-    /// listed, so they are. Nothing records Signicat yet, so a missing value there costs coverage
-    /// rather than a step - which the block says once rather than four times.
-    /// </remarks>
     /// <summary>
     /// What a missing value costs, when it costs something nameable.
     /// </summary>

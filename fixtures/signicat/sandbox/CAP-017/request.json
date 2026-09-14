@@ -1,0 +1,6 @@
+{
+  "method": "POST",
+  "url": "https://{{SIGNICAT_DOMAIN}}.sandbox.signicat.com/auth/open/connect/token",
+  "headers": [],
+  "body": "grant_type=authorization_code\u0026code=not-a-real-code\u0026redirect_uri=http%3A%2F%2Flocalhost%3A5099%2Fcallback\u0026client_id=%7B%7BSIGNICAT_PARTNER_CLIENT_ID%7D%7D\u0026client_secret=%7B%7BSIGNICAT_PARTNER_CLIENT_SECRET%7D%7D"
+}

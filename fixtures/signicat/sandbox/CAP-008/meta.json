@@ -1,0 +1,11 @@
+{
+  "id": "CAP-008",
+  "description": "Discovery with the second tenant segment capitalized",
+  "settles": "That open is matched with regard to case too. The first broker matches its own segment ordinally, so this is the half of the tenant root that could have gone either way.",
+  "disposition": "NotFound",
+  "status": 404,
+  "contentType": "text/html; charset=UTF-8",
+  "byteLength": 3428,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}

@@ -39,6 +39,16 @@ public sealed class CaptureCase
     public IReadOnlyList<string> VolatileBodyPatterns { get; init; } = [];
 
     /// <summary>
+    /// JSON members whose array is compared as a set: the same entries must be there, in any order.
+    /// </summary>
+    /// <remarks>
+    /// Narrower than a volatile pattern, which would stop checking the entries at all. For a list a
+    /// broker has been seen to reorder without changing, where which entries it serves is still the
+    /// thing worth knowing.
+    /// </remarks>
+    public IReadOnlyList<string> UnorderedArrays { get; init; } = [];
+
+    /// <summary>
     /// How the broker is expected to answer. Recording a refusal is as much the point as
     /// recording a success: how a request is rejected is part of the contract, and a
     /// disposition that changes is a more useful alarm than a status code that changes.

@@ -90,8 +90,47 @@ public static partial class SensitiveContent
     /// something else entirely and passed straight through — and the transaction token comes
     /// from a different subsystem whose header member order is one of the things nobody has
     /// observed yet, so the old check was most likely to miss the one token nobody has seen.
+    /// <para>
+    /// Searched as written and then once per level of escaping. A token carried as a query value
+    /// inside another URL sits behind <c>%3D</c>, and the <c>3D</c> is base64url as well: the match
+    /// started two characters early, the header no longer decoded, and the token was passed over as
+    /// noise. Signicat's login redirect carries its whole authorize request that way, and a hop that
+    /// wraps that redirect in another URL puts it behind <c>%253D</c>.
+    /// </para>
     /// </remarks>
     public static Finding FindSignedToken(string candidate)
+    {
+        // Ends, because unescaping either changes nothing or makes the text shorter.
+        for (var text = candidate; ;)
+        {
+            var location = ReferenceEquals(text, candidate) ? "compact JWS" : "compact JWS, percent-encoded";
+            if (FindSignedToken(text, location) is { Found: true } found)
+            {
+                return found;
+            }
+
+            var unescaped = Uri.UnescapeDataString(text);
+            if (unescaped == text)
+            {
+                return Finding.None;
+            }
+
+            text = unescaped;
+        }
+    }
+
+    /// <summary>The text with every level of percent-encoding removed.</summary>
+    public static string FullyUnescaped(string text)
+    {
+        for (var unescaped = Uri.UnescapeDataString(text); unescaped != text; unescaped = Uri.UnescapeDataString(text))
+        {
+            text = unescaped;
+        }
+
+        return text;
+    }
+
+    private static Finding FindSignedToken(string candidate, string location)
     {
         foreach (Match match in JwsPattern().Matches(candidate))
         {
@@ -106,7 +145,7 @@ public static partial class SensitiveContent
                 if (document.RootElement.ValueKind == JsonValueKind.Object
                     && document.RootElement.TryGetProperty("alg", out _))
                 {
-                    return new Finding(true, match.Value[..Math.Min(24, match.Value.Length)], "compact JWS");
+                    return new Finding(true, match.Value[..Math.Min(24, match.Value.Length)], location);
                 }
             }
             catch (JsonException)

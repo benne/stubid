@@ -1,0 +1,5 @@
+{
+  "method": "GET",
+  "url": "https://{{SIGNICAT_DOMAIN}}.sandbox.signicat.com/auth/Open/.well-known/openid-configuration",
+  "headers": []
+}

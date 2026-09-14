@@ -1,0 +1,15 @@
+HTTP 404 Not Found
+Date: Mon, 14 Sep 2026 10:37:12 GMT
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+Content-Security-Policy: default-src 'none'; script-src https://static.signicat.com 'sha256-ebVEem22iiSTW43hJ15yczV8fNNuOQVrhFWqsKH6J2c='; style-src https://static.signicat.com 'sha256-IwaC5jZm7NBSc17VP6cdJswhTppuCpfEKYICsZAhxLE='; font-src https://static.signicat.com; base-uri 'none'; form-action 'none'; report-uri https://o202030.ingest.us.sentry.io/api/4508772389093376/security/?sentry_key=6a25c13d5adaf23097642a7299b3d285&sentry_environment=prod; report-to csp-endpoint
+reporting-endpoints: csp-endpoint='https://o202030.ingest.us.sentry.io/api/4508772389093376/security/?sentry_key=6a25c13d5adaf23097642a7299b3d285&sentry_environment=prod'
+report-to: {"group":"csp-endpoint","max_age":86400,"endpoints":[{"url":"https://o202030.ingest.us.sentry.io/api/4508772389093376/security/?sentry_key=6a25c13d5adaf23097642a7299b3d285&sentry_environment=prod"}],"include_subdomains":true}
+X-Content-Type-Options: nosniff
+permissions-policy: camera=(), microphone=()
+X-Frame-Options: deny
+x-permitted-cross-domain-policies: none
+Referrer-Policy: no-referrer
+Via: 1.1 google
+Alt-Svc: h3=":443"; ma=2592000
+Content-Length: 3428
+Content-Type: text/html; charset=UTF-8

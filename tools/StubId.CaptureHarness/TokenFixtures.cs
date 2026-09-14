@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace StubId.CaptureHarness;
 
@@ -42,7 +43,7 @@ public sealed record ExtractedToken(
 /// parseable document. It is never presented as what was recorded.
 /// </para>
 /// </remarks>
-public static class TokenFixtures
+public static partial class TokenFixtures
 {
     /// <summary>Names the well-known tokens so a placeholder says what it replaced.</summary>
     private static readonly string[] Known =
@@ -93,6 +94,50 @@ public static class TokenFixtures
         }
 
         return (body, extracted);
+    }
+
+    /// <summary>
+    /// Splits signed tokens out of a response header, where a redirect carries one as a query
+    /// value.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Signicat answers an accepted authorize request with a redirect to its login page, and the
+    /// request itself travels inside the <c>ReturnUrl</c> as an <c>authzId</c> token the broker
+    /// signed, escaped one level down. Its payload names the client, and a scrub cannot see into a
+    /// base64url segment, so writing the header as served would commit the identifier it replaces
+    /// everywhere else.
+    /// </para>
+    /// <para>
+    /// Found in the value with every level of escaping removed, and replaced in the written one.
+    /// Every character a compact token is made of is unreserved, so escaping leaves it as it was and
+    /// the one string is a substring of the other. The placeholder is named for the parameter that
+    /// carried it.
+    /// </para>
+    /// </remarks>
+    public static (string Value, IReadOnlyDictionary<string, ExtractedToken> Tokens) ExtractFromHeader(
+        string value)
+    {
+        var extracted = new Dictionary<string, ExtractedToken>(StringComparer.Ordinal);
+
+        foreach (Match match in QueryToken().Matches(SensitiveContent.FullyUnescaped(value)))
+        {
+            var name = match.Groups["name"].Value;
+            var compact = match.Groups["token"].Value;
+
+            // A header that decodes and names an algorithm, which is the guard's own test for
+            // whether a dotted run is a token at all.
+            if (Member(compact.Split('.')[0], "alg") is null
+                || !value.Contains(compact, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            extracted[name] = Describe(name, compact, verify: null);
+            value = value.Replace(compact, extracted[name].Placeholder, StringComparison.Ordinal);
+        }
+
+        return (value, extracted);
     }
 
     /// <summary>
@@ -161,14 +206,23 @@ public static class TokenFixtures
     {
         try
         {
+            // Any dotted run in a header reaches this now, so the segment may decode to JSON that is
+            // not an object, or name a member that is not a string. Neither is a token header.
             using var header = JsonDocument.Parse(Decode(headerSegment));
-            return header.RootElement.TryGetProperty(name, out var value) ? value.GetString() : null;
+            return header.RootElement.ValueKind == JsonValueKind.Object
+                   && header.RootElement.TryGetProperty(name, out var value)
+                   && value.ValueKind == JsonValueKind.String
+                ? value.GetString()
+                : null;
         }
         catch (JsonException)
         {
             return null;
         }
     }
+
+    [GeneratedRegex(@"(?<name>[A-Za-z_][A-Za-z0-9_]*)=(?<token>[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]*)")]
+    private static partial Regex QueryToken();
 
     /// <summary>
     /// The subject of the certificate a kid resolves to in the published key set.

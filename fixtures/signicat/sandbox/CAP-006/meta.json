@@ -1,0 +1,10 @@
+{
+  "id": "CAP-006",
+  "description": "Discovery with a trailing slash",
+  "settles": "That the trailing slash is refused, and how: this 404 has an empty body, where a path outside /auth/open gets the host\u0027s HTML page (CAP-005). A server that answers both the same way has flattened a difference the broker makes.",
+  "disposition": "NotFound",
+  "status": 404,
+  "byteLength": 0,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}

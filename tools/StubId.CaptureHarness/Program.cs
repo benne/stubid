@@ -215,10 +215,8 @@ async Task<int> VerifyAsync()
 
         var committedBody = await File.ReadAllBytesAsync(
             Path.Combine(directory, "response.raw"), cancellation.Token);
-        var committedExchange = fresh with { ResponseBody = committedBody };
 
-        var bodyMatches = Normalizer.NormalizeBody(committedExchange, @case)
-            == Normalizer.NormalizeBody(fresh, @case);
+        var bodyMatches = Normalizer.BodyMatches(committedBody, fresh, @case);
 
         Console.WriteLine($"  {@case.Id}  {(bodyMatches ? "match" : "DIFFERS")}  {@case.Description}");
         if (!bodyMatches)

@@ -55,6 +55,21 @@ public class ScrubberTests
         Assert.True(SensitiveContent.FindSignedToken(text).Found);
     }
 
+    /// <summary>A token carried as a query value inside another, percent-encoded URL.</summary>
+    /// <remarks>
+    /// Signicat's login redirect is this shape. The "3D" left of the escaped equals sign is
+    /// base64url too, so the match began two characters early, the header stopped decoding, and
+    /// the token was skipped as noise.
+    /// </remarks>
+    [Theory]
+    [InlineData("Location: /Authentication/Login?ReturnUrl=%2Fcallback%3FauthzId%3DeyJhbGciOiJSUzI1NiIsImtpZCI6IlgifQ.eyJzdWIiOiJhLXN1YmplY3QifQ.c2ln")]
+    [InlineData("ReturnUrl=%2Fcallback%3Fstate%3Dx%26authzId%3DeyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhLXN1YmplY3QifQ.c2ln")]
+    [InlineData("target=%2FAuthentication%2FLogin%3FReturnUrl%3D%252Fcallback%253FauthzId%253DeyJhbGciOiJSUzI1NiIsImtpZCI6IlgifQ.eyJzdWIiOiJhLXN1YmplY3QifQ.c2ln")]
+    public void A_signed_token_behind_an_escaped_equals_sign_is_caught(string text)
+    {
+        Assert.True(SensitiveContent.FindSignedToken(text).Found);
+    }
+
     [Theory]
     [InlineData("just some ordinary text with a long-word-that-is-not-a-token")]
     [InlineData("048058BB59F4D3007045896FD488CE81F4EB4923.7FF447FA0FB65A7E749E8B43AC635862.x")]

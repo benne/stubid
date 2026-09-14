@@ -1,0 +1,11 @@
+{
+  "id": "CAP-007",
+  "description": "Discovery with the first tenant segment capitalized",
+  "settles": "That auth is matched with regard to case.",
+  "disposition": "NotFound",
+  "status": 404,
+  "contentType": "text/html; charset=UTF-8",
+  "byteLength": 3428,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}

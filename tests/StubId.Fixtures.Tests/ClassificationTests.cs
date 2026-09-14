@@ -48,23 +48,52 @@ public class ClassificationTests
                 BrokerTarget.Signicat));
     }
 
+    [Fact]
+    public void An_accepted_authorize_on_the_second_broker_lands_on_its_own_login_page()
+    {
+        Assert.Equal(
+            Disposition.LoginRedirect,
+            DispositionClassifier.Classify(
+                Redirect(302, "https://a.example.invalid/auth/open/Authentication/Login?ReturnUrl=x"),
+                BrokerTarget.Signicat));
+    }
+
+    /// <summary>
+    /// A location is a login redirect on the broker that declared it, and nowhere else.
+    /// </summary>
+    /// <remarks>
+    /// Both brokers run IdentityServer, and their login paths differ by one word. The second's was
+    /// measured rather than borrowed from the first, and these rows are what keep the two from being
+    /// merged into a list that calls either broker's page a login on both.
+    /// </remarks>
+    [Theory]
+    [InlineData("signicat", "https://preprod.signicat.com/std/method/dtp?target=x")]
+    [InlineData("signicat", "https://a.example.invalid/auth/open/Account/Login?ReturnUrl=x")]
+    [InlineData("neb", "https://pp.netseidbroker.dk/op/Authentication/Login?ReturnUrl=x")]
+    public void A_location_that_is_not_the_declared_login_page_is_not_one(string broker, string location)
+    {
+        Assert.Equal(
+            Disposition.Unclassified,
+            DispositionClassifier.Classify(Redirect(302, location), BrokerTarget.Select(broker)));
+    }
+
     /// <summary>
     /// A broker that declares no login path classifies nothing as one.
     /// </summary>
     /// <remarks>
-    /// This is the case worth having. Both brokers run IdentityServer, so guessing the second
-    /// one's login path from the first is tempting and is the dangerous kind of nearly-right:
-    /// the second's MitID journey is known to leave the tenant host entirely. Unclassified is the
-    /// honest answer, and the run that produces it prints where the request actually went.
+    /// Neither does today, but a third would start that way. Unclassified is the honest answer while
+    /// nobody has looked, and the run that produces it prints where the request actually went.
     /// </remarks>
-    [Theory]
-    [InlineData("https://preprod.signicat.com/std/method/dtp?target=x")]
-    [InlineData("https://a.example.invalid/auth/open/Account/Login?ReturnUrl=x")]
-    public void A_broker_with_no_declared_login_path_classifies_nothing_as_one(string location)
+    [Fact]
+    public void A_broker_with_no_declared_login_path_classifies_nothing_as_one()
     {
+        var undeclared = BrokerTarget.Signicat with { LoginMarkers = [] };
+
         Assert.Equal(
             Disposition.Unclassified,
-            DispositionClassifier.Classify(Redirect(302, location), BrokerTarget.Signicat));
+            DispositionClassifier.Classify(
+                Redirect(302, "https://a.example.invalid/auth/open/Authentication/Login?ReturnUrl=x"),
+                undeclared));
     }
 
     /// <summary>
@@ -100,9 +129,10 @@ public class ClassificationTests
     /// </remarks>
     [Theory]
     [MemberData(nameof(Recorded))]
-    public void A_recorded_answer_is_called_what_its_case_expects(string id, string expected)
+    public void A_recorded_answer_is_called_what_its_case_expects(string broker, string id, string expected)
     {
-        var head = File.ReadAllLines(Repository.Fixture(id, "response.head"));
+        var target = BrokerTarget.Select(broker);
+        var head = File.ReadAllLines(Repository.Fixture(target, id, "response.head"));
         var status = int.Parse(head[0].Split(' ')[1], System.Globalization.CultureInfo.InvariantCulture);
 
         var headers = head.Skip(1)
@@ -113,17 +143,20 @@ public class ClassificationTests
 
         var exchange = new RecordedExchange(
             "GET", "https://example.invalid/", [], null, status, null, headers,
-            File.ReadAllBytes(Repository.Fixture(id, "response.raw")));
+            File.ReadAllBytes(Repository.Fixture(target, id, "response.raw")));
 
-        Assert.Equal(expected, DispositionClassifier.Classify(exchange, BrokerTarget.NetsEidBroker).ToString());
+        Assert.Equal(expected, DispositionClassifier.Classify(exchange, target).ToString());
     }
 
-    public static TheoryData<string, string> Recorded()
+    public static TheoryData<string, string, string> Recorded()
     {
-        var data = new TheoryData<string, string>();
-        foreach (var @case in CaptureCatalog.For(Broker.NetsEidBroker))
+        var data = new TheoryData<string, string, string>();
+        foreach (var target in BrokerTarget.All)
         {
-            data.Add(@case.Id, @case.Expected.ToString());
+            foreach (var @case in CaptureCatalog.For(target.Broker))
+            {
+                data.Add(target.Key, @case.Id, @case.Expected.ToString());
+            }
         }
 
         return data;

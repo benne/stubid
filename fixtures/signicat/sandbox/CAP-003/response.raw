@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="endui">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Not found</title>
+    <link rel="stylesheet" href="https://static.signicat.com/catnip/components/latest/foucPrevention.min.css">
+    <link rel="stylesheet" href="https://static.signicat.com/catnip/design-tokens/latest/css/default.css">
+    <link rel="stylesheet" href="https://static.signicat.com/catnip/design-tokens/latest/css/endui.css">
+    <style>
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 100 900;
+        font-display: swap;
+        src: url("https://static.signicat.com/catnip/assets/latest/fonts/inter/Inter-VariableFont_opsz,wght.ttf")
+          format("truetype");
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        min-width: 320px;
+        margin: 0;
+        color: #25292c;
+        background: var(--catnip-color-background-neutral-subtlest, #ffffff);
+        font: var(--catnip-font-text-l);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .error-page {
+        display: grid;
+        min-height: 100vh;
+        min-height: 100svh;
+        padding: var(--catnip-space-8, 32px);
+        place-items: center;
+      }
+
+      .error-content {
+        display: flex;
+        width: 100%;
+        max-width: 640px;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--catnip-space-10, 40px);
+        text-align: center;
+      }
+
+      .error-intro {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+      }
+
+      .error-graphic {
+        display: block;
+        width: 266px;
+        max-width: 100%;
+        height: auto;
+        margin: 0 auto;
+      }
+
+      .error-copy {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--catnip-space-2, 8px);
+        width: 100%;
+      }
+
+      h1 {
+        margin: 0;
+        color: #272142;
+        font: var(--catnip-font-display-m);
+      }
+
+      .error-description {
+        max-width: 499px;
+        margin: 0;
+        color: #25292c;
+        font: var(--catnip-font-text-l);
+        letter-spacing: -0.01em;
+      }
+
+      .error-actions {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--catnip-space-6, 24px);
+      }
+
+      @media (max-width: 767px) {
+        .error-page {
+          padding: var(--catnip-space-4, 16px);
+        }
+
+        .error-graphic {
+          width: 220px;
+        }
+      }
+    </style>
+    <script>
+      window.process = window.process || { env: { NODE_ENV: "production" } };
+    </script>
+    <script src="https://static.signicat.com/catnip/components/latest/catnip-components.standalone.js" defer></script>
+  </head>
+  <body>
+    <main class="error-page">
+      <div class="error-content">
+        <div class="error-intro">
+          <catnip-graphic
+            class="error-graphic"
+            name="hero/404-error-signicat"
+            width="266"
+            aria-hidden="true"
+          ></catnip-graphic>
+          <div class="error-copy">
+            <h1 id="error-title">Not found</h1>
+            <p class="error-description">We couldn&#39;t find the page you were looking for.</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

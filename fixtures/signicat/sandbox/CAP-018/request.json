@@ -1,0 +1,6 @@
+{
+  "method": "POST",
+  "url": "https://{{SIGNICAT_DOMAIN}}.sandbox.signicat.com/auth/open/connect/token",
+  "headers": [],
+  "body": ""
+}

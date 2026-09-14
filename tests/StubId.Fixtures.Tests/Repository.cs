@@ -1,3 +1,5 @@
+using StubId.CaptureHarness;
+
 namespace StubId.Fixtures.Tests;
 
 /// <summary>Locates the working tree, so tests can read the committed fixtures.</summary>
@@ -25,8 +27,13 @@ public static class Repository
 
     public static string NebPreProduction => Path.Combine(Fixtures, "neb", "pp");
 
+    /// <summary>A file in the first broker's unattended pack, which most tests read.</summary>
     public static string Fixture(string captureId, string file) =>
-        Path.Combine(NebPreProduction, captureId, file);
+        Fixture(BrokerTarget.NetsEidBroker, captureId, file);
+
+    /// <summary>A file in a broker's unattended pack, where the target says which.</summary>
+    public static string Fixture(BrokerTarget target, string captureId, string file) =>
+        Path.Combine(Root, target.Pack, captureId, file);
 
     /// <summary>The sitting's pack, whose cases are directories of exchanges rather than files.</summary>
     public static string NebSession => Path.Combine(Fixtures, "neb", "pp-session");

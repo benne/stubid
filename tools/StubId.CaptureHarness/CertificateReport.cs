@@ -29,7 +29,31 @@ public static class CertificateReport
             .AppendLine(". Do not edit by hand.");
         report.AppendLine();
 
-        foreach (var key in document.RootElement.GetProperty("keys").EnumerateArray())
+        var keys = document.RootElement.GetProperty("keys").EnumerateArray().ToList();
+
+        // Where not one key carries a chain, a stanza per key would repeat that absence for every
+        // one of them. A table says the same thing once and still names each key.
+        if (keys.All(key => !key.TryGetProperty("x5c", out _)))
+        {
+            report.Append("None of the ").Append(keys.Count)
+                .AppendLine(" keys publishes an x5c chain, so there is no certificate to decode.");
+            report.AppendLine();
+            report.AppendLine("| kid | kty | use | alg member present |");
+            report.AppendLine("| --- | --- | --- | --- |");
+
+            foreach (var key in keys)
+            {
+                report.Append("| `").Append(Member(key, "kid"))
+                    .Append("` | `").Append(Member(key, "kty"))
+                    .Append("` | `").Append(Member(key, "use"))
+                    .Append("` | ").Append(key.TryGetProperty("alg", out _) ? "yes" : "no")
+                    .AppendLine(" |");
+            }
+
+            return report.ToString();
+        }
+
+        foreach (var key in keys)
         {
             var kid = key.TryGetProperty("kid", out var k) ? k.GetString() : null;
             var use = key.TryGetProperty("use", out var u) ? u.GetString() : null;
@@ -74,4 +98,7 @@ public static class CertificateReport
 
         return report.ToString();
     }
+
+    private static string? Member(JsonElement key, string name) =>
+        key.TryGetProperty(name, out var value) ? value.GetString() : null;
 }
