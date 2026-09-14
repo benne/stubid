@@ -169,8 +169,11 @@ public class BrokerReferenceTests
             Markdown(Docs).Any(f => Regex.IsMatch(File.ReadAllText(f.Full), @"\bCAP-\d{3}\b")),
             "No capture citation was found at all, so this test is checking nothing.");
 
+        // By the rule PacksFor scopes with, not a looser one beside it. Checked by prefix, a page
+        // directly under docs/brokers/ satisfied this while its citations skipped scoping entirely,
+        // so the one assertion meant to prove the scoped branch runs could pass while it never did.
         Assert.True(
-            Markdown(Docs).Any(f => f.Relative.StartsWith("docs/brokers/", StringComparison.Ordinal)
+            Markdown(Docs).Any(f => BrokerOf(f.Relative) is not null
                 && Regex.IsMatch(File.ReadAllText(f.Full), @"\bCAP-\d{3}\b")),
             "No broker page cites a capture, so the rule scoping a citation to its broker checks nothing.");
     }
@@ -180,8 +183,8 @@ public class BrokerReferenceTests
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <c>CAP-001</c> is each pack's own discovery document, so a capture id means nothing apart
-    /// from the broker it belongs to. Resolved against every pack, a citation on a second broker's
+    /// Each broker's unattended pack starts at <c>CAP-001</c> with its own discovery document, so a
+    /// capture id means nothing apart from the broker it belongs to. Resolved against every pack, a citation on a second broker's
     /// page would pass against the first broker's recording while its own pack lacked the file -
     /// a check that got weaker the day a broker was added. A page under
     /// <c>docs/brokers/&lt;key&gt;/</c> therefore resolves against <c>fixtures/&lt;key&gt;/</c> and
@@ -193,18 +196,23 @@ public class BrokerReferenceTests
     /// That is the weaker rule, and it is left stated rather than guessed from a file name.
     /// </para>
     /// </remarks>
-    private static IEnumerable<string> PacksFor(string document, IReadOnlyList<string> packs)
-    {
-        // Four segments at least: a page sitting directly under docs/brokers/ belongs to no broker
-        // rather than to one named like its file. The trailing slash is what makes the key a
-        // directory rather than a prefix - "ne" must not find "neb".
-        if (document.Split('/') is ["docs", "brokers", var broker, _, ..])
-        {
-            return packs.Where(pack => pack.StartsWith($"fixtures/{broker}/", StringComparison.Ordinal));
-        }
+    private static IEnumerable<string> PacksFor(string document, IReadOnlyList<string> packs) =>
+        BrokerOf(document) is { } broker
 
-        return packs;
-    }
+            // The trailing slash makes the key a directory rather than a prefix - "ne" must not
+            // find "neb".
+            ? packs.Where(pack => pack.StartsWith($"fixtures/{broker}/", StringComparison.Ordinal))
+            : packs;
+
+    /// <summary>The broker a page belongs to, or null for a page under none.</summary>
+    /// <remarks>
+    /// Four segments at least: a page sitting directly under <c>docs/brokers/</c> belongs to no
+    /// broker rather than to one named like its file, and a page nested further in still belongs to
+    /// the directory it sits under. The literal <c>brokers</c> is what keeps a note filed in a folder
+    /// named after a broker somewhere else in <c>docs/</c> from being read as that broker's reference.
+    /// </remarks>
+    private static string? BrokerOf(string document) =>
+        document.Split('/') is ["docs", "brokers", var broker, _, ..] ? broker : null;
 
     /// <summary>Every pack in the tree, found by its manifest: <c>fixtures/neb/pp</c>.</summary>
     private static IReadOnlyList<string> Packs() =>
@@ -220,9 +228,12 @@ public class BrokerReferenceTests
     /// A pack is a broker and an environment, which is what scoping reads the broker from.
     /// </summary>
     /// <remarks>
-    /// <see cref="PacksFor" /> takes a pack's second segment as its broker. A manifest written one
-    /// level too deep or too shallow would be assigned to the wrong broker or to none, and every
-    /// citation of it would quietly stop resolving where it should.
+    /// <see cref="PacksFor" /> takes a pack's second segment as its broker, whatever follows it. A
+    /// pack one level too shallow, at <c>fixtures/neb</c>, belongs to no broker and its citations
+    /// fail loudly. One nested a level too deep under the wrong broker is the quiet case: a pack at
+    /// <c>fixtures/neb/signicat/sandbox</c> would count as the first broker's, and a page about the
+    /// first broker citing <c>CAP-001</c> would resolve against the second broker's discovery
+    /// document without complaint.
     /// </remarks>
     [Fact]
     public void Every_pack_is_a_broker_and_an_environment()
@@ -267,10 +278,37 @@ public class BrokerReferenceTests
         Assert.Empty(PacksFor("docs/brokers/ne/errors.md", ["fixtures/neb/pp"]));
     }
 
+    /// <summary>A page nested inside a broker's directory is still that broker's.</summary>
+    /// <remarks>
+    /// Matched as exactly four segments, a nested page fell through to every pack, so a citation
+    /// deeper in the second broker's reference would resolve against the first broker's recording -
+    /// the one failure this rule exists to prevent - and no test noticed.
+    /// </remarks>
+    [Fact]
+    public void A_nested_broker_page_is_still_scoped_to_its_broker()
+    {
+        Assert.Equal(
+            ["fixtures/signicat/sandbox"],
+            PacksFor(
+                "docs/brokers/signicat/flows/login.md",
+                ["fixtures/neb/pp", "fixtures/signicat/sandbox"]));
+    }
+
+    /// <summary>
+    /// A page under no broker resolves against every pack, including one filed in a folder named
+    /// like a broker somewhere other than <c>docs/brokers/</c>.
+    /// </summary>
+    /// <remarks>
+    /// The last two rows are what the <c>brokers</c> literal is for. Without it a research note in
+    /// <c>docs/research/signicat/</c> would be scoped to that broker, and a guide in a folder named
+    /// like one would resolve against nothing at all.
+    /// </remarks>
     [Theory]
     [InlineData("docs/research/signed-requests.md")]
     [InlineData("docs/roadmap.md")]
     [InlineData("docs/brokers/index.md")]
+    [InlineData("docs/research/signicat/sandbox-notes.md")]
+    [InlineData("docs/guides/neb/setup.md")]
     public void A_page_under_no_broker_resolves_against_every_pack(string document)
     {
         string[] packs = ["fixtures/neb/pp", "fixtures/signicat/sandbox"];

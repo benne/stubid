@@ -375,9 +375,11 @@ public class FixtureGuardTests
     /// The walk finds the packs known to be there.
     /// </summary>
     /// <remarks>
-    /// A theory over a walk passes vacuously when the walk looks in the wrong place, and that looks
-    /// exactly like a tree with nothing in it. Naming today's two is what makes discovery a check
-    /// rather than a hope; a third arriving needs no edit here.
+    /// A walk that finds nothing is already caught, because a theory with no data fails rather than
+    /// passes. What nothing else would notice is a walk that finds some packs and not all - rooted
+    /// one level too deep, or matching one pack's layout and not another's - since the theory then
+    /// passes over exactly the packs it did find. Naming today's two catches that; a third arriving
+    /// needs no edit here.
     /// </remarks>
     [Fact]
     public void The_packs_found_include_the_ones_known_to_exist()

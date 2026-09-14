@@ -11,9 +11,9 @@ namespace StubId.CaptureHarness;
 /// MitID's test tool and live in a separate catalog, which is why the numbering skips them.
 /// </para>
 /// <para>
-/// The numbering restarts per broker, so CAP-001 is each pack's own discovery document. A
-/// citation therefore only means something beside the broker it belongs to, which is what the
-/// documentation gate checks.
+/// The numbering restarts per broker: each broker's unattended pack starts at CAP-001 with its
+/// own discovery document. A citation therefore only means something beside the broker it
+/// belongs to, which is what the documentation gate checks.
 /// </para>
 /// </remarks>
 public static class CaptureCatalog
