@@ -1,0 +1,10 @@
+{
+  "id": "CAP-043",
+  "description": "End session with no parameters",
+  "settles": "What end session does when it is given nothing: a redirect to the broker\u0027s own logout page, with no query.",
+  "disposition": "Unclassified",
+  "status": 302,
+  "byteLength": 0,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}

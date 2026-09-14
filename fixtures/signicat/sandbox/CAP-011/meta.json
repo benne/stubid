@@ -1,0 +1,21 @@
+{
+  "id": "CAP-011",
+  "description": "Authorize with an acr_values key the broker does not know",
+  "settles": "That an unknown key is ignored rather than refused. The request is accepted and the key travels on inside the authzId payload exactly as sent, so a misspelled MitID option fails silently - the trap the reference text set on the first broker.",
+  "disposition": "LoginRedirect",
+  "status": 302,
+  "byteLength": 0,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": [],
+  "tokens": {
+    "authzId": {
+      "Algorithm": "RS256",
+      "Kid": "signing-key-37133d757371f543a739ef5d1d342931",
+      "SegmentLengths": [
+        111,
+        548,
+        342
+      ]
+    }
+  }
+}

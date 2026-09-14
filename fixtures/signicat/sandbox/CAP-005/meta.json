@@ -1,0 +1,11 @@
+{
+  "id": "CAP-005",
+  "description": "Discovery is not served at the host root",
+  "settles": "That /auth/open is load-bearing: metadata exists only under it.",
+  "disposition": "NotFound",
+  "status": 404,
+  "contentType": "text/html; charset=UTF-8",
+  "byteLength": 3428,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}

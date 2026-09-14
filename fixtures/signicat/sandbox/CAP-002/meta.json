@@ -1,0 +1,14 @@
+{
+  "id": "CAP-002",
+  "description": "Sandbox signing keys",
+  "settles": "The shape of a key, and that the key set is not one document: requests a second apart returned 26, 24 and 22 keys, in different orders. So this promises each key\u0027s members in the order kty, use, kid, e, n, alg, with no certificate chain, and not which keys are served. A client that trusts a cached set for a kid it has not seen will fail some of the time.",
+  "disposition": "Success",
+  "status": 200,
+  "contentType": "application/json; charset=UTF-8",
+  "byteLength": 10074,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": [
+    "\\{\u0022kty\u0022:\u0022RSA\u0022,\u0022use\u0022:\u0022(?:sig|enc)\u0022,\u0022kid\u0022:\u0022[^\u0022]\u002B\u0022,\u0022e\u0022:\u0022[^\u0022]\u002B\u0022,\u0022n\u0022:\u0022[^\u0022]\u002B\u0022,\u0022alg\u0022:\u0022[^\u0022]\u002B\u0022\\}",
+    "\u003Cvolatile\u003E(?:,\u003Cvolatile\u003E)*"
+  ]
+}

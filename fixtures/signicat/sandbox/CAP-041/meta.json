@@ -1,0 +1,11 @@
+{
+  "id": "CAP-041",
+  "description": "Pushed authorization request whose request parameter is not a JWT",
+  "settles": "How PAR refuses a request object it cannot read, which is the only surface that says why an object was refused. Deliberately not a JWS, for the same reason as the first broker\u0027s CAP-046, and authenticated so the push gets as far as the object.",
+  "disposition": "DescribedJson",
+  "status": 400,
+  "contentType": "application/json; charset=UTF-8",
+  "byteLength": 76,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}

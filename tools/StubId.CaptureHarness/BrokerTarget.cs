@@ -99,16 +99,29 @@ public sealed record BrokerTarget
     /// <para>
     /// Empty means nobody has seen one. That is a deliberate state rather than a gap to fill in
     /// from the other broker: both are IdentityServer, so guessing its login path would be the
-    /// dangerous kind of nearly-right, and Signicat's MitID journey is known to leave the tenant
-    /// host entirely for a shim on the older platform. A guess would classify a refusal as an
-    /// acceptance, or classify nothing and look like a broken probe.
+    /// dangerous kind of nearly-right. A guess would classify a refusal as an acceptance, or
+    /// classify nothing and look like a broken probe.
     /// </para>
     /// <para>
     /// Nothing classifies as a login redirect while this is empty, and the first run prints the
-    /// location it actually reached - which is the observation that fills it in.
+    /// location it actually reached - which is the observation that fills it in. Signicat's was
+    /// filled in that way, and it bore the caution out: its first redirect stays on the tenant
+    /// host, at <c>/Authentication/Login</c> rather than the <c>/Account/Login</c> a guess from
+    /// the first broker would have written. The journey only leaves the tenant after that page.
     /// </para>
     /// </remarks>
     public IReadOnlyList<string> LoginMarkers { get; init; } = [];
+
+    /// <summary>
+    /// Whether two requests for the key set can be answered with different keys.
+    /// </summary>
+    /// <remarks>
+    /// Measured, not assumed. Signicat's sandbox answered three requests a second apart with 26, 24
+    /// and 22 keys, in different orders. Where this is true a difference from the committed key set
+    /// is not a rotation, so <c>check</c> does not report one, and the key-set case promises the
+    /// shape of a key rather than which keys are there.
+    /// </remarks>
+    public bool KeySetVariesPerRequest { get; init; }
 
     /// <summary>
     /// A substring of the subject of a certificate this broker must publish, or null.
@@ -215,9 +228,10 @@ public sealed record BrokerTarget
         RequestObjectAlgorithm = "RS256",
         PrivateKeySetting = "STUBID_SIGNICAT_PRIVATE_KEY_PATH",
         KeyIdSetting = "STUBID_SIGNICAT_KEY_ID",
+        KeySetVariesPerRequest = true,
 
-        // Empty until a request reaches one and says where it landed. See LoginMarkers.
-        LoginMarkers = [],
+        // Measured on the sandbox: an accepted authorize lands here, on the tenant host.
+        LoginMarkers = ["/Authentication/Login"],
 
         // Nothing observed says this broker publishes a certificate for a separate signing key,
         // and a marker written from a guess would read as a check while checking nothing.

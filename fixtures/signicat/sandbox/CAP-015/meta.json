@@ -1,0 +1,14 @@
+{
+  "id": "CAP-015",
+  "description": "Authorize on a client that requires a request object, without one",
+  "settles": "That the query the partner client is let through with (CAP-013) is refused outright on a client that requires a request object, on the error page, which does not say why. The first broker has no such client setting and so no counterpart; CAP-042 is where the reason can be read.",
+  "disposition": "ErrorPage",
+  "status": 302,
+  "byteLength": 0,
+  "volatileHeaders": [
+    "Location"
+  ],
+  "volatileBodyPatterns": [
+    "errorId=[A-Za-z0-9_\\-]\u002B"
+  ]
+}

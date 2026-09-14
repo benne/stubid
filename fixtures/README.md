@@ -12,13 +12,15 @@ fixtures/<broker>/<env>/CAP-nnn/request.json     what was sent, with credentials
 fixtures/<broker>/<env>/CAP-nnn/response.head    status line and response headers, in the order received
 fixtures/<broker>/<env>/CAP-nnn/response.raw     response body, exactly as served
 fixtures/<broker>/<env>/CAP-nnn/meta.json        what the recording settles, and what may vary between runs
+fixtures/<broker>/<env>/CAP-nnn/*.header.json    a signed token a response header carried, decoded, where there was one
+fixtures/<broker>/<env>/CAP-nnn/*.payload.json   its payload, beside it
 fixtures/<broker>/<env>/MANIFEST.json            sha256 of every file above
 fixtures/<broker>/certificates.md                the JWKS certificates, decoded
 ```
 
-Today that is `fixtures/neb/pp` and `fixtures/neb/pp-session`. Every harness command names its
-broker with `--broker=`, and there is no default: the two write into different packs, and a run
-that guessed would put one broker's recordings where the other's belong.
+Today that is `fixtures/neb/pp`, `fixtures/neb/pp-session` and `fixtures/signicat/sandbox`. Every
+harness command names its broker with `--broker=`, and there is no default: the two write into
+different packs, and a run that guessed would put one broker's recordings where the other's belong.
 
 **The numbering restarts per broker.** Each broker's unattended pack starts at `CAP-001` with its
 own discovery document, so a citation only means something beside the broker it belongs to.
@@ -26,6 +28,11 @@ own discovery document, so a citation only means something beside the broker it 
 Bodies are stored as served: no decompression, no reformatting, no reserializing. Member
 order and whitespace are part of what is being pinned, and a JSON round-trip would quietly
 destroy both.
+
+Headers are written in the order received, but that order is not something a pack promises.
+Signicat's sandbox sends its security headers in a different order on each request, so its
+`response.head` files change on every re-recording even when nothing else has. `verify` compares
+bodies.
 
 ## Numbering
 
@@ -45,6 +52,21 @@ destroy both.
   The credential is the broker's own published test-client secret, kept out of the repository
   rather than committed. Its documentation is where to get it. Cases needing it stop with a
   message rather than recording a confusing rejection.
+
+  Signicat's pack is recorded against a sandbox tenant of your own, so it needs the tenant's
+  subdomain, the partner client's identifier and secret, and the primary client's pair for the two
+  cases that record what a client requiring a request object refuses.
+  `check --broker=signicat` says which of those are missing.
+
+  ```
+  dotnet run --project tools/StubId.CaptureHarness -- verify --broker=signicat
+  ```
+
+  Where an unattended pack holds a signed token, it arrived in a header. Signicat's login redirect
+  carries the authorize request as an `authzId` token inside its `ReturnUrl`, and that token names
+  the client.
+  The header keeps `{{AUTHZID}}` where the token was, and `authzId.header.json` and
+  `authzId.payload.json` sit beside it, scrubbed once decoded.
 - **CAP-020 to CAP-049** need a human to complete a login in MitID's test tool. They settle the
   things only a finished authentication reveals: the `amr` wire form, the id_token member
   set and order, the types of the userinfo values, and the transaction token's claim names.

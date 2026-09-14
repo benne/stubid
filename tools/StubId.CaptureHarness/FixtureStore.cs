@@ -44,17 +44,45 @@ public sealed class FixtureStore(string root)
         await File.WriteAllTextAsync(
             Path.Combine(dir, "request.json"), JsonSerializer.Serialize(request, Json) + "\n", ct);
 
+        // Halves a previous recording of this case wrote, which this one may not.
+        foreach (var stale in Directory.EnumerateFiles(dir, "*.header.json")
+                     .Concat(Directory.EnumerateFiles(dir, "*.payload.json")))
+        {
+            File.Delete(stale);
+        }
+
+        var tokens = new Dictionary<string, ExtractedToken>(StringComparer.Ordinal);
         var head = new StringBuilder();
         head.Append("HTTP ").Append(exchange.StatusCode).Append(' ')
             .AppendLine(exchange.ReasonPhrase ?? "");
         foreach (var (name, value) in exchange.ResponseHeaders)
         {
+            // Before the scrub, which would otherwise rewrite bytes inside a signed token. Not
+            // from a cookie: its value is masked whole, and decoding one would write it out.
+            var written = value;
+            if (!name.Equals("Set-Cookie", StringComparison.OrdinalIgnoreCase))
+            {
+                (written, var found) = TokenFixtures.ExtractFromHeader(value);
+                foreach (var (member, token) in found)
+                {
+                    tokens[member] = token;
+                }
+            }
+
             // A session cookie is a credential until it expires, not an identifier. The
             // contract is the cookie's name and flags, so those are kept and the value is
             // replaced with one of the same length.
-            head.Append(name).Append(": ").AppendLine(HeaderValue(name, value, Scrubber.Scrub));
+            head.Append(name).Append(": ").AppendLine(HeaderValue(name, written, Scrubber.Scrub));
         }
         await File.WriteAllTextAsync(Path.Combine(dir, "response.head"), head.ToString(), ct);
+
+        foreach (var (member, token) in tokens)
+        {
+            await File.WriteAllTextAsync(
+                Path.Combine(dir, $"{member}.header.json"), Scrubber.Scrub(token.Header), ct);
+            await File.WriteAllTextAsync(
+                Path.Combine(dir, $"{member}.payload.json"), Scrubber.Scrub(token.Payload), ct);
+        }
 
         await File.WriteAllBytesAsync(
             Path.Combine(dir, "response.raw"), ScrubBody(exchange.ResponseBody), ct);
@@ -70,6 +98,18 @@ public sealed class FixtureStore(string root)
             byteLength = exchange.ResponseBody.Length,
             volatileHeaders = @case.VolatileHeaders,
             volatileBodyPatterns = @case.VolatileBodyPatterns,
+            unorderedArrays = @case.UnorderedArrays.Count == 0 ? null : @case.UnorderedArrays,
+
+            // Absent rather than empty where there were none, so a recording without a token
+            // writes the meta it always did.
+            tokens = tokens.Count == 0
+                ? null
+                : tokens.ToDictionary(t => t.Key, t => new
+                {
+                    t.Value.Algorithm,
+                    t.Value.Kid,
+                    t.Value.SegmentLengths,
+                }),
         };
         await File.WriteAllTextAsync(
             Path.Combine(dir, "meta.json"), JsonSerializer.Serialize(meta, Json) + "\n", ct);
@@ -122,7 +162,8 @@ public sealed class FixtureStore(string root)
     /// not valid UTF-8 is written through untouched rather than corrupted, since the bytes as
     /// served are the point.
     /// </summary>
-    private static byte[] ScrubBody(byte[] body)
+    /// <remarks>Public because <c>verify</c> has to scrub a fresh body the same way before comparing.</remarks>
+    public static byte[] ScrubBody(byte[] body)
     {
         var text = Encoding.UTF8.GetString(body);
         if (!Encoding.UTF8.GetBytes(text).AsSpan().SequenceEqual(body))

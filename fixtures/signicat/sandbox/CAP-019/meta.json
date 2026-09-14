@@ -1,0 +1,10 @@
+{
+  "id": "CAP-019",
+  "description": "Userinfo without a token",
+  "settles": "The WWW-Authenticate byte string, which is the first broker\u0027s (its CAP-017) byte for byte, down to the missing space after the comma, over an empty body.",
+  "disposition": "Challenge",
+  "status": 401,
+  "byteLength": 0,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}

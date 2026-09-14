@@ -26,12 +26,6 @@ public static class CaptureCatalog
         _ => [],
     };
 
-    /// <summary>
-    /// Nothing yet. The pack is planned and the surface is researched, but a case written from
-    /// research rather than from a recording is a guess with a CAP number on it.
-    /// </summary>
-    private static IReadOnlyList<CaptureCase> Signicat => [];
-
     public const string PreProduction = "https://pp.netseidbroker.dk/op";
     public const string Production = "https://netseidbroker.dk/op";
 
@@ -385,6 +379,335 @@ public static class CaptureCatalog
                 // object's segment lengths and never its signature.
                 ["request"] = "not-a-jwt",
             },
+        },
+    ];
+
+    /// <summary>The sandbox tenant, with the account's subdomain left as its placeholder.</summary>
+    private static string Sandbox => BrokerTarget.Signicat.AuthorityTemplate;
+
+    /// <summary>The same host with no path, for the layouts that are not served.</summary>
+    private const string SandboxHost = "https://{{SIGNICAT_DOMAIN}}.sandbox.signicat.com";
+
+    /// <summary>The one registration of the four that takes a plain query.</summary>
+    /// <remarks>
+    /// The other three require a request object and refuse a bare authorize, so most of these
+    /// cases would record the same error page, and settle nothing, against any of them. CAP-015 is
+    /// that refusal, recorded once on purpose.
+    /// </remarks>
+    private const string PartnerClient = "{{SIGNICAT_PARTNER_CLIENT_ID}}";
+
+    private const string PartnerSecret = "{{SIGNICAT_PARTNER_CLIENT_SECRET}}";
+
+    private static string SandboxAuthorize(string extra) =>
+        $"{Sandbox}/connect/authorize?client_id={PartnerClient}" +
+        $"&response_type=code&redirect_uri={Uri.EscapeDataString(RedirectUri)}" +
+        $"&scope={Uri.EscapeDataString("openid profile")}&state=capture&nonce=capture{extra}";
+
+    private static string AcrValues(string value) => "&acr_values=" + Uri.EscapeDataString(value);
+
+    private static IReadOnlyList<CaptureCase> Signicat =>
+    [
+        new()
+        {
+            Id = "CAP-001",
+            Expected = Disposition.Success,
+            Description = "Sandbox discovery document",
+            Settles = "The member set and order a tenant publishes. Among them: two response "
+                + "types and no pure implicit one, nine request-object algorithms and not one "
+                + "symmetric, and no acr_values_supported even though acr_values is how MitID is "
+                + "selected. The order inside claims_supported is not part of it: within the hour "
+                + "after the first recording, the same 334 claims came back with some providers' "
+                + "own claims reordered among themselves.",
+            Url = $"{Sandbox}/.well-known/openid-configuration",
+            UnorderedArrays = ["claims_supported"],
+        },
+        new()
+        {
+            Id = "CAP-002",
+            Expected = Disposition.Success,
+            Description = "Sandbox signing keys",
+            Settles = "The shape of a key, and that the key set is not one document: requests a "
+                + "second apart returned 26, 24 and 22 keys, in different orders. So this promises "
+                + "each key's members in the order kty, use, kid, e, n, alg, with no certificate "
+                + "chain, and not which keys are served. A client that trusts a cached set for a "
+                + "kid it has not seen will fail some of the time.",
+            Url = $"{Sandbox}/.well-known/openid-configuration/jwks",
+
+            // Each key of the recorded shape is masked, then the run of them. A key that gains a
+            // member or reorders its own is left unmasked, and that is drift.
+            VolatileBodyPatterns =
+            [
+                """\{"kty":"RSA","use":"(?:sig|enc)","kid":"[^"]+","e":"[^"]+","n":"[^"]+","alg":"[^"]+"\}""",
+                "<volatile>(?:,<volatile>)*",
+            ],
+        },
+        new()
+        {
+            Id = "CAP-003",
+            Expected = Disposition.NotFound,
+            Description = "RFC 8414 discovery layout is not served",
+            Settles = "That StubID must answer 404 here as it does for the first broker, with the "
+                + "two-segment tenant path inserted after the well-known name.",
+            Url = $"{SandboxHost}/.well-known/openid-configuration/auth/open",
+        },
+        new()
+        {
+            Id = "CAP-004",
+            Expected = Disposition.NotFound,
+            Description = "OAuth authorization-server metadata layout is not served",
+            Settles = "The third layout Spring probes. Also 404.",
+            Url = $"{SandboxHost}/.well-known/oauth-authorization-server/auth/open",
+        },
+        new()
+        {
+            Id = "CAP-005",
+            Expected = Disposition.NotFound,
+            Description = "Discovery is not served at the host root",
+            Settles = "That /auth/open is load-bearing: metadata exists only under it.",
+            Url = $"{SandboxHost}/.well-known/openid-configuration",
+        },
+        new()
+        {
+            Id = "CAP-006",
+            Expected = Disposition.NotFound,
+            Description = "Discovery with a trailing slash",
+            Settles = "That the trailing slash is refused, and how: this 404 has an empty body, "
+                + "where a path outside /auth/open gets the host's HTML page (CAP-005). A server "
+                + "that answers both the same way has flattened a difference the broker makes.",
+            Url = $"{Sandbox}/.well-known/openid-configuration/",
+        },
+        new()
+        {
+            Id = "CAP-007",
+            Expected = Disposition.NotFound,
+            Description = "Discovery with the first tenant segment capitalized",
+            Settles = "That auth is matched with regard to case.",
+            Url = $"{SandboxHost}/Auth/open/.well-known/openid-configuration",
+        },
+        new()
+        {
+            Id = "CAP-008",
+            Expected = Disposition.NotFound,
+            Description = "Discovery with the second tenant segment capitalized",
+            Settles = "That open is matched with regard to case too. The first broker matches its "
+                + "own segment ordinally, so this is the half of the tenant root that could have "
+                + "gone either way.",
+            Url = $"{SandboxHost}/auth/Open/.well-known/openid-configuration",
+        },
+        new()
+        {
+            Id = "CAP-009",
+            Expected = Disposition.ErrorPage,
+            Description = "Authorize with an unknown client_id",
+            Settles = "That an invalid request never redirects back to the client. It goes to the "
+                + "broker's own error page, as on the first broker.",
+            Url = $"{Sandbox}/connect/authorize?client_id=sandbox-no-such-client-000"
+                + $"&response_type=code&redirect_uri={Uri.EscapeDataString(RedirectUri)}"
+                + $"&scope={Uri.EscapeDataString("openid profile")}&state=capture&nonce=capture"
+                + AcrValues("idp:mitid"),
+            VolatileBodyPatterns = [ErrorIdIsVolatile],
+            VolatileHeaders = ["Location"],
+        },
+        new()
+        {
+            Id = "CAP-010",
+            Expected = Disposition.ErrorPage,
+            Description = "Authorize naming an identity provider that does not exist",
+            Settles = "What an unknown idp: value earns on a client restricted to MitID: the error "
+                + "page. The research saw a provider chooser for the same value on a client with "
+                + "no restriction, so the answer is the client's configuration as much as the "
+                + "value's.",
+            Url = SandboxAuthorize(AcrValues("idp:nosuchidp")),
+            VolatileBodyPatterns = [ErrorIdIsVolatile],
+            VolatileHeaders = ["Location"],
+        },
+        new()
+        {
+            Id = "CAP-011",
+            Expected = Disposition.LoginRedirect,
+            Description = "Authorize with an acr_values key the broker does not know",
+            Settles = "That an unknown key is ignored rather than refused. The request is accepted "
+                + "and the key travels on inside the authzId payload exactly as sent, so a "
+                + "misspelled MitID option fails silently - the trap the reference text set on "
+                + "the first broker.",
+            Url = SandboxAuthorize(AcrValues("idp:mitid nosuchkey:abc")),
+        },
+        new()
+        {
+            Id = "CAP-012",
+            Expected = Disposition.ErrorPage,
+            Description = "Authorize without response_type",
+            Settles = "Whether a missing required parameter is refused the same way as an invalid "
+                + "one.",
+            Url = $"{Sandbox}/connect/authorize?client_id={PartnerClient}"
+                + $"&redirect_uri={Uri.EscapeDataString(RedirectUri)}"
+                + $"&scope={Uri.EscapeDataString("openid profile")}&state=capture&nonce=capture"
+                + AcrValues("idp:mitid"),
+            VolatileBodyPatterns = [ErrorIdIsVolatile],
+            VolatileHeaders = ["Location"],
+        },
+        new()
+        {
+            Id = "CAP-013",
+            Expected = Disposition.LoginRedirect,
+            Description = "Authorize with a valid request",
+            Settles = "The accepted path. The first redirect stays on the tenant host, at "
+                + "/auth/open/Authentication/Login, and its ReturnUrl carries the request as an "
+                + "authzId token the broker signed rather than as the query itself. The token's "
+                + "halves are written beside the recording: every parameter becomes an array, "
+                + "and the issuer is the broker's shared API host rather than the tenant.",
+            Url = SandboxAuthorize(AcrValues("idp:mitid")),
+        },
+        new()
+        {
+            Id = "CAP-014",
+            Expected = Disposition.ErrorPage,
+            Description = "Authorize with no scope",
+            Settles = "That scope is required at the authorize endpoint here too.",
+            Url = $"{Sandbox}/connect/authorize?client_id={PartnerClient}"
+                + $"&response_type=code&redirect_uri={Uri.EscapeDataString(RedirectUri)}"
+                + "&state=capture&nonce=capture" + AcrValues("idp:mitid"),
+            VolatileBodyPatterns = [ErrorIdIsVolatile],
+            VolatileHeaders = ["Location"],
+        },
+        new()
+        {
+            Id = "CAP-015",
+            Expected = Disposition.ErrorPage,
+            Description = "Authorize on a client that requires a request object, without one",
+            Settles = "That the query the partner client is let through with (CAP-013) is "
+                + "refused outright on a client that requires a request object, on the error "
+                + "page, which does not say why. The first broker has no such client setting and "
+                + "so no counterpart; CAP-042 is where the reason can be read.",
+            Url = $"{Sandbox}/connect/authorize?client_id={{{{SIGNICAT_PRIMARY_CLIENT_ID}}}}"
+                + $"&response_type=code&redirect_uri={Uri.EscapeDataString(RedirectUri)}"
+                + $"&scope={Uri.EscapeDataString("openid profile")}&state=capture&nonce=capture"
+                + AcrValues("idp:mitid"),
+            VolatileBodyPatterns = [ErrorIdIsVolatile],
+            VolatileHeaders = ["Location"],
+        },
+        new()
+        {
+            Id = "CAP-016",
+            Expected = Disposition.DescribedJson,
+            Description = "Token endpoint with a bad client secret",
+            Settles = "That token errors on this broker carry an error_description and an "
+                + "error_uri, where the first broker's are bare. Authenticated in the form, "
+                + "which discovery advertises alongside Basic.",
+            Method = "POST",
+            Url = $"{Sandbox}/connect/token",
+            Form = new Dictionary<string, string>
+            {
+                ["grant_type"] = "authorization_code",
+                ["code"] = "not-a-real-code",
+                ["redirect_uri"] = RedirectUri,
+                ["client_id"] = PartnerClient,
+                ["client_secret"] = "wrong-secret",
+            },
+        },
+        new()
+        {
+            Id = "CAP-017",
+            Expected = Disposition.DescribedJson,
+            Description = "Token endpoint with a valid client and an unusable code",
+            Settles = "invalid_grant, and how much a correctly authenticated client is told "
+                + "compared with a badly authenticated one.",
+            Method = "POST",
+            Url = $"{Sandbox}/connect/token",
+            Form = new Dictionary<string, string>
+            {
+                ["grant_type"] = "authorization_code",
+                ["code"] = "not-a-real-code",
+                ["redirect_uri"] = RedirectUri,
+                ["client_id"] = PartnerClient,
+                ["client_secret"] = PartnerSecret,
+            },
+        },
+        new()
+        {
+            Id = "CAP-018",
+            Expected = Disposition.DescribedJson,
+            Description = "Token endpoint with no parameters at all",
+            Settles = "Which error an empty request earns. Client authentication and the grant "
+                + "are both missing, and only the broker can say which it complains about first.",
+            Method = "POST",
+            Url = $"{Sandbox}/connect/token",
+            Form = new Dictionary<string, string>(),
+        },
+        new()
+        {
+            Id = "CAP-019",
+            Expected = Disposition.Challenge,
+            Description = "Userinfo without a token",
+            Settles = "The WWW-Authenticate byte string, which is the first broker's (its CAP-017) "
+                + "byte for byte, down to the missing space after the comma, over an empty body.",
+            Url = $"{Sandbox}/connect/userinfo",
+        },
+        new()
+        {
+            Id = "CAP-040",
+            Expected = Disposition.BareJson,
+            Description = "Pushed authorization request without client authentication",
+            Settles = "How PAR refuses an unauthenticated push: a bare invalid_client, the one "
+                + "error in this pack with nothing beside the code, though the token endpoint "
+                + "describes the same failure (CAP-016).",
+            Method = "POST",
+            Url = $"{Sandbox}/connect/par",
+            Form = new Dictionary<string, string>
+            {
+                ["client_id"] = PartnerClient,
+                ["response_type"] = "code",
+                ["redirect_uri"] = RedirectUri,
+                ["scope"] = "openid profile",
+            },
+        },
+        new()
+        {
+            Id = "CAP-041",
+            Expected = Disposition.DescribedJson,
+            Description = "Pushed authorization request whose request parameter is not a JWT",
+            Settles = "How PAR refuses a request object it cannot read, which is the only surface "
+                + "that says why an object was refused. Deliberately not a JWS, for the same "
+                + "reason as the first broker's CAP-046, and authenticated so the push gets as "
+                + "far as the object.",
+            Method = "POST",
+            Url = $"{Sandbox}/connect/par",
+            Form = new Dictionary<string, string>
+            {
+                ["client_id"] = PartnerClient,
+                ["client_secret"] = PartnerSecret,
+                ["response_type"] = "code",
+                ["redirect_uri"] = RedirectUri,
+                ["scope"] = "openid profile",
+                ["request"] = "not-a-jwt",
+            },
+        },
+        new()
+        {
+            Id = "CAP-042",
+            Expected = Disposition.DescribedJson,
+            Description = "Pushed authorization request without a request object, on a client that requires one",
+            Settles = "Why CAP-015 was refused, since its error page cannot say. The same client "
+                + "and the same missing object, pushed instead of redirected.",
+            Method = "POST",
+            Url = $"{Sandbox}/connect/par",
+            Form = new Dictionary<string, string>
+            {
+                ["client_id"] = "{{SIGNICAT_PRIMARY_CLIENT_ID}}",
+                ["client_secret"] = "{{SIGNICAT_PRIMARY_CLIENT_SECRET}}",
+                ["response_type"] = "code",
+                ["redirect_uri"] = RedirectUri,
+                ["scope"] = "openid profile",
+            },
+        },
+        new()
+        {
+            Id = "CAP-043",
+            Expected = Disposition.Unclassified,
+            Description = "End session with no parameters",
+            Settles = "What end session does when it is given nothing: a redirect to the broker's "
+                + "own logout page, with no query.",
+            Url = $"{Sandbox}/connect/endsession",
         },
     ];
 }

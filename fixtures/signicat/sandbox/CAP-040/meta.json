@@ -1,0 +1,11 @@
+{
+  "id": "CAP-040",
+  "description": "Pushed authorization request without client authentication",
+  "settles": "How PAR refuses an unauthenticated push: a bare invalid_client, the one error in this pack with nothing beside the code, though the token endpoint describes the same failure (CAP-016).",
+  "disposition": "BareJson",
+  "status": 400,
+  "contentType": "application/json; charset=UTF-8",
+  "byteLength": 26,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}

@@ -1,0 +1,14 @@
+{
+  "id": "CAP-014",
+  "description": "Authorize with no scope",
+  "settles": "That scope is required at the authorize endpoint here too.",
+  "disposition": "ErrorPage",
+  "status": 302,
+  "byteLength": 0,
+  "volatileHeaders": [
+    "Location"
+  ],
+  "volatileBodyPatterns": [
+    "errorId=[A-Za-z0-9_\\-]\u002B"
+  ]
+}

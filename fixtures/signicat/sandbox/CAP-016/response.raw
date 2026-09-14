@@ -1,0 +1,1 @@
+{"error":"invalid_client","error_uri":"https://api.signicat.com/auth/open/config/errors/invalid_client","error_description":"Client authentication failed (e.g., unknown client, no client authentication included, or unsupported authentication method)."}

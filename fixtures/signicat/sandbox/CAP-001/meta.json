@@ -1,0 +1,14 @@
+{
+  "id": "CAP-001",
+  "description": "Sandbox discovery document",
+  "settles": "The member set and order a tenant publishes. Among them: two response types and no pure implicit one, nine request-object algorithms and not one symmetric, and no acr_values_supported even though acr_values is how MitID is selected. The order inside claims_supported is not part of it: within the hour after the first recording, the same 334 claims came back with some providers\u0027 own claims reordered among themselves.",
+  "disposition": "Success",
+  "status": 200,
+  "contentType": "application/json; charset=UTF-8",
+  "byteLength": 13070,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": [],
+  "unorderedArrays": [
+    "claims_supported"
+  ]
+}

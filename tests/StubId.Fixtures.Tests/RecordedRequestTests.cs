@@ -27,14 +27,26 @@ namespace StubId.Fixtures.Tests;
 [Collection(ProcessEnvironment.Name)]
 public class RecordedRequestTests
 {
-    private static IReadOnlyList<CaptureCase> Unattended => CaptureCatalog.For(Broker.NetsEidBroker);
+    public static TheoryData<string, string> Cases()
+    {
+        var data = new TheoryData<string, string>();
+        foreach (var target in BrokerTarget.All)
+        {
+            foreach (var @case in CaptureCatalog.For(target.Broker))
+            {
+                data.Add(target.Key, @case.Id);
+            }
+        }
 
-    public static TheoryData<string> Cases()
+        return data;
+    }
+
+    public static TheoryData<string> Brokers()
     {
         var data = new TheoryData<string>();
-        foreach (var @case in Unattended)
+        foreach (var target in BrokerTarget.All)
         {
-            data.Add(@case.Id);
+            data.Add(target.Key);
         }
 
         return data;
@@ -42,11 +54,12 @@ public class RecordedRequestTests
 
     [Theory]
     [MemberData(nameof(Cases))]
-    public void The_catalog_still_sends_what_the_pack_recorded(string id)
+    public void The_catalog_still_sends_what_the_pack_recorded(string broker, string id)
     {
-        var @case = Unattended.Single(c => c.Id == id);
+        var target = BrokerTarget.Select(broker);
+        var @case = CaptureCatalog.For(target.Broker).Single(c => c.Id == id);
         using var recorded = JsonDocument.Parse(
-            File.ReadAllText(Repository.Fixture(id, "request.json")));
+            File.ReadAllText(Repository.Fixture(target, id, "request.json")));
 
         var request = recorded.RootElement;
 
@@ -74,15 +87,17 @@ public class RecordedRequestTests
     /// case somebody deleted would sit in the pack unasserted and be hashed into the manifest as
     /// though it meant something.
     /// </remarks>
-    [Fact]
-    public void The_pack_holds_a_recording_for_every_case_and_nothing_else()
+    [Theory]
+    [MemberData(nameof(Brokers))]
+    public void The_pack_holds_a_recording_for_every_case_and_nothing_else(string broker)
     {
-        var onDisk = Directory.EnumerateDirectories(Repository.NebPreProduction)
+        var target = BrokerTarget.Select(broker);
+        var onDisk = Directory.EnumerateDirectories(Path.Combine(Repository.Root, target.Pack))
             .Select(Path.GetFileName)
             .OrderBy(name => name, StringComparer.Ordinal);
 
         Assert.Equal(
-            Unattended.Select(c => c.Id).OrderBy(id => id, StringComparer.Ordinal),
+            CaptureCatalog.For(target.Broker).Select(c => c.Id).OrderBy(id => id, StringComparer.Ordinal),
             onDisk);
     }
 

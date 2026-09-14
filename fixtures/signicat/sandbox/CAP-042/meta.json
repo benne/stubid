@@ -1,0 +1,11 @@
+{
+  "id": "CAP-042",
+  "description": "Pushed authorization request without a request object, on a client that requires one",
+  "settles": "Why CAP-015 was refused, since its error page cannot say. The same client and the same missing object, pushed instead of redirected.",
+  "disposition": "DescribedJson",
+  "status": 400,
+  "contentType": "application/json; charset=UTF-8",
+  "byteLength": 129,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}

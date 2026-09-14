@@ -1,0 +1,11 @@
+{
+  "id": "CAP-016",
+  "description": "Token endpoint with a bad client secret",
+  "settles": "That token errors on this broker carry an error_description and an error_uri, where the first broker\u0027s are bare. Authenticated in the form, which discovery advertises alongside Basic.",
+  "disposition": "DescribedJson",
+  "status": 400,
+  "contentType": "application/json; charset=UTF-8",
+  "byteLength": 252,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}

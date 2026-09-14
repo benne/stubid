@@ -3,6 +3,60 @@
 Notes accumulate here as changes land, and this file is renamed to the version when a release
 goes out. The dated files beside it are history and are never edited.
 
+## Signicat's sandbox is recorded
+
+`fixtures/signicat/sandbox/` holds twenty-three recordings made against a sandbox tenant: CAP-001 to
+CAP-019, and CAP-040 to CAP-043. None needs a login. The authorize and token cases use the partner
+client, the one registration that accepts a plain query, except that CAP-009 names a client that does
+not exist and CAP-018 names none. The primary client appears twice, in CAP-015 and CAP-042, to record
+what a client that requires a request object refuses, and why.
+
+Some of what they settle:
+
+- An accepted authorize stays on the tenant host, at `/auth/open/Authentication/Login`, which is now
+  the login page the classifier knows for this broker. The request travels on inside the `ReturnUrl`
+  as an `authzId` token the broker signs, with every parameter turned into an array.
+- An `acr_values` key the broker does not know is carried into that token rather than refused
+  (CAP-011). An unknown identity provider goes to the error page on a client restricted to MitID
+  (CAP-010).
+- Token endpoint errors carry `error_description` and `error_uri`, where the first broker's are bare.
+  Pushed authorization still refuses an unauthenticated push with a bare `invalid_client` (CAP-040),
+  and it is the only place that says why a client requiring a request object was refused (CAP-042).
+- The userinfo challenge is byte-identical to the first broker's (CAP-019).
+- A trailing slash on the discovery path earns an empty 404 from the identity server. A wrong path, or
+  a capitalized tenant segment, earns the host's HTML page instead.
+- The key set is not one document. Requests a second apart returned 26, 24 and 22 keys, none of them
+  with a certificate chain.
+
+## A token in a redirect is kept out of a fixture
+
+The unattended writer scrubbed response headers as text, and a scrub cannot see into a signed token.
+Signicat's login redirect carries one that names the client. The writer now splits a token out of any
+header except a cookie the way the sitting splits one out of a body: `{{AUTHZID}}` holds its place, the
+decoded halves are written beside the recording and scrubbed, and `meta.json` records the algorithm,
+key id and segment lengths. A recording without a token writes the meta it always did.
+
+The guard that refuses a committed token had the same blind spot. A token behind `%3D` matched two
+characters early, its header no longer decoded, and it was passed over. The guard now also searches
+the text with each level of escaping removed, and the writer finds a token however deeply it is
+escaped.
+
+## `verify` compares like with like
+
+`verify` compared the committed body, which was scrubbed when it was written, with a fresh body as
+served. None of the first broker's unattended bodies names a configured value, so this never showed;
+Signicat's discovery document names the tenant in every URL and could never have matched. The fresh
+body is now scrubbed first.
+
+A case can also name a JSON array to compare as a set. Signicat's discovery document is the first to
+need it: within an hour of its first recording, the same 334 entries in `claims_supported` came back
+with some providers' claims reordered among themselves. Masking the list would have stopped checking
+which claims are served, and comparing it in order would report drift every time it moves.
+
+The key set's recording promises the shape of each key rather than which keys are served, and `check`
+no longer calls a difference a rotation on a broker declared to vary its key set. The certificate
+report now summarizes a key set with no chains in a single table.
+
 ## A pack is found, and a citation belongs to its broker
 
 Two checks named the recording packs by hand, and both named only the first broker's. The manifest
@@ -21,8 +75,8 @@ the first broker's instead — a check that got weaker the day a broker was adde
 research note or the roadmap, still resolves against every pack, because nothing in its path says
 whose recording it means; that rule is weaker and is stated rather than guessed from a file name.
 
-No second broker has a page or a pack yet, so the real documentation cannot exercise the half of the
-rule that matters. A negative control does: a broker page citing a capture that only another
+No second broker has a page yet, so the real documentation cannot exercise the half of the rule that
+matters. A negative control does: a broker page citing a capture that only another
 broker's pack holds does not resolve.
 
 ## The second broker's clients are four registrations
@@ -88,12 +142,11 @@ Two literals decided what an answer was called — the error page's path and the
 both were spelled out in the classifier and in the rehearsal, which is two places to edit and one
 of them to forget. They belong to the broker now.
 
-The second broker declares no login path at all, and that is the point rather than an omission.
-Both run IdentityServer, so guessing its login path from the first is tempting and is the
-dangerous kind of nearly-right: its MitID journey is known to leave the tenant host entirely for a
-shim on the older platform. Nothing classifies as a login redirect while the list is empty, and a
-run that meets one prints the location it actually reached, which is the observation that fills the
-list in.
+A broker's login path is never borrowed from the other broker. Both run IdentityServer, so guessing
+one from the other is tempting and is the dangerous kind of nearly-right. Nothing classifies as a
+login redirect while a broker's list is empty, and a run that meets one prints the location it
+actually reached, which is the observation that fills the list in. Signicat's was filled that way:
+`/Authentication/Login` on the tenant host, not the `/Account/Login` a guess would have written.
 
 `BareJson` described a refusal that says nothing beyond its code, which is a finding about the
 first broker rather than a fact about OAuth. A refusal that carries a description or an `error_uri`
