@@ -34,6 +34,9 @@ public class BrokerReferenceTests
     /// </remarks>
     private const string Blob = "https://github.com/benne/stubid/blob/master/";
 
+    /// <summary>The same for a directory, which is how a citation links to a recording.</summary>
+    private const string Tree = "https://github.com/benne/stubid/tree/master/";
+
     private static IReadOnlyList<FidelityEntry> Ledger() =>
         FidelityLedger.Read(FidelityLedger.Sources);
 
@@ -127,21 +130,22 @@ public class BrokerReferenceTests
     }
 
     /// <summary>
-    /// Every recording the documentation cites by name is one that is still there.
+    /// Every recording the documentation cites by name is one that is still there, and says whose.
     /// </summary>
     /// <remarks>
     /// The reference cites captures in prose - "Recorded in CAP-023", "CAP-031 settled the other
     /// half" - and prose is exactly where nothing was looking. The ledger's evidence paths are
     /// checked; these were not, and there are more of them.
     /// <para>
-    /// The runbook is exempt, and it is the one document that has to be. It assigns capture
-    /// numbers before anything is recorded under them - a range for the next sitting, a starting
-    /// number for the next unattended batch - so naming one that does not exist is what it is
-    /// for. Every other document cites a recording as evidence, and evidence has to be there.
+    /// The runbook may name a bare id nothing holds, and it is the one document that has to. It
+    /// assigns capture numbers before anything is recorded under them - a range for the next
+    /// sitting, a starting number for the next unattended batch - so naming one that does not exist
+    /// is what it is for. A path or a link it writes still points at a recording, and is checked.
+    /// Every other document cites a recording as evidence, and evidence has to be there.
     /// </para>
     /// <para>
     /// Where it has to be depends on whose recording it is, because the numbering restarts per
-    /// broker - see <see cref="PacksFor" />. The packs themselves are found rather than listed, so
+    /// broker - see <see cref="Unresolved" />. The packs themselves are found rather than listed, so
     /// one recorded later is resolved against the day it arrives.
     /// </para>
     /// </remarks>
@@ -149,51 +153,203 @@ public class BrokerReferenceTests
     public void Every_capture_the_documentation_cites_is_one_that_exists()
     {
         var packs = Packs();
+        var documents = Markdown(Docs).Select(f => (f.Relative, Text: File.ReadAllText(f.Full))).ToList();
 
-        var missing = Markdown(Docs)
-            .Where(file => file.Relative != "docs/capture-session.md")
-            .SelectMany(file => Regex
-                .Matches(File.ReadAllText(file.Full), @"\bCAP-\d{3}\b")
-                .Select(m => m.Value)
-                .Distinct(StringComparer.Ordinal)
-                .Where(id => !PacksFor(file.Relative, packs).Any(pack =>
-                    Directory.Exists(Path.Combine(Repository.Root, pack, id))))
-                .Select(id => $"{file.Relative}  {id}"))
+        var missing = documents
+            .SelectMany(d => Unresolved(d.Relative, d.Text, packs, path =>
+                Directory.Exists(Path.Combine(Repository.Root, path))
+                || File.Exists(Path.Combine(Repository.Root, path))))
             .ToList();
 
         Assert.True(missing.Count == 0,
-            $"These cite a recording that is not in the tree:{Environment.NewLine}"
+            $"These cite a recording that is not in the tree, or do not say whose it is:{Environment.NewLine}"
             + string.Join(Environment.NewLine, missing));
 
         Assert.True(
-            Markdown(Docs).Any(f => Regex.IsMatch(File.ReadAllText(f.Full), @"\bCAP-\d{3}\b")),
+            documents.Any(d => CaptureIds(d.Text).Any()),
             "No capture citation was found at all, so this test is checking nothing.");
 
         // By the rule PacksFor scopes with, not a looser one beside it. Checked by prefix, a page
         // directly under docs/brokers/ satisfied this while its citations skipped scoping entirely,
         // so the one assertion meant to prove the scoped branch runs could pass while it never did.
         Assert.True(
-            Markdown(Docs).Any(f => BrokerOf(f.Relative) is not null
-                && Regex.IsMatch(File.ReadAllText(f.Full), @"\bCAP-\d{3}\b")),
+            documents.Any(d => BrokerOf(d.Relative) is not null && CaptureIds(d.Text).Any()),
             "No broker page cites a capture, so the rule scoping a citation to its broker checks nothing.");
+
+        Assert.True(
+            documents.Any(d => BrokerOf(d.Relative) is null && d.Relative != Runbook
+                && Regex.IsMatch(Prose(d.Text), @"fixtures/[a-z0-9-]+/[a-z0-9-]+/CAP-\d{3}")),
+            "No page under no broker cites a capture by its pack, so the rule that makes one say whose "
+            + "it is checks nothing.");
+    }
+
+    private const string Runbook = "docs/capture-session.md";
+
+    /// <summary>
+    /// What one page cites that is not in the tree, or cites without saying whose it is.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A capture id alone names a recording only on a page that belongs to a broker, and there it
+    /// resolves against that broker's packs - see <see cref="PacksFor" />. Anywhere else a citation
+    /// names its pack, as a link to the recording or as the recording's path, and a bare id is
+    /// reported. Tried against every pack instead, a release note citing the second broker's
+    /// unrecorded sitting passed against the first broker's recordings of the same numbers.
+    /// </para>
+    /// <para>
+    /// A path is resolved as the path it is, and so is a link's target. Matched by its id alone,
+    /// <c>fixtures/neb/pp/CAP-020</c> passed because a different pack had a CAP-020.
+    /// </para>
+    /// <para>
+    /// A link to the runbook makes the ids in its text a mention - a range it plans, say - and whether
+    /// its anchor is there is for the anchor check to say. Any other link is read like the prose
+    /// around it. A fenced code block is not prose: an id in one is a value on the wire.
+    /// </para>
+    /// </remarks>
+    private static IEnumerable<string> Unresolved(
+        string document, string text, IReadOnlyList<string> packs, Func<string, bool> exists)
+    {
+        var problems = new List<string>();
+        var source = Prose(text);
+
+        // A reference link's target is written once, below the paragraph. The label is blanked so it
+        // does not read as a link itself, and the target is left for the path rule further down. A
+        // line counts only at the start of the page, after a blank line or after another definition,
+        // so it cannot interrupt a paragraph. That is stricter than CommonMark, which also takes one
+        // straight after a heading; there the label reads as a bare id and is reported.
+        var definitions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var prose = Regex.Replace(
+            source,
+            @"^(?<label> {0,3}\[(?<name>[^\[\]]+)\]:)[ \t]*<?(?<target>[^\s<>]+)>?"
+            + @"(?:[ \t]+(?:""[^""\n]*""|'[^'\n]*'|\([^()\n]*\)))?[ \t]*\r?$",
+            definition =>
+            {
+                if (!StartsABlock(source, definition.Index))
+                {
+                    return definition.Value;
+                }
+
+                definitions.TryAdd(definition.Groups["name"].Value, definition.Groups["target"].Value);
+                return new string(' ', definition.Groups["label"].Length)
+                    + definition.Value[definition.Groups["label"].Length..];
+            },
+            RegexOptions.Multiline);
+
+        prose = Regex.Replace(
+            prose,
+            @"\[(?<text>[^\[\]]*)\](?:\((?<inline>[^)\s]*)\)|\[(?<label>[^\[\]]*)\])?",
+            link =>
+            {
+                var label = link.Groups["label"] is { Success: true, Length: > 0 } named
+                    ? named.Value
+                    : link.Groups["text"].Value;
+
+                if ((link.Groups["inline"].Success ? link.Groups["inline"].Value : definitions.GetValueOrDefault(label))
+                    is not { } target)
+                {
+                    return link.Value;
+                }
+
+                var path = target.Split('#')[0].TrimEnd('/');
+                var ids = CaptureIds(link.Groups["text"].Value).ToList();
+
+                if (path.StartsWith("fixtures/", StringComparison.Ordinal))
+                {
+                    if (!exists(path))
+                    {
+                        problems.Add($"{document}  {path}  (no such recording)");
+                    }
+                    else
+                    {
+                        problems.AddRange(ids
+                            .Where(id => !exists(path.Split('/').Contains(id) ? path : $"{path}/{id}"))
+                            .Select(id => $"{document}  {id}  (not at {path})"));
+                    }
+
+                    return new string(' ', link.Length);
+                }
+
+                if (path.Contains("fixtures/", StringComparison.Ordinal) && (ids.Count > 0 || CaptureIds(path).Any()))
+                {
+                    problems.Add($"{document}  {link.Value}  (a link to a recording that is not this repository's master)");
+                    return new string(' ', link.Length);
+                }
+
+                return path.Length > 0
+                    && !path.Contains("://", StringComparison.Ordinal)
+                    && Resolve(document, path) == Runbook
+                        ? new string(' ', link.Length)
+                        : link.Value;
+            });
+
+        prose = Regex.Replace(
+            prose,
+            @"fixtures/[a-z0-9-]+/[a-z0-9-]+/CAP-[A-Za-z0-9_]+(?:/[A-Za-z0-9_./-]*[A-Za-z0-9_-])?",
+            path =>
+            {
+                if (!exists(path.Value))
+                {
+                    problems.Add($"{document}  {path.Value}  (no such recording)");
+                }
+
+                return new string(' ', path.Length);
+            });
+
+        if (document != Runbook)
+        {
+            problems.AddRange(CaptureIds(prose).Distinct(StringComparer.Ordinal)
+                .Where(id => BrokerOf(document) is null
+                    || !PacksFor(document, packs).Any(pack => exists($"{pack}/{id}")))
+                .Select(id => BrokerOf(document) is null
+                    ? $"{document}  {id}  (names no pack, on a page under no broker)"
+                    : $"{document}  {id}"));
+        }
+
+        return problems.Distinct(StringComparer.Ordinal);
+    }
+
+    /// <summary>Whether a line at this index can begin a block, rather than continue a paragraph.</summary>
+    private static bool StartsABlock(string text, int index)
+    {
+        var before = text[..index];
+        before = before.EndsWith('\n') ? before[..^1] : before;
+        before = before.EndsWith('\r') ? before[..^1] : before;
+        var previous = before[(before.LastIndexOf('\n') + 1)..];
+
+        return index == 0
+            || previous.Trim().Length == 0
+            || Regex.IsMatch(previous, @"^ {0,3}\[[^\[\]]+\]:");
     }
 
     /// <summary>
-    /// The packs a document's citations may resolve against.
+    /// A page's text with its fenced code blocks gone and this repository's own URLs reduced to paths.
+    /// </summary>
+    /// <remarks>A fence closes on a run of its own character at least as long as the one that opened it.</remarks>
+    private static string Prose(string text) =>
+        Regex.Replace(
+                text,
+                @"^ {0,3}(?<fence>(?<c>[`~])\k<c>{2,})[^\n]*\n.*?^ {0,3}\k<fence>\k<c>*[ \t]*\r?$",
+                "",
+                RegexOptions.Multiline | RegexOptions.Singleline)
+            .Replace(Blob, "", StringComparison.Ordinal)
+            .Replace(Tree, "", StringComparison.Ordinal);
+
+    private static IEnumerable<string> CaptureIds(string text) =>
+        Regex.Matches(text, @"\bCAP-\d{3}\b").Select(m => m.Value);
+
+    /// <summary>
+    /// The packs a bare capture id on a page resolves against.
     /// </summary>
     /// <remarks>
     /// <para>
     /// Each broker's unattended pack starts at <c>CAP-001</c> with its own discovery document, so a
-    /// capture id means nothing apart from the broker it belongs to. Resolved against every pack, a citation on a second broker's
-    /// page would pass against the first broker's recording while its own pack lacked the file -
-    /// a check that got weaker the day a broker was added. A page under
-    /// <c>docs/brokers/&lt;key&gt;/</c> therefore resolves against <c>fixtures/&lt;key&gt;/</c> and
-    /// nothing else.
+    /// capture id means nothing apart from the broker it belongs to. A page under
+    /// <c>docs/brokers/&lt;key&gt;/</c> says which broker that is, and resolves against
+    /// <c>fixtures/&lt;key&gt;/</c> and nothing else.
     /// </para>
     /// <para>
-    /// A page under no broker - the research notes, the roadmap, the release notes - still
-    /// resolves against every pack, because nothing in its path says whose recording it means.
-    /// That is the weaker rule, and it is left stated rather than guessed from a file name.
+    /// A page under no broker - the research notes, the roadmap, the release notes - resolves a bare
+    /// id against no pack at all, and names the pack in the citation instead.
     /// </para>
     /// </remarks>
     private static IEnumerable<string> PacksFor(string document, IReadOnlyList<string> packs) =>
@@ -202,7 +358,7 @@ public class BrokerReferenceTests
             // The trailing slash makes the key a directory rather than a prefix - "ne" must not
             // find "neb".
             ? packs.Where(pack => pack.StartsWith($"fixtures/{broker}/", StringComparison.Ordinal))
-            : packs;
+            : [];
 
     /// <summary>The broker a page belongs to, or null for a page under none.</summary>
     /// <remarks>
@@ -252,7 +408,7 @@ public class BrokerReferenceTests
     /// The negative control: a broker page does not resolve against another broker's recording.
     /// </summary>
     /// <remarks>
-    /// No second broker has a page or a pack yet, so the real documentation cannot exercise the
+    /// No second broker has a page yet, so the real documentation cannot exercise the
     /// half of the rule that matters. This does.
     /// </remarks>
     [Fact]
@@ -280,9 +436,10 @@ public class BrokerReferenceTests
 
     /// <summary>A page nested inside a broker's directory is still that broker's.</summary>
     /// <remarks>
-    /// Matched as exactly four segments, a nested page fell through to every pack, so a citation
-    /// deeper in the second broker's reference would resolve against the first broker's recording -
-    /// the one failure this rule exists to prevent - and no test noticed.
+    /// Matched as exactly four segments, a nested page would belong to no broker, and every bare id
+    /// deeper in a broker's reference would fail as naming no pack although its directory names one.
+    /// When a page under no broker still resolved against every pack, the same slip let such a
+    /// citation pass against the other broker's recording, and no test noticed.
     /// </remarks>
     [Fact]
     public void A_nested_broker_page_is_still_scoped_to_its_broker()
@@ -295,13 +452,13 @@ public class BrokerReferenceTests
     }
 
     /// <summary>
-    /// A page under no broker resolves against every pack, including one filed in a folder named
-    /// like a broker somewhere other than <c>docs/brokers/</c>.
+    /// A page under no broker resolves a bare id against no pack, including one filed in a folder
+    /// named like a broker somewhere other than <c>docs/brokers/</c>.
     /// </summary>
     /// <remarks>
     /// The last two rows are what the <c>brokers</c> literal is for. Without it a research note in
-    /// <c>docs/research/signicat/</c> would be scoped to that broker, and a guide in a folder named
-    /// like one would resolve against nothing at all.
+    /// <c>docs/research/signicat/</c> would count as that broker's page and cite by bare id, and a
+    /// guide in a folder named like one would be scoped to a broker it is not about.
     /// </remarks>
     [Theory]
     [InlineData("docs/research/signed-requests.md")]
@@ -309,12 +466,148 @@ public class BrokerReferenceTests
     [InlineData("docs/brokers/index.md")]
     [InlineData("docs/research/signicat/sandbox-notes.md")]
     [InlineData("docs/guides/neb/setup.md")]
-    public void A_page_under_no_broker_resolves_against_every_pack(string document)
+    public void A_page_under_no_broker_resolves_a_bare_id_against_no_pack(string document)
     {
-        string[] packs = ["fixtures/neb/pp", "fixtures/signicat/sandbox"];
-
-        Assert.Equal(packs, PacksFor(document, packs));
+        Assert.Empty(PacksFor(document, ["fixtures/neb/pp", "fixtures/signicat/sandbox"]));
     }
+
+    /// <summary>
+    /// The negative control for the documentation that exists: a bare id where nothing says whose.
+    /// </summary>
+    /// <remarks>
+    /// The recording is there, which is the point. Before this rule the id resolved, and so did the
+    /// same number in the other broker's pack.
+    /// </remarks>
+    [Fact]
+    public void A_bare_id_on_a_page_under_no_broker_says_nothing_about_whose_it_is()
+    {
+        var problems = Cited("docs/releases/next.md", "Refused, and why (CAP-042).",
+            "fixtures/signicat/sandbox/CAP-042");
+
+        Assert.Contains("names no pack", Assert.Single(problems), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("[CAP-042](https://github.com/benne/stubid/tree/master/fixtures/signicat/sandbox/CAP-042)")]
+    [InlineData("[CAP-042](https://github.com/benne/stubid/blob/master/fixtures/signicat/sandbox/CAP-042/)")]
+    [InlineData("[CAP-040 to CAP-042](https://github.com/benne/stubid/tree/master/fixtures/signicat/sandbox)")]
+    [InlineData("[CAP-042]\n\n[CAP-042]: https://github.com/benne/stubid/tree/master/fixtures/signicat/sandbox/CAP-042")]
+    [InlineData("[CAP-042][refused]\n\n[refused]: https://github.com/benne/stubid/tree/master/fixtures/signicat/sandbox/CAP-042")]
+    [InlineData("`fixtures/signicat/sandbox/CAP-042/response.head`")]
+    [InlineData("[the body](https://github.com/benne/stubid/blob/master/fixtures/signicat/sandbox/CAP-042/response.head)")]
+    public void A_citation_that_names_its_pack_resolves_there(string citation)
+    {
+        Assert.Empty(Cited("docs/releases/next.md", citation,
+            "fixtures/signicat/sandbox/CAP-040", "fixtures/signicat/sandbox/CAP-042",
+            "fixtures/signicat/sandbox/CAP-042/response.head"));
+    }
+
+    /// <summary>A citation that names a pack is resolved in that pack, whatever another one holds.</summary>
+    /// <remarks>
+    /// The second row is the gap the path form had: matched by its id, it passed because the first
+    /// broker's session pack has a CAP-020. The third is what holds a range to every id in it, since
+    /// the pack directory itself is there. A link whose text names no id is still checked at its
+    /// target, and a link to another branch cannot be read at all, so it is reported rather than
+    /// passed unread.
+    /// </remarks>
+    [Theory]
+    [InlineData("[CAP-042](https://github.com/benne/stubid/tree/master/fixtures/neb/pp-session/CAP-042)")]
+    [InlineData("`fixtures/neb/pp/CAP-020`")]
+    [InlineData("[CAP-040 to CAP-043](https://github.com/benne/stubid/tree/master/fixtures/signicat/sandbox)")]
+    [InlineData("[CAP-042](https://github.com/benne/stubid/tree/main/fixtures/signicat/sandbox/CAP-042)")]
+    [InlineData("[why](https://github.com/benne/stubid/tree/main/fixtures/signicat/sandbox/CAP-042)")]
+    [InlineData("[why](https://github.com/benne/stubid/tree/master/fixtures/signicat/sandbox/CAP-099)")]
+    [InlineData("[the body](https://github.com/benne/stubid/tree/master/fixtures/signicat/sandbox/CAP-042/respons.raw)")]
+    [InlineData("`fixtures/signicat/sandbox/CAP-0421`")]
+    public void A_citation_that_names_the_wrong_pack_fails(string citation)
+    {
+        Assert.NotEmpty(Cited("docs/brokers/neb/divergences.md", $"Recorded in {citation}.",
+            "fixtures/neb/pp-session/CAP-020", "fixtures/signicat/sandbox/CAP-040",
+            "fixtures/signicat/sandbox/CAP-042", "fixtures/neb/pp/CAP-042"));
+    }
+
+    [Theory]
+    [InlineData("[CAP-020 to CAP-029](../capture-session.md)")]
+    [InlineData("[CAP-020 to CAP-029](https://github.com/benne/stubid/blob/master/docs/capture-session.md)")]
+    public void A_range_linked_to_the_runbook_that_plans_it_is_a_mention(string range)
+    {
+        Assert.Empty(Cited("docs/releases/next.md", $"Ten steps, {range}, are declared."));
+    }
+
+    /// <summary>Only the runbook turns a citation into a mention. Any other link is read as prose.</summary>
+    [Theory]
+    [InlineData("docs/releases/next.md", "[CAP-099](#)")]
+    [InlineData("docs/releases/next.md", "[CAP-099]()")]
+    [InlineData("docs/releases/next.md", "[CAP-099](https://github.com/benne/stubid/pull/75)")]
+    [InlineData("docs/releases/next.md", "[CAP-099](../roadmap.md)")]
+    [InlineData("docs/brokers/neb/errors.md", "[CAP-099](claims.md)")]
+    public void A_link_to_anywhere_but_the_runbook_leaves_its_ids_to_be_resolved(string document, string link)
+    {
+        Assert.Contains("CAP-099", Assert.Single(Cited(document, $"Recorded in {link}.")), StringComparison.Ordinal);
+    }
+
+    /// <summary>A reference link is checked by the ids in its text, at the target its definition gives.</summary>
+    [Theory]
+    [InlineData("[CAP-043][refused]\n\n[refused]: https://github.com/benne/stubid/tree/master/fixtures/signicat/sandbox")]
+    [InlineData("[CAP-043]\n\n[CAP-043]: <https://github.com/benne/stubid/tree/master/fixtures/signicat/sandbox/CAP-042> \"the refusal\"")]
+    public void A_reference_link_is_resolved_by_its_text(string citation)
+    {
+        Assert.Contains("CAP-043", Assert.Single(Cited("docs/releases/next.md", citation,
+            "fixtures/signicat/sandbox/CAP-042")), StringComparison.Ordinal);
+    }
+
+    /// <summary>A line inside a paragraph is not a definition, however much it looks like one.</summary>
+    [Fact]
+    public void A_line_that_continues_a_paragraph_defines_nothing()
+    {
+        Assert.Contains("CAP-099", Assert.Single(Cited("docs/releases/next.md",
+            "Recorded as\n[CAP-099]: https://github.com/benne/stubid/pull/75")), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("```\n302 http://localhost:5099/callback?state=CAP-031\n```\n")]
+    [InlineData("~~~~ http\nGET /callback?state=CAP-031\n~~~~\n")]
+    public void An_id_in_a_fenced_code_block_is_not_a_citation(string block)
+    {
+        Assert.Empty(Cited("docs/research/signed-requests.md", "It redirects:\n\n" + block + "\nand stops."));
+    }
+
+    /// <summary>A code block ends at its own closing fence, and the prose after it is read.</summary>
+    /// <remarks>The second row closes with a longer fence than it opened with, which CommonMark allows.</remarks>
+    [Theory]
+    [InlineData("```\nstate=CAP-031\n```\n")]
+    [InlineData("```\nstate=CAP-031\n`````\n")]
+    public void A_code_block_ends_at_its_own_fence(string block)
+    {
+        var problems = Cited("docs/research/signed-requests.md",
+            block + "\nRefused, and why (CAP-042).\n\n```\nstate=CAP-031\n```\n");
+
+        Assert.Contains("CAP-042", Assert.Single(problems), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_bare_id_on_a_broker_page_resolves_against_that_broker_only()
+    {
+        Assert.Empty(Cited("docs/brokers/neb/claims.md", "Recorded in CAP-031.", "fixtures/neb/pp-session/CAP-031"));
+        Assert.Single(Cited("docs/brokers/signicat/claims.md", "Recorded in CAP-031.", "fixtures/neb/pp-session/CAP-031"));
+    }
+
+    [Fact]
+    public void The_runbook_may_reserve_a_number_but_not_cite_a_path_that_is_not_there()
+    {
+        var problems = Cited(Runbook, "Record steps CAP-050 to CAP-059 into `fixtures/signicat/sandbox/CAP-099`.");
+
+        Assert.Contains("fixtures/signicat/sandbox/CAP-099", Assert.Single(problems), StringComparison.Ordinal);
+    }
+
+    private static List<string> Cited(string document, string text, params string[] recorded) =>
+    [
+        .. Unresolved(
+            document,
+            text,
+            ["fixtures/neb/pp", "fixtures/neb/pp-session", "fixtures/signicat/sandbox"],
+            path => recorded.Any(r => r == path || r.StartsWith(path + "/", StringComparison.Ordinal))),
+    ];
 
     /// <summary>
     /// The tokens the reference describes carry their members in the order it lists them.

@@ -97,7 +97,7 @@ granted from the administration interface. The paragraph under it concluded that
 transaction token's text claims needed a scope only the broker's staff could grant.
 
 That name has no source. It appears in no vendor document and nowhere public, and its first
-occurrence in this repository is the probe request that used it. That probe, CAP-016, was
+occurrence in this repository is the probe request that used it. That probe, [CAP-016], was
 refused `unauthorized_client` — the error for a client not authorized to use a **grant type**,
 where an unknown or unentitled scope is `invalid_scope`. It was a code client asking for
 `client_credentials`, so the request failed on the grant and the scope string was never read.
@@ -109,7 +109,10 @@ it now reads. The real reason the 2026-08-30 sitting did not record the text cla
 sent `reference_text` alone, and the broker limits the transaction-text flow to signed requests
 — see [the divergences](../brokers/neb/divergences.md).
 
-**Recorded 2026-09-02.** CAP-031 sent a signed request carrying a transaction text and the
+**Recorded 2026-09-02.** [CAP-031] sent a signed request carrying a transaction text and the
 claims came back, on the same client and the same granted scope as the sitting before it. No
 scope was added to reach them, which is the retraction's positive half: the argument above
 rests on a missing source and on reading one error shape, and this rests on the claims arriving.
+
+[CAP-016]: https://github.com/benne/stubid/tree/master/fixtures/neb/pp/CAP-016
+[CAP-031]: https://github.com/benne/stubid/tree/master/fixtures/neb/pp-session/CAP-031

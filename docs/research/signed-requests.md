@@ -2,7 +2,7 @@
 
 Measured against Signaturgruppen Broker pre-production on 2026-09-01, on two clients: the open
 code client the broker publishes, and a private client belonging to a broker customer — the one
-CAP-021 and CAP-022 were recorded with. Two runs, identical.
+[CAP-021] and [CAP-022] were recorded with. Two runs, identical.
 
 The question came out of the transaction-text claims. They were unrecorded, the broker limits
 the transaction-text flow to signed requests, and nothing here had ever sent one, so it was an
@@ -112,8 +112,12 @@ endpoint. It says nothing about what the user is shown, and nothing about which 
 
 That needs a completed signing login, with a human in MitID's test tool. What this measurement
 changed is that such a sitting was reachable at all — no new entitlement, and nobody from the
-broker. It was taken on 2026-09-02 and is recorded as CAP-031; what came back is in
+broker. It was taken on 2026-09-02 and is recorded as [CAP-031]; what came back is in
 [what the tokens carry](../brokers/neb/claims.md), and the half of the question this note
 could not reach — what the user is shown — is in
 [what the screens showed](transaction-screens.md). The broker's own page rendered the text; it
 was not among the flow values MitID held for that transaction.
+
+[CAP-021]: https://github.com/benne/stubid/tree/master/fixtures/neb/pp-session/CAP-021
+[CAP-022]: https://github.com/benne/stubid/tree/master/fixtures/neb/pp-session/CAP-022
+[CAP-031]: https://github.com/benne/stubid/tree/master/fixtures/neb/pp-session/CAP-031
