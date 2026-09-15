@@ -3,15 +3,36 @@
 Notes accumulate here as changes land, and this file is renamed to the version when a release
 goes out. The dated files beside it are history and are never edited.
 
+## A citation names the broker it came from
+
+Capture numbers restart per broker, so a number alone no longer says which recording it means:
+`fixtures/neb/pp/CAP-001` and `fixtures/signicat/sandbox/CAP-001` are both discovery documents. The
+documentation check now reads a citation together with its broker.
+
+On a page under `docs/brokers/<key>/` a bare number still works, and it resolves only against
+`fixtures/<key>/`, so a page about one broker cannot pass on a recording only the other broker has.
+Anywhere else a citation names its pack, as a link to the recording or as the recording's path, and
+a bare number fails the build. Release notes use links, since they are read on the site and on
+GitHub. A path is resolved as the path it is, and a link to a recording is checked at its target and
+for every number in its text. A range linked to the part of the runbook that plans it is a mention
+rather than evidence, and a number inside a fenced code block is not read as a citation. The runbook
+itself still assigns numbers before anything is recorded under them, so a bare number is allowed
+there.
+
+No second broker has a page yet, so the real documentation cannot exercise the broker-page half of
+the rule. Negative controls do: a broker page citing a capture that only another broker's pack holds
+does not resolve, and neither does a path into the wrong pack.
+
 ## Signicat's sitting can be booked
 
-The second broker's manual catalog has ten steps, CAP-020 to CAP-029, and the runbook has a Part 7
-for them: two aborts and a timeout, a baseline login and one with the CPR number, the same login on
-the client that puts every claim in the identity token, transaction consent with a reference text,
-single sign-on on a second client, a hybrid response for `c_hash`, and assurance level High.
-Nothing is recorded yet. `rehearse --broker=signicat` reports every step ready: the six steps that
-send a request object signed with the key registered for them reach the login page, and the
-redirect back from each carries its `state`.
+The second broker's manual catalog has ten steps,
+[CAP-020 to CAP-029](https://github.com/benne/stubid/blob/master/docs/capture-session.md#part-7--the-signicat-sitting),
+and the runbook has a Part 7 for them: two aborts and a timeout, a baseline login and one with the
+CPR number, the same login on the client that puts every claim in the identity token, transaction
+consent with a reference text, single sign-on on a second client, a hybrid response for `c_hash`,
+and assurance level High. Nothing is recorded yet. `rehearse --broker=signicat` reports every step
+ready: the six steps that send a request object signed with the key registered for them reach the
+login page, and the redirect back from each carries its `state`.
 
 Five things in the harness would have cost this sitting:
 
@@ -42,11 +63,18 @@ other.
 
 ## Signicat's sandbox is recorded
 
-`fixtures/signicat/sandbox/` holds twenty-three recordings made against a sandbox tenant: CAP-001 to
-CAP-019, and CAP-040 to CAP-043. None needs a login. The authorize and token cases use the partner
-client, the one registration that accepts a plain query, except that CAP-009 names a client that does
-not exist and CAP-018 names none. The primary client appears twice, in CAP-015 and CAP-042, to record
-what a client that requires a request object refuses, and why.
+`fixtures/signicat/sandbox/` holds twenty-three recordings made against a sandbox tenant,
+[CAP-001 to CAP-019, and CAP-040 to CAP-043](https://github.com/benne/stubid/tree/master/fixtures/signicat/sandbox).
+None needs a login. The authorize and token cases use the partner client, the one registration that
+accepts a plain query, except that
+[CAP-009](https://github.com/benne/stubid/tree/master/fixtures/signicat/sandbox/CAP-009)
+names a client that does not exist and
+[CAP-018](https://github.com/benne/stubid/tree/master/fixtures/signicat/sandbox/CAP-018)
+names none. The primary client appears twice, in
+[CAP-015](https://github.com/benne/stubid/tree/master/fixtures/signicat/sandbox/CAP-015)
+and
+[CAP-042](https://github.com/benne/stubid/tree/master/fixtures/signicat/sandbox/CAP-042),
+to record what a client that requires a request object refuses, and why.
 
 Some of what they settle:
 
@@ -54,12 +82,16 @@ Some of what they settle:
   the login page the classifier knows for this broker. The request travels on inside the `ReturnUrl`
   as an `authzId` token the broker signs, with every parameter turned into an array.
 - An `acr_values` key the broker does not know is carried into that token rather than refused
-  (CAP-011). An unknown identity provider goes to the error page on a client restricted to MitID
-  (CAP-010).
+  ([CAP-011](https://github.com/benne/stubid/tree/master/fixtures/signicat/sandbox/CAP-011)).
+  An unknown identity provider goes to the error page on a client restricted to MitID
+  ([CAP-010](https://github.com/benne/stubid/tree/master/fixtures/signicat/sandbox/CAP-010)).
 - Token endpoint errors carry `error_description` and `error_uri`, where the first broker's are bare.
-  Pushed authorization still refuses an unauthenticated push with a bare `invalid_client` (CAP-040),
-  and it is the only place that says why a client requiring a request object was refused (CAP-042).
-- The userinfo challenge is byte-identical to the first broker's (CAP-019).
+  Pushed authorization still refuses an unauthenticated push with a bare `invalid_client`
+  ([CAP-040](https://github.com/benne/stubid/tree/master/fixtures/signicat/sandbox/CAP-040)),
+  and it is the only place that says why a client requiring a request object was refused
+  ([CAP-042](https://github.com/benne/stubid/tree/master/fixtures/signicat/sandbox/CAP-042)).
+- The userinfo challenge is byte-identical to the first broker's
+  ([CAP-019](https://github.com/benne/stubid/tree/master/fixtures/signicat/sandbox/CAP-019)).
 - A trailing slash on the discovery path earns an empty 404 from the identity server. A wrong path, or
   a capitalized tenant segment, earns the host's HTML page instead.
 - The key set is not one document. Requests a second apart returned 26, 24 and 22 keys, none of them
@@ -94,84 +126,14 @@ The key set's recording promises the shape of each key rather than which keys ar
 no longer calls a difference a rotation on a broker declared to vary its key set. The certificate
 report now summarizes a key set with no chains in a single table.
 
-## A pack is found, and a citation belongs to its broker
+## A pack is found by its manifest
 
-Two checks named the recording packs by hand, and both named only the first broker's. The manifest
-guard hashed `neb/pp` and `neb/pp-session` and nothing else, so a second broker's pack would have
-arrived carrying a manifest that nothing verified. It now walks `fixtures/` for the `MANIFEST.json`
+The manifest guard named the recording packs by hand, and named only the first broker's. It hashed
+`neb/pp` and `neb/pp-session` and nothing else, so a second broker's pack would have arrived
+carrying a manifest that nothing verified. It now walks `fixtures/` for the `MANIFEST.json`
 that makes a directory a pack, beside a check that the walk still finds the two packs known to be
 there. A walk that finds nothing was never the risk, since a theory with no data fails rather than
 passes; the case nothing else would notice is a walk that finds one pack and misses another.
-
-The documentation check needed more than a longer list, because the numbering restarts per broker.
-Each broker's unattended pack starts at `CAP-001` with its own discovery document, so resolving a
-citation against every pack would
-have let a page about the second broker cite a recording its own pack did not have and pass against
-the first broker's instead — a check that got weaker the day a broker was added. A page under
-`docs/brokers/<key>/` now resolves only against `fixtures/<key>/`. A page under no broker, such as a
-research note or the roadmap, still resolves against every pack, because nothing in its path says
-whose recording it means; that rule is weaker and is stated rather than guessed from a file name.
-
-No second broker has a page yet, so the real documentation cannot exercise the half of the rule that
-matters. A negative control does: a broker page citing a capture that only another
-broker's pack holds does not resolve.
-
-## The second broker's clients are four registrations
-
-They were a plan with a setting name attached, and now they are a roster: a primary, a claims
-client, a hybrid one and a partner. Each difference buys a recording the others cannot make, and
-the summaries carry the toggles because on this broker the toggles decide what comes back — a
-claim can be aliased per client, and one setting decides whether MitID's claims reach the identity
-token at all.
-
-Two of the four are worth explaining rather than listing. The partner is the only one that accepts
-a plain query: the other three require a request object, so a bare authorize against any of them is
-refused before a parameter is read, which would make every probe from "unknown client" onward land
-on the same error page and settle nothing. And the claims client is the only one carrying
-`mitid-extra`. No `mitid_*` claim has ever been observed from this broker, and the reason is not
-entitlement — the one login that was observed never asked for the scope those attributes live in.
-
-The scrubber's table grew from four entries to ten. It held one unsuffixed identifier-and-secret
-pair, written before any client existed, which nothing would have resolved once four did. Each
-registration now has its own, because a client identifier comes back echoed in a login redirect and
-that is how a private one reached a fixture the first time round. The key identifier stayed a single
-entry: one key is registered on three of the clients and the broker reports the same identifier for
-all three.
-
-Both brokers now have a client called `hybrid`, because on both it is the hybrid grant and there is
-no better word. A name identifies a registration within its broker and not across the roster, which
-one test had been assuming the opposite of — it passed for exactly as long as the second broker had
-no clients. A refusal now names the broker as well, since "the hybrid client" stopped being an
-address.
-
-## A blank line in the settings file is not a value
-
-`capture.local.json` returned the empty string for a line somebody had not filled in, and an empty
-string is not nothing — it is a value of length zero, and everything downstream read it as
-configured. The preflight printed `set, 0 characters` and then warned that it was under six
-characters, which is a complaint about the length of a value that does not exist. Worse, an empty
-key identifier silenced the warning that a request object would name no key, so the object went out
-without one and earned a refusal the broker's error page declines to explain.
-
-Nothing here is legitimately empty, so an empty value is now the same as an absent one.
-
-## `check` no longer says a broker is ready when nothing can record it
-
-It ended with "Ready to record." whenever it found no problems, which answers whether the
-configuration is complete rather than whether anything can be recorded. Those came apart the moment
-a broker had credentials and no cases: fully configured, and every recording verb refuses. It now
-says which of the two it means.
-
-Four lines printed the word `PROBLEM` and then incremented the warning count, so a key file that is
-not there, an issuer belonging to somebody else, and a broker that does not take the algorithm the
-harness signs with all exited zero. A section now reports problems and warnings separately, and the
-exit code means what the word says.
-
-Two smaller things in the same report. A missing key file now says so when the path begins with a
-tilde, because this setting does not expand one and the hint printed above it is a shell command
-where the shell does — so the message "names a file that is not there" was arriving about a file
-that was. And the name column is measured from the names rather than set to the width that fitted
-when one broker had the longest one.
 
 ## A broker says where its own pages are, and says nothing where nobody has looked
 
@@ -190,17 +152,17 @@ first broker rather than a fact about OAuth. A refusal that carries a descriptio
 — which is what the second broker is expected to send — now has a name of its own instead of
 falling through to `Unclassified`, where it would read as a surprise rather than as the answer.
 
-One recording was already in that position. `CAP-046` records a pushed authorization request
+One recording was already in that position. [`CAP-046`](https://github.com/benne/stubid/tree/master/fixtures/neb/pp/CAP-046) records a pushed authorization request
 refused with `{"error":"invalid_request_object","error_description":"Invalid JWT request"}`, and it
 was `Unclassified` only because there was no name for that shape.
 
 Two recordings were re-made to bring the pack back into agreement with the catalog, and the drift
 they carried is worth naming because nothing would have found it. A `meta.json` records the case's
 expectation as it stood when the case was last recorded, so editing a case without re-recording it
-leaves a committed file claiming something the recording beside it contradicts. `CAP-043`'s meta
+leaves a committed file claiming something the recording beside it contradicts. [`CAP-043`](https://github.com/benne/stubid/tree/master/fixtures/neb/pp/CAP-043)'s meta
 said the broker sent a request with no scope to its login page; the `response.head` beside it
 records a redirect to the error page, which is what the catalog has said for some time. Its
-`settles` text was a version behind as well, and `CAP-046`'s description still had a spelling the
+`settles` text was a version behind as well, and [`CAP-046`](https://github.com/benne/stubid/tree/master/fixtures/neb/pp/CAP-046)'s description still had a spelling the
 repository converted away from. Both bodies are byte for byte what they were — only the volatile
 headers and the stale claims moved.
 

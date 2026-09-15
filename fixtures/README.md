@@ -23,7 +23,13 @@ harness command names its broker with `--broker=`, and there is no default: the 
 different packs, and a run that guessed would put one broker's recordings where the other's belong.
 
 **The numbering restarts per broker.** Each broker's unattended pack starts at `CAP-001` with its
-own discovery document, so a citation only means something beside the broker it belongs to.
+own discovery document, so a citation only means something beside the broker it belongs to. A page
+under `docs/brokers/<key>/` may cite a bare `CAP-nnn`, which resolves against that broker's packs.
+Anywhere else in `docs/`, a citation names its pack: as a link to the recording,
+`[CAP-042](https://github.com/benne/stubid/tree/master/fixtures/signicat/sandbox/CAP-042)`, or as
+its path, `fixtures/signicat/sandbox/CAP-042`. A bare number there fails the build, except in the
+capture runbook, `docs/capture-session.md`, which assigns numbers before anything is recorded under
+them.
 
 Bodies are stored as served: no decompression, no reformatting, no reserializing. Member
 order and whitespace are part of what is being pinned, and a JSON round-trip would quietly

@@ -83,10 +83,11 @@ Out of scope on purpose: hosted multi-tenant service and its accounts, CIBA, PAd
 document wrapping, the Idura profile, and NemLog-in / OIOSAML.
 
 The transaction token's text claims are recorded. A second sitting on 2026-09-02 sent a signed
-request carrying a transaction text and took CAP-031, which settles the last row a login could
-close; what came back is in [the claims reference](brokers/neb/claims.md). Still unseen: the
-address members under `ssn.details_*`, because the test identity has no register entry behind
-it.
+request carrying a transaction text and took
+[CAP-031](https://github.com/benne/stubid/tree/master/fixtures/neb/pp-session/CAP-031),
+which settles the last row a login could close; what came back is in
+[the claims reference](brokers/neb/claims.md). Still unseen: the address members under
+`ssn.details_*`, because the test identity has no register entry behind it.
 
 Four behaviors are implemented from documentation rather than from a recording. Three of them
 need a completed login to reach: end session honoring a post-logout redirect when it is given a
