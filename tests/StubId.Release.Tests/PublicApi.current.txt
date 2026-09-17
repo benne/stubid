@@ -467,7 +467,9 @@ type public sealed record StubId.Server.FidelityEntry : System.IEquatable<StubId
   property string Tier { get; init; }
 
 type public static class StubId.Server.FidelityLedger
+  method static string OwnerOf (StubId.Server.FidelityEntry entry)
   method static int ProvenanceWeight (string provenance)
+  method static System.Collections.Generic.IReadOnlyList<StubId.Server.FidelityEntry> ReadFor (string broker)
   method static System.Collections.Generic.IReadOnlyList<StubId.Server.FidelityEntry> Read (System.Reflection.Assembly[] assemblies)
   property System.Reflection.Assembly[] Sources { get; }
 

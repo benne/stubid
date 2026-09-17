@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using StubId.Profiles;
 using StubId.Server;
 
 namespace StubId.Release.Tests;
@@ -728,34 +729,78 @@ public class BrokerReferenceTests
     /// names the tenant root rather than a route.
     /// </para>
     /// </remarks>
-    [Fact]
-    public void Every_endpoint_the_discovery_document_advertises_is_answered_or_declared_missing()
+    [Theory]
+    [MemberData(nameof(Discoveries))]
+    public void Every_endpoint_the_discovery_document_advertises_is_answered_or_declared_missing(
+        string broker, string recording)
     {
-        using var discovery = JsonDocument.Parse(File.ReadAllText(
-            Path.Combine(Repository.Root, "fixtures", "neb", "pp", "CAP-001", "response.raw")));
+        var profile = BrokerProfiles.Select(broker);
 
-        var host = discovery.RootElement.GetProperty("issuer").GetString()!;
-        host = host[..host.LastIndexOf("/op", StringComparison.Ordinal)];
+        using var discovery = JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(Repository.Root, recording)));
 
+        var issuer = discovery.RootElement.GetProperty("issuer").GetString()!;
+        Assert.EndsWith(profile.Root.Prefix, issuer, StringComparison.Ordinal);
+
+        var host = issuer[..^profile.Root.Prefix.Length];
+
+        // Every URL on the broker's own host, rather than the members whose names end a particular
+        // way. The second broker advertises a check_session_iframe, which is an address it answers
+        // on and ends in neither suffix, so a sweep reading names would have nothing to say about it.
         var advertised = discovery.RootElement.EnumerateObject()
-            .Where(m => m.Name.EndsWith("_endpoint", StringComparison.Ordinal)
-                        || m.Name.EndsWith("_uri", StringComparison.Ordinal))
+            .Where(m => m.Name != "issuer")
             .Where(m => m.Value.ValueKind == JsonValueKind.String)
             .Where(m => m.Value.GetString()!.StartsWith(host, StringComparison.Ordinal))
             .ToList();
 
         Assert.NotEmpty(advertised);
 
-        var declared = Server.Endpoints.Declare().ToDictionary(r => r.Pattern, StringComparer.Ordinal);
+        var declared = profile.DeclareRoutes(new ProfileContext(issuer, host))
+            .ToDictionary(r => r.Pattern, StringComparer.Ordinal);
+
         var unanswered = advertised
             .Where(m => !declared.ContainsKey(m.Value.GetString()![host.Length..].TrimStart('/')))
             .Select(m => $"{m.Name} -> {m.Value.GetString()}")
             .ToList();
 
         Assert.True(unanswered.Count == 0,
-            $"Discovery advertises these and no route answers them, so they 404 where the "
-            + $"README promises a 501:{Environment.NewLine}"
+            $"{broker}'s discovery advertises these and no route answers them, so they 404 where "
+            + $"the README promises a 501:{Environment.NewLine}"
             + string.Join(Environment.NewLine, unanswered));
+    }
+
+    /// <summary>The recorded discovery document each broker this build serves is derived from.</summary>
+    private static readonly (string Broker, string Recording)[] Recordings =
+    [
+        ("neb", "fixtures/neb/pp/CAP-001/response.raw"),
+    ];
+
+    public static TheoryData<string, string> Discoveries()
+    {
+        var rows = new TheoryData<string, string>();
+
+        foreach (var (broker, recording) in Recordings)
+        {
+            rows.Add(broker, recording);
+        }
+
+        return rows;
+    }
+
+    /// <summary>
+    /// Every broker this build serves is covered by the sweep above.
+    /// </summary>
+    /// <remarks>
+    /// The rows are written out, because a broker's discovery recording is not derivable from its
+    /// name. This is what stops a second broker being added with no row and the sweep passing by
+    /// having nothing to look at.
+    /// </remarks>
+    [Fact]
+    public void Every_broker_this_build_serves_has_a_discovery_recording_to_check()
+    {
+        Assert.Equal(
+            BrokerProfiles.Available.Order(StringComparer.Ordinal),
+            Recordings.Select(row => row.Broker).Order(StringComparer.Ordinal));
     }
 
     /// <summary>

@@ -95,6 +95,48 @@ public class HostedProfileTests
     }
 
     /// <summary>
+    /// An instance answers with its own broker's ledger, and nobody else's.
+    /// </summary>
+    /// <remarks>
+    /// The endpoint reads the ledger for the broker the loaded profile names. With one broker in
+    /// the switch that filter cannot be seen from a configured instance - its list and the whole
+    /// ledger are the same list - so the probe is a profile the build does not serve. Nothing is
+    /// filed under Idura, and its assembly is not one the ledger reads, so the answer is empty
+    /// where an endpoint that had stopped filtering would hand back the first broker's whole list.
+    /// </remarks>
+    [Fact]
+    public async Task An_instance_answers_with_its_own_brokers_ledger()
+    {
+        await using var app = await Serve();
+        using var client = app.GetTestClient();
+
+        using var response = await client.GetAsync("/_stubid/v1/fidelity", Ct);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(Ct));
+
+        Assert.Equal("idura", body.RootElement.GetProperty("profile").GetProperty("broker").GetString());
+        Assert.Empty(body.RootElement.GetProperty("entries").EnumerateArray());
+    }
+
+    /// <summary>The admin page reads the same ledger the endpoint does.</summary>
+    /// <remarks>
+    /// Two readers of one list, which is the drift this repository has been caught by before: the
+    /// page was written from the same annotations and would have shown the first broker's
+    /// divergences under a heading saying where this build is not the real thing.
+    /// </remarks>
+    [Fact]
+    public async Task The_admin_page_shows_no_other_brokers_divergences()
+    {
+        await using var app = await Serve();
+        using var client = app.GetTestClient();
+
+        using var response = await client.GetAsync("/_stubid/admin/emulated", Ct);
+        var page = await response.Content.ReadAsStringAsync(Ct);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.DoesNotContain("Endpoints.Ciba", page, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// StubID's own surface survives a tenant whose first path segment is dynamic.
     /// </summary>
     /// <remarks>

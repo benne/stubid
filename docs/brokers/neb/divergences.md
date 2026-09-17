@@ -1,8 +1,8 @@
 # Nets eID Broker: where StubID differs on purpose
 
-Every entry here is a deliberate decision, not an omission. A running instance serves the same
-list at `GET /_stubid/v1/fidelity`, read from annotations next to the code that emits each
-behavior, so this document and the running system cannot disagree.
+Every entry here is a deliberate decision, not an omission. An instance serving this broker
+answers the same list at `GET /_stubid/v1/fidelity`, read from annotations next to the code that
+emits each behavior, so this document and the running system cannot disagree.
 
 The sections below explain the decisions in the order somebody meeting them needs them.
 [The whole ledger](#the-whole-ledger) is at the end, written out from those same annotations
@@ -363,10 +363,13 @@ mistaken for the real thing.
 
 <a id="the-whole-ledger"></a>
 
-Every annotation in the two assemblies that carry them, in the order a reader needs: what is not
-reproduced at all, then what diverges on purpose, then what rests on documentation, and only then
-what a recording confirmed. The same list a running instance serves at
-`GET /_stubid/v1/fidelity`, and the same order the admin pages put it in.
+Every annotation filed under this broker, in the order a reader needs: what is not reproduced at
+all, then what diverges on purpose, then what rests on documentation, and only then what a
+recording confirmed. The same list an instance serving this broker answers at
+`GET /_stubid/v1/fidelity`, and the same order the admin pages put it in. An annotation says which
+broker it belongs to by the paths it already carries: the page its reason argues on, or failing
+that the pack its evidence cites. One that names neither is filed here, because the engine was
+written against this broker and answers for it alone.
 
 <!-- generated:begin ledger-index -->
 | What | How close | On what evidence | Because |
