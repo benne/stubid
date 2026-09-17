@@ -13,12 +13,12 @@ completed there yet, because no login has been recorded: that sitting needs a pe
 test tool.
 
 The discovery document is derived from the recording at build time, the way the first broker's is,
-with the tenant's host swapped for the instance's address. Its `claims_supported` is the recorded
-account's own configuration rather than a fact about the platform, which is said on the broker's
-page rather than smoothed over. The key set is published with `alg` named and no certificate chain,
-which is the other way round from the first broker's, and it is the same two keys on every request
-where the broker serves a different subset each time — a divergence recorded rather than imitated,
-because reproducing it would mean inventing keys nothing signs with.
+and served with the instance's address in place of the tenant's. Its `claims_supported` is the
+recorded account's own configuration rather than a fact about the platform, which is said on the
+broker's page rather than smoothed over. The key set is published with `alg` named and no
+certificate chain, which is the other way round from the first broker's, and it is the same two
+keys on every request where the broker serves a different subset each time — a divergence recorded
+rather than imitated, because reproducing it would mean inventing keys nothing signs with.
 
 A ledger entry is filed under the broker whose page argues it or whose pack its evidence cites, so
 an instance answers with its own broker's divergences and each broker's reference page carries its

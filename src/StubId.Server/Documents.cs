@@ -25,7 +25,7 @@ public sealed class Documents
     /// One template per broker, each derived from that broker's own recording.
     /// </summary>
     /// <remarks>
-    /// Read once at startup rather than per request, and both are read whichever broker this
+    /// Read once rather than per request, and both are read whichever broker this
     /// instance serves: a resource that had gone missing from the build would otherwise be found
     /// only by whoever ran that profile.
     /// </remarks>

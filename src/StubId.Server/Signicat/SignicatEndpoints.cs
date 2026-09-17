@@ -38,9 +38,12 @@ internal static class SignicatEndpoints
         void Map(string pattern, string[] methods, RouteRole role, Delegate handler) =>
             routes.Add(new RouteDeclaration(pattern, methods, role, handler)
             {
-                // Both root segments are compared exactly here, where the first broker compares
-                // only its own: a request that capitalizes either one is refused by this broker.
-                Exactness = SegmentExactness.Uniform(StringComparison.Ordinal, TrailingSlash.Refuse),
+                // The two root segments are compared exactly, where the first broker compares only
+                // its own: a request that capitalizes either one is refused by this broker. What
+                // happens below them was never probed, so the rest keeps the default rather than
+                // claiming a strictness nothing measured.
+                Exactness = new SegmentExactness(
+                    [StringComparison.Ordinal, StringComparison.Ordinal], TrailingSlash.Refuse),
             });
 
         Map("auth/open/.well-known/openid-configuration", ["GET"], RouteRole.Discovery, Discovery);

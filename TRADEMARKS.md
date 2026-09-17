@@ -2,8 +2,9 @@
 
 MitID is a registered trademark of Digitaliseringsstyrelsen. Nets eID Broker and
 Signaturgruppen are marks of Signaturgruppen A/S. Signicat is a mark of Signicat AS. Idura
-and Criipto are marks of their owner. NemLog-in is a service of Digitaliseringsstyrelsen. All are used here only to state
-factually which systems StubID emulates. No endorsement is claimed or implied.
+and Criipto are marks of their owner. NemLog-in is a service of Digitaliseringsstyrelsen.
+All are used here only to state factually which systems StubID emulates. No endorsement is
+claimed or implied.
 
 The Apache-2.0 license covering this project grants no trademark rights (see section 6 of
 the license).

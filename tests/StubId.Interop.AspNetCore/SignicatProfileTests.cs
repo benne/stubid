@@ -28,6 +28,13 @@ public class SignicatProfileTests : IClassFixture<WebApplicationFactory<Program>
             builder.UseSetting("StubId:PublicBaseUrl", Address);
         }).CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
+    /// <summary>The two addresses this profile answers rather than refuses.</summary>
+    private static readonly string[] Served =
+    [
+        "/auth/open/.well-known/openid-configuration",
+        "/auth/open/.well-known/openid-configuration/jwks",
+    ];
+
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     private static string RepositoryRoot()
@@ -104,8 +111,17 @@ public class SignicatProfileTests : IClassFixture<WebApplicationFactory<Program>
         Assert.All(keys, key => Assert.Equal(
             ["kty", "use", "kid", "e", "n", "alg"], key.EnumerateObject().Select(m => m.Name)));
         Assert.All(keys, key => Assert.Equal("RSA", key.GetProperty("kty").GetString()));
-        Assert.Contains(keys, key => key.GetProperty("alg").GetString() == "RS256");
-        Assert.Contains(keys, key => key.GetProperty("alg").GetString() == "RSA-OAEP");
+
+        // Each key by what it is for, rather than by the set carrying both values somewhere: the
+        // algorithm and the key id are what a client reads, and swapping them between the two keys
+        // would leave every assertion above standing.
+        var signing = Assert.Single(keys, key => key.GetProperty("use").GetString() == "sig");
+        var encryption = Assert.Single(keys, key => key.GetProperty("use").GetString() == "enc");
+
+        Assert.Equal("RS256", signing.GetProperty("alg").GetString());
+        Assert.Equal("RSA-OAEP", encryption.GetProperty("alg").GetString());
+        Assert.Matches("^signing-key-[0-9a-f]{32}$", signing.GetProperty("kid").GetString());
+        Assert.Matches("^encryption-key-[0-9a-f]{32}$", encryption.GetProperty("kid").GetString());
     }
 
     /// <summary>The same key set on every request, which is the divergence this profile carries.</summary>
@@ -147,6 +163,10 @@ public class SignicatProfileTests : IClassFixture<WebApplicationFactory<Program>
 
             if (response.StatusCode == HttpStatusCode.OK)
             {
+                // Named, so that an endpoint that started answering 200 with something invented
+                // reads as the failure it would be rather than as one more address that is served.
+                Assert.Contains(path, Served, StringComparer.Ordinal);
+
                 continue;
             }
 

@@ -14,11 +14,17 @@ broker before anything is built on it.
 Only the route table. A profile declares patterns relative to the tenant root, the methods
 each answers, how strictly each path is matched, and the handler.
 
-That is deliberately less than the design allows. Claim composition, error envelopes, key
-rosters and the request grammar are still engine code, and stay there until a second profile
-actually needs them to differ. Each has exactly one implementation today, and the recordings
-that would justify a second shape do not exist. Moving them now would be guessing with extra
-steps.
+That is deliberately less than the design allows. Claim composition, error envelopes and the
+request grammar are still engine code, and stay there until a second profile actually needs them
+to differ. Each has exactly one implementation today, and the recordings that would justify a
+second shape do not exist. Moving them now would be guessing with extra steps.
+
+The key roster was a fourth, and it is the first of them to stop being one shape — which is worth
+reading as the rule working rather than as the seam growing. Signicat publishes bare RSA keys with an algorithm
+named and no certificate chain, where the first broker publishes certificates with neither — two
+recordings that disagree, so the second broker writes its own key set in its own code. The seam
+did not have to change for it: a profile already declares its own routes, and a route's handler is
+where a broker's own shape belongs.
 
 ## What Idura forced that one broker never would
 

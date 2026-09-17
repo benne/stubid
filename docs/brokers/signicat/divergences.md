@@ -14,10 +14,11 @@ settle](#awaiting-capture) collects what the next capture session could close.
 
 Authorize, token, userinfo, end session, check session and pushed authorization all answer 501.
 
-**Why.** Each of them is recorded only as far as a refusal: an unknown client reaches the error
-page, a bad secret earns `invalid_client` with a description, a push with no authentication earns a
-bare one. What none of them records is a login that succeeded, because MitID's test tool needs a
-person at a keyboard and that sitting has not happened. Reproducing the refusals alone would mean
+**Why.** What none of them records is a login that succeeded, because MitID's test tool needs a
+person at a keyboard and that sitting has not happened. Most are recorded as far as a refusal: an
+unknown client reaches the error page, a bad secret earns `invalid_client` with a description, a
+push with no authentication earns a bare one. Check session has no recording at all — it is
+advertised, and no probe has reached it. Reproducing the refusals alone would mean
 an endpoint that answers correctly for the cases nobody uses and wrongly for the case everybody
 does.
 
@@ -53,10 +54,10 @@ StubID publishes two keys, always the same two: the token-signing key and the re
 key, in this broker's member shape.
 
 **Why this is a divergence.** The broker's own key set is not one document. Three fetches a second
-apart returned 26, 24 and 22 keys, in different orders, and a key is available for at most 39 days.
-A client that fetches the set once and caches it therefore fails against the broker some of the
-time — and passes here always, which is the false pass this project exists not to give.
-Reproducing the behavior would mean inventing keys nothing signs with.
+apart returned 26, 24 and 22 keys, in different orders. A client that fetches the set once and
+caches it therefore fails against the broker some of the time — and passes here always, which is
+the false pass this project exists not to give. Reproducing the behavior would mean inventing keys
+nothing signs with.
 
 **What this costs.** A test that asserts a client refetches on an unknown `kid` cannot be written
 against this profile.

@@ -23,15 +23,40 @@ public class EmbeddedDocumentTests
     /// tenant is in the host and nothing committed may name the account a recording came from. The
     /// substitution is the same either way: one string out, one string in.
     /// </remarks>
-    public static TheoryData<string, string, string> Templates() => new()
+    private static readonly (string Broker, string Resource, string Recording, string Host)[] Derived =
+    [
+        ("neb", "discovery.json", "fixtures/neb/pp/CAP-001/response.raw", "https://pp.netseidbroker.dk"),
+        ("signicat", "discovery.signicat.json", "fixtures/signicat/sandbox/CAP-001/response.raw",
+            "https://{{SIGNICAT_DOMAIN}}.sandbox.signicat.com"),
+    ];
+
+    public static TheoryData<string, string, string> Templates()
     {
-        { "discovery.json", "fixtures/neb/pp/CAP-001/response.raw", "https://pp.netseidbroker.dk" },
+        var rows = new TheoryData<string, string, string>();
+
+        foreach (var (_, resource, recording, host) in Derived)
         {
-            "discovery.signicat.json",
-            "fixtures/signicat/sandbox/CAP-001/response.raw",
-            "https://{{SIGNICAT_DOMAIN}}.sandbox.signicat.com"
-        },
-    };
+            rows.Add(resource, recording, host);
+        }
+
+        return rows;
+    }
+
+    /// <summary>
+    /// Every broker this build serves has a template here.
+    /// </summary>
+    /// <remarks>
+    /// The rows are written out, because which recording a template comes from is not derivable
+    /// from a broker's name. This is what stops a third broker arriving with a template nothing
+    /// above ever reads.
+    /// </remarks>
+    [Fact]
+    public void Every_broker_this_build_serves_has_a_derived_template()
+    {
+        Assert.Equal(
+            BrokerProfiles.Available.Order(StringComparer.Ordinal),
+            Derived.Select(row => row.Broker).Order(StringComparer.Ordinal));
+    }
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 

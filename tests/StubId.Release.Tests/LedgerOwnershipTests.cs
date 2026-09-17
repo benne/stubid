@@ -146,11 +146,22 @@ public class LedgerOwnershipTests
     /// about.
     /// </remarks>
     [Theory]
-    [InlineData("signicat", "Signicat")]
-    public void An_entry_about_a_brokers_own_code_is_filed_under_that_broker(string broker, string prefix)
+    [MemberData(nameof(BrokersWithCodeOfTheirOwn))]
+    public void An_entry_about_a_brokers_own_code_is_filed_under_that_broker(string broker)
     {
-        var misfiled = FidelityLedger.Read(FidelityLedger.Sources)
-            .Where(entry => entry.Subject.StartsWith(prefix, StringComparison.Ordinal))
+        // A subject is the declaring type's name, or its full name for a type-level entry, so the
+        // broker's own types are found segment by segment rather than by the whole string.
+        var name = char.ToUpperInvariant(broker[0]) + broker[1..];
+
+        var about = FidelityLedger.Read(FidelityLedger.Sources)
+            .Where(entry => entry.Subject.Split('.').Any(s => s.StartsWith(name, StringComparison.Ordinal)))
+            .ToList();
+
+        Assert.True(about.Count > 0,
+            $"Nothing in the ledger is about {broker}, so this checks nothing. If its code was "
+            + "renamed, rename what this looks for.");
+
+        var misfiled = about
             .Where(entry => FidelityLedger.OwnerOf(entry) != broker)
             .Select(entry => $"{entry.Subject} -> {FidelityLedger.OwnerOf(entry)}")
             .ToList();
@@ -159,6 +170,16 @@ public class LedgerOwnershipTests
             $"These are about {broker} and are filed elsewhere, so they argue their case on a page "
             + "nobody reading that instance would open: " + string.Join(", ", misfiled));
     }
+
+    /// <summary>
+    /// Brokers whose own code this build carries, which is every one but the default.
+    /// </summary>
+    /// <remarks>
+    /// The engine was written against the first broker and is filed under it by the same rule, so
+    /// looking for its name would claim every entry the seam has not moved.
+    /// </remarks>
+    public static TheoryData<string> BrokersWithCodeOfTheirOwn() =>
+        [.. BrokerProfiles.Available.Where(broker => broker != BrokerProfiles.Default)];
 
     private static FidelityEntry Entry(string? reason, string? evidence) =>
         new("Subject.Member", "Exact", "Divergent", evidence, reason, null, true);

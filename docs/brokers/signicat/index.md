@@ -4,8 +4,10 @@ The second broker StubID serves, and the first one it only declares. An instance
 `StubId:Profile=signicat`, or `WithProfile("signicat")` on either hosting package, and answers on
 `/auth/open` instead of `/op`.
 
-What is served is what recordings settle: the discovery document and the key set. Everything else
-the document advertises answers 501 with a link to the reason. No login can be completed here,
+What is served is what recordings settle: the discovery document, and a key set in the member shape
+this broker publishes. The set itself is [one divergence](divergences.md#the-key-set) — the broker
+serves a different subset of its keys on every request, and StubID serves the same two. Everything
+else the document advertises answers 501 with a link to the reason. No login can be completed here,
 because no login has been recorded — that needs a person in MitID's test tool, and until it happens
 the claims, the request grammar and the way this broker refuses a login are unknown. Guessing them
 is the one thing this project does not do.

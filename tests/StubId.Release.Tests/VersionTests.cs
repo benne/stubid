@@ -86,8 +86,10 @@ public class VersionTests
     /// A profile version names the release that carried its sitting, and no release carries this
     /// broker's recordings yet: naming one would be the claim the rule above exists to prevent, and
     /// naming the next one would lead the build. It is derived from the build instead, so it cannot
-    /// lead it. The release that first ships these recordings turns this test red, and that is
-    /// where the literal gets pinned, the way the first broker's is.
+    /// lead it - and this asserts that it still is, rather than a literal that happens to match
+    /// today. What it cannot do is force the pinning: the release that first ships these recordings
+    /// has to replace the derivation with a literal, and nothing here will go red if it does not.
+    /// That is the same gap the first broker's version has, and docs/compatibility.md names it.
     /// </remarks>
     [Fact]
     public void The_second_profile_follows_the_build_until_a_release_carries_it()
