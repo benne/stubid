@@ -80,6 +80,22 @@ public class VersionTests
     }
 
     /// <summary>
+    /// The second profile follows the build until a release carries its recordings.
+    /// </summary>
+    /// <remarks>
+    /// A profile version names the release that carried its sitting, and no release carries this
+    /// broker's recordings yet: naming one would be the claim the rule above exists to prevent, and
+    /// naming the next one would lead the build. It is derived from the build instead, so it cannot
+    /// lead it. The release that first ships these recordings turns this test red, and that is
+    /// where the literal gets pinned, the way the first broker's is.
+    /// </remarks>
+    [Fact]
+    public void The_second_profile_follows_the_build_until_a_release_carries_it()
+    {
+        Assert.Equal(Declared(), BrokerProfiles.Select("signicat").Id.Version);
+    }
+
+    /// <summary>
     /// The same version in its two published forms, which is why the guides name both.
     /// </summary>
     /// <remarks>

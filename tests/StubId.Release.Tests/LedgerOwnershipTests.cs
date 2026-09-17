@@ -133,6 +133,33 @@ public class LedgerOwnershipTests
 
     public static TheoryData<string> Brokers() => [.. BrokerProfiles.Available];
 
+    /// <summary>
+    /// An entry about a broker's own code is filed under that broker.
+    /// </summary>
+    /// <remarks>
+    /// The rule reads paths, and an annotation that carries none is the first broker's by design -
+    /// which means an annotation on the second broker's own code that forgets to name a path is
+    /// filed under the first, and every check still passes because the first broker is a broker
+    /// this build serves. That happened: the annotation saying which of this broker's paths were
+    /// never probed carried only what would settle them, and its row appeared on the other
+    /// broker's page. A subject is the declaring type's name, so it says which code the entry is
+    /// about.
+    /// </remarks>
+    [Theory]
+    [InlineData("signicat", "Signicat")]
+    public void An_entry_about_a_brokers_own_code_is_filed_under_that_broker(string broker, string prefix)
+    {
+        var misfiled = FidelityLedger.Read(FidelityLedger.Sources)
+            .Where(entry => entry.Subject.StartsWith(prefix, StringComparison.Ordinal))
+            .Where(entry => FidelityLedger.OwnerOf(entry) != broker)
+            .Select(entry => $"{entry.Subject} -> {FidelityLedger.OwnerOf(entry)}")
+            .ToList();
+
+        Assert.True(misfiled.Count == 0,
+            $"These are about {broker} and are filed elsewhere, so they argue their case on a page "
+            + "nobody reading that instance would open: " + string.Join(", ", misfiled));
+    }
+
     private static FidelityEntry Entry(string? reason, string? evidence) =>
         new("Subject.Member", "Exact", "Divergent", evidence, reason, null, true);
 }

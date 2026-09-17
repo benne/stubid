@@ -9,6 +9,7 @@ COPY src/ src/
 # What StubID serves is the recording with the host substituted, never a document rebuilt from
 # a model - that is how the members the broker leaves out stay left out.
 COPY fixtures/neb/pp/CAP-001/response.raw fixtures/neb/pp/CAP-001/response.raw
+COPY fixtures/signicat/sandbox/CAP-001/response.raw fixtures/signicat/sandbox/CAP-001/response.raw
 RUN dotnet publish src/StubId.Server -c Release -o /app
 
 # An empty directory to seed the key volume from. Docker initializes a named volume from the

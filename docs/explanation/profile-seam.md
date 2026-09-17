@@ -1,6 +1,6 @@
 # The broker profile seam
 
-StubID serves one broker today and is meant to serve several. The seam is where a broker's
+StubID serves one broker per instance and is meant to serve several. The seam is where a broker's
 personality goes, and the risk it manages is that an abstraction designed around one example
 is usually wrong.
 

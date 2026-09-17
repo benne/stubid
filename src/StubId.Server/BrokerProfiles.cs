@@ -23,7 +23,7 @@ public static class BrokerProfiles
     public const string Setting = "StubId:Profile";
 
     /// <summary>The brokers this build can serve, by the name the setting takes.</summary>
-    public static IReadOnlyList<string> Available => ["neb"];
+    public static IReadOnlyList<string> Available => ["neb", "signicat"];
 
     /// <summary>
     /// Reads the setting, and refuses an unknown name rather than falling back to the default.
@@ -56,6 +56,7 @@ public static class BrokerProfiles
         return name.Trim() switch
         {
             "neb" => new NetsEidBrokerProfile(),
+            "signicat" => new Signicat.SignicatProfile(),
             _ => throw new InvalidOperationException(
                 $"{Setting} is '{name}', which is not a broker this build serves. "
                 + $"It takes one of: {string.Join(", ", Available)}."),

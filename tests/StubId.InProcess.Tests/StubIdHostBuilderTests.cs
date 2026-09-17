@@ -63,6 +63,25 @@ public class StubIdHostBuilderTests
         Assert.Equal(chosen.Authority, implied.Authority);
     }
 
+    /// <summary>
+    /// A second broker's authority carries a root of two segments.
+    /// </summary>
+    /// <remarks>
+    /// The property is composed from the profile's own root rather than from a table here, so this
+    /// is the check that the composition survives a root that is not one segment: a caller reading
+    /// it before the host starts is reading what the instance will answer on.
+    /// </remarks>
+    [Fact]
+    public void The_authority_carries_a_second_brokers_two_segment_root()
+    {
+        var signicat = new StubIdHostBuilder()
+            .WithPublicBaseUrl(new Uri("https://stubid.example"))
+            .WithProfile("signicat")
+            .Build();
+
+        Assert.Equal("https://stubid.example/auth/open", signicat.Authority.ToString());
+    }
+
     /// <summary>A broker this build does not serve is refused where the caller can still see it.</summary>
     /// <remarks>
     /// At <c>Build</c> rather than at start, because the authority is computed from the same

@@ -27,7 +27,7 @@ They are not one thing and they do not move together.
 | --- | --- | --- |
 | The .NET API you install | `StubId.Client`, `StubId.Testing`, `StubId.InProcess` | Stable. A member is deprecated for one release before it is removed, and the build enforces it. |
 | StubID's own control API | The routes under `/_stubid/v1`, which `StubId.Client` covers member by member | Stable. Additions are expected; a rename keeps answering for one release, then stops. |
-| The emulated broker | Everything under the loaded profile's root, which is `/op` today | **Deliberately not stable.** Getting closer to the broker changes bytes, and that is the point of the project rather than a regression in it. |
+| The emulated broker | Everything under the loaded profile's root: `/op` for the first broker, `/auth/open` for the second, chosen with `StubId:Profile` | **Deliberately not stable.** Getting closer to the broker changes bytes, and that is the point of the project rather than a regression in it. |
 | Configuration and the container | `StubId:*` settings, `StubId__*` environment variables, ports 8080 and 8443, the `/keys` volume, the image tags | Additive. A removed setting or a moved port is a release note. |
 
 `StubId.Abstractions` carries the same promise as the first row and appears in the API reference,
@@ -90,8 +90,10 @@ They are told apart nowhere else, and confusing them is the easiest mistake to m
   zero; the container tag keeps the padding because tags sort as text. Both resolve to the same
   release.
 - **The profile version** — which *recording* of the broker is being served. It moves only when a
-  release carries a new capture, so it lags the build and may never lead it. It has read
-  `2026.09.1` since that release, because no sitting has been recorded since.
+  release carries a new capture, so it lags the build and may never lead it. There is one per
+  broker. The first broker's has read `2026.09.1` since that release, because no sitting has been
+  recorded since; the second broker's follows the build, because no release carries its recordings
+  yet and naming one that did not would be the lie this version exists to avoid.
 - **`StubIdSession.Version`** — a counter on a single login, so two reads of it can be told apart.
   It moves on every state transition, of which a decision is one: being decided, having the code
   collected, timing out undecided, and expiring after approval without collection each move it. It
@@ -104,9 +106,10 @@ client answers null rather than failing. Read it from the instance rather than i
 the image tag, because the two move on different occasions and that difference is the whole point
 of telling them apart.
 
-One gap is left. The profile version is a hand-maintained literal: what keeps it honest is a test
-pinning it and the rule that it may not lead the build, not a derivation from the recordings
-themselves.
+One gap is left. A profile version that names a release is a hand-maintained literal: what keeps it
+honest is a test pinning it and the rule that it may not lead the build, not a derivation from the
+recordings themselves. The second broker's is derived from the build instead, which cannot lead it,
+and is pinned by the release that first carries its recordings.
 
 ## What pinning a version pins
 

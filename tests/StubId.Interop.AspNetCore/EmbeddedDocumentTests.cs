@@ -13,8 +13,25 @@ namespace StubId.Interop.AspNetCore;
 /// </remarks>
 public class EmbeddedDocumentTests
 {
-    private const string BrokerHost = "https://pp.netseidbroker.dk";
     private const string PlaceholderHost = "https://stubid.invalid";
+
+    /// <summary>
+    /// Each derived template: the recording it comes from, and the host the build took out of it.
+    /// </summary>
+    /// <remarks>
+    /// The second broker's recording carries a placeholder rather than a hostname, because its
+    /// tenant is in the host and nothing committed may name the account a recording came from. The
+    /// substitution is the same either way: one string out, one string in.
+    /// </remarks>
+    public static TheoryData<string, string, string> Templates() => new()
+    {
+        { "discovery.json", "fixtures/neb/pp/CAP-001/response.raw", "https://pp.netseidbroker.dk" },
+        {
+            "discovery.signicat.json",
+            "fixtures/signicat/sandbox/CAP-001/response.raw",
+            "https://{{SIGNICAT_DOMAIN}}.sandbox.signicat.com"
+        },
+    };
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
@@ -29,49 +46,63 @@ public class EmbeddedDocumentTests
         return directory!.FullName;
     }
 
-    private static Stream TemplateStream() =>
-        typeof(Documents).Assembly.GetManifestResourceStream("discovery.json")
-            ?? throw new InvalidOperationException("The derived discovery template is missing.");
+    private static Stream TemplateStream(string resource) =>
+        typeof(Documents).Assembly.GetManifestResourceStream(resource)
+            ?? throw new InvalidOperationException($"The derived template {resource} is missing.");
 
     /// <summary>Read the way <see cref="Documents"/> reads it, from the same assembly.</summary>
-    private static string EmbeddedTemplate()
+    private static string EmbeddedTemplate(string resource)
     {
-        using var stream = TemplateStream();
+        using var stream = TemplateStream(resource);
         using var reader = new StreamReader(stream, Encoding.UTF8);
         return reader.ReadToEnd();
     }
 
-    private static Task<string> RecordingAsync() => File.ReadAllTextAsync(
-        Path.Combine(RepositoryRoot(), "fixtures", "neb", "pp", "CAP-001", "response.raw"), Ct);
+    private static Task<string> RecordingAsync(string recording) => File.ReadAllTextAsync(
+        Path.Combine(RepositoryRoot(), recording.Replace('/', Path.DirectorySeparatorChar)), Ct);
 
-    [Fact]
-    public void The_broker_host_is_nowhere_in_the_shipped_document()
+    [Theory]
+    [MemberData(nameof(Templates))]
+    public void The_broker_host_is_nowhere_in_the_shipped_document(
+        string resource, string recording, string brokerHost)
     {
-        Assert.DoesNotContain("netseidbroker.dk", EmbeddedTemplate(), StringComparison.OrdinalIgnoreCase);
+        _ = recording;
+
+        Assert.DoesNotContain(
+            brokerHost.Replace("https://", "", StringComparison.Ordinal),
+            EmbeddedTemplate(resource),
+            StringComparison.OrdinalIgnoreCase);
     }
 
-    [Fact]
-    public async Task The_template_is_the_recording_with_the_host_swapped()
+    [Theory]
+    [MemberData(nameof(Templates))]
+    public async Task The_template_is_the_recording_with_the_host_swapped(
+        string resource, string recording, string brokerHost)
     {
         // The derivation is one substitution and nothing else. Anything the build did beyond
         // that - a rewritten line ending, a re-serialized member order - shows up here. A byte
         // order mark does not. Both sides are read through a reader that drops one, so the
         // bytes have a test of their own.
-        var recorded = await RecordingAsync();
+        var recorded = await RecordingAsync(recording);
 
         Assert.Equal(
             recorded,
-            EmbeddedTemplate().Replace(PlaceholderHost, BrokerHost, StringComparison.Ordinal));
+            EmbeddedTemplate(resource).Replace(PlaceholderHost, brokerHost, StringComparison.Ordinal));
     }
 
-    [Fact]
-    public void The_shipped_document_carries_no_byte_order_mark()
+    [Theory]
+    [MemberData(nameof(Templates))]
+    public void The_shipped_document_carries_no_byte_order_mark(
+        string resource, string recording, string brokerHost)
     {
+        _ = recording;
+        _ = brokerHost;
+
         // A mark costs a client nothing, because Documents reads the resource through the same
         // reader and never sees one. It is still a byte the build added to the recording, and
         // the embedded template is meant to be the recording with the host swapped and nothing
         // else, so the raw bytes are where it has to be caught.
-        using var stream = TemplateStream();
+        using var stream = TemplateStream(resource);
 
         var head = new byte[3];
         stream.ReadExactly(head);
@@ -79,11 +110,16 @@ public class EmbeddedDocumentTests
         Assert.False(head is [0xEF, 0xBB, 0xBF], "The build wrote a UTF-8 byte order mark.");
     }
 
-    [Fact]
-    public async Task The_placeholder_is_not_something_the_recording_already_said()
+    [Theory]
+    [MemberData(nameof(Templates))]
+    public async Task The_placeholder_is_not_something_the_recording_already_said(
+        string resource, string recording, string brokerHost)
     {
+        _ = resource;
+        _ = brokerHost;
+
         // If the broker ever served this string itself, swapping it back would be lossy and
         // the test above would be checking nothing.
-        Assert.DoesNotContain(PlaceholderHost, await RecordingAsync(), StringComparison.Ordinal);
+        Assert.DoesNotContain(PlaceholderHost, await RecordingAsync(recording), StringComparison.Ordinal);
     }
 }

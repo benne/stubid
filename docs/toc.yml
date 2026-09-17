@@ -19,15 +19,23 @@
 - name: Broker reference
   items:
     - name: Nets eID Broker
-      href: brokers/neb/index.md
-    - name: What the tokens carry
-      href: brokers/neb/claims.md
-    - name: How it refuses things
-      href: brokers/neb/errors.md
-    - name: Request parameters
-      href: brokers/neb/request-parameters.md
-    - name: Where StubID differs
-      href: brokers/neb/divergences.md
+      items:
+        - name: Overview
+          href: brokers/neb/index.md
+        - name: What the tokens carry
+          href: brokers/neb/claims.md
+        - name: How it refuses things
+          href: brokers/neb/errors.md
+        - name: Request parameters
+          href: brokers/neb/request-parameters.md
+        - name: Where StubID differs
+          href: brokers/neb/divergences.md
+    - name: Signicat
+      items:
+        - name: Overview
+          href: brokers/signicat/index.md
+        - name: Where StubID differs
+          href: brokers/signicat/divergences.md
 - name: Explanation
   items:
     - name: CPR numbers and test data

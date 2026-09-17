@@ -409,8 +409,8 @@ public class BrokerReferenceTests
     /// The negative control: a broker page does not resolve against another broker's recording.
     /// </summary>
     /// <remarks>
-    /// No second broker has a page yet, so the real documentation cannot exercise the
-    /// half of the rule that matters. This does.
+    /// The rule is exercised by the real documentation now that a second broker has a page, and this
+    /// is still the sharper case: a page whose own pack does not hold the capture it cites.
     /// </remarks>
     [Fact]
     public void A_broker_page_does_not_resolve_against_another_brokers_recording()
@@ -773,6 +773,7 @@ public class BrokerReferenceTests
     private static readonly (string Broker, string Recording)[] Recordings =
     [
         ("neb", "fixtures/neb/pp/CAP-001/response.raw"),
+        ("signicat", "fixtures/signicat/sandbox/CAP-001/response.raw"),
     ];
 
     public static TheoryData<string, string> Discoveries()
