@@ -35,7 +35,9 @@ public static class ControlApi
                 // library needs without knowing which broker it asked for.
                 root = profile.Root.Segments,
             },
-            entries = FidelityLedger.Read(FidelityLedger.Sources),
+            // This broker's entries, not every annotation in the build: an instance serves one
+            // broker, and a caller asking what it does not reproduce is asking about that one.
+            entries = FidelityLedger.ReadFor(profile.Id.Broker),
         }));
 
         // The three clients this broker publishes, which a reader currently finds by grepping the

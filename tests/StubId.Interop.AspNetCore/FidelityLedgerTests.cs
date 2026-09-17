@@ -58,6 +58,31 @@ public class FidelityLedgerTests : IClassFixture<WebApplicationFactory<Program>>
             + string.Join(", ", incomplete.Select(e => $"{e.Subject} ({e.Provenance})")));
     }
 
+    /// <summary>
+    /// Every path an entry carries is one the ownership rule can read.
+    /// </summary>
+    /// <remarks>
+    /// An entry is filed under the broker its paths name, and an entry naming none is the first
+    /// broker's. Those are the two cases the rule knows. A path written in a form it cannot parse
+    /// looks exactly like the second - a capital in the key, a leading <c>./</c>, a full URL - and
+    /// files one broker's entry on another's ledger with nothing failing. Read here rather than
+    /// beside the rule, because this is where an annotation's paths are already checked against
+    /// what is on disk.
+    /// </remarks>
+    [Fact]
+    public void Every_path_an_entry_carries_is_one_the_rule_can_read()
+    {
+        var unreadable = Ledger()
+            .Where(e => FidelityLedger.NamesUnreadably(e.Evidence, "fixtures")
+                        || FidelityLedger.NamesUnreadably(e.Reason, "docs/brokers"))
+            .ToList();
+
+        Assert.True(unreadable.Count == 0,
+            "These name a broker's directory in a form the ownership rule cannot read, so they are "
+            + "filed under the first broker rather than failing: "
+            + string.Join(", ", unreadable.Select(e => $"{e.Subject} -> {e.Reason ?? e.Evidence}")));
+    }
+
     [Fact]
     public void Anything_claimed_verified_names_a_recording_that_exists()
     {

@@ -20,7 +20,26 @@ namespace StubId.Release.Tests;
 /// </remarks>
 public class GeneratedReferenceTests
 {
-    private const string Divergences = "docs/brokers/neb/divergences.md";
+    /// <summary>The page that argues one broker's divergences, and carries its generated tables.</summary>
+    private static string Divergences(string broker) => $"docs/brokers/{broker}/divergences.md";
+
+    /// <summary>Every generated block, for every broker this build serves.</summary>
+    /// <remarks>
+    /// Read from the profiles rather than listed, so a broker added tomorrow brings its page under
+    /// the same check on the day it arrives rather than the day somebody remembers this file.
+    /// </remarks>
+    public static TheoryData<string, string> Blocks()
+    {
+        var blocks = new TheoryData<string, string>();
+
+        foreach (var broker in BrokerProfiles.Available)
+        {
+            blocks.Add(broker, "ledger-index");
+            blocks.Add(broker, "awaiting-capture");
+        }
+
+        return blocks;
+    }
 
     /// <summary>
     /// What is committed is what the ledger says today.
@@ -33,13 +52,12 @@ public class GeneratedReferenceTests
     /// the failure message.
     /// </remarks>
     [Theory]
-    [InlineData("ledger-index")]
-    [InlineData("awaiting-capture")]
-    public void The_generated_tables_say_what_the_ledger_says(string block)
+    [MemberData(nameof(Blocks))]
+    public void The_generated_tables_say_what_the_ledger_says(string broker, string block)
     {
-        var path = Path.Combine(Repository.Root, Divergences);
+        var path = Path.Combine(Repository.Root, Divergences(broker));
         var committed = File.ReadAllText(path).Replace("\r\n", "\n", StringComparison.Ordinal);
-        var composed = Replace(committed, block, Compose(block));
+        var composed = Replace(committed, block, Compose(broker, block));
 
         if (Environment.GetEnvironmentVariable("STUBID_UPDATE_DOCS") == "1")
         {
@@ -66,36 +84,49 @@ public class GeneratedReferenceTests
     /// that builds the table is not also the thing that decides whether the table is right.
     /// </remarks>
     [Theory]
-    [InlineData("ledger-index")]
-    [InlineData("awaiting-capture")]
-    public void What_is_composed_uses_one_line_ending_on_every_platform(string block)
+    [MemberData(nameof(Blocks))]
+    public void What_is_composed_uses_one_line_ending_on_every_platform(string broker, string block)
     {
-        Assert.DoesNotContain('\r', Compose(block));
+        Assert.DoesNotContain('\r', Compose(broker, block));
     }
+
+    /// <summary>Every broker this build serves has a page to argue its divergences on.</summary>
+    /// <remarks>
+    /// The generated tables are written into it, so a broker without one would have its ledger
+    /// composed and compared against nothing.
+    /// </remarks>
+    [Theory]
+    [MemberData(nameof(Brokers))]
+    public void Every_broker_this_build_serves_has_a_page(string broker)
+    {
+        Assert.True(
+            File.Exists(Path.Combine(Repository.Root, Divergences(broker))),
+            $"{broker} is a broker this build serves, and {Divergences(broker)} is not there.");
+    }
+
+    public static TheoryData<string> Brokers() => [.. BrokerProfiles.Available];
 
     /// <summary>Every block a generator knows how to write is a block the document has.</summary>
     /// <remarks>
     /// A renamed heading would otherwise stop the table being generated without failing anything,
     /// which is the quiet version of the drift this replaces.
     /// </remarks>
-    [Fact]
-    public void Every_block_this_writes_is_one_the_document_still_has()
+    [Theory]
+    [MemberData(nameof(Blocks))]
+    public void Every_block_this_writes_is_one_the_document_still_has(string broker, string block)
     {
-        var text = File.ReadAllText(Path.Combine(Repository.Root, Divergences));
+        var text = File.ReadAllText(Path.Combine(Repository.Root, Divergences(broker)));
 
-        foreach (var block in (string[])["ledger-index", "awaiting-capture"])
-        {
-            Assert.True(
-                Regex.Matches(text, $"<!-- generated:begin {block} -->").Count == 1
-                && Regex.Matches(text, $"<!-- generated:end {block} -->").Count == 1,
-                $"{Divergences} does not have exactly one '{block}' block.");
-        }
+        Assert.True(
+            Regex.Matches(text, $"<!-- generated:begin {block} -->").Count == 1
+            && Regex.Matches(text, $"<!-- generated:end {block} -->").Count == 1,
+            $"{Divergences(broker)} does not have exactly one '{block}' block.");
     }
 
-    private static string Compose(string block) => block switch
+    private static string Compose(string broker, string block) => block switch
     {
-        "ledger-index" => LedgerIndex(),
-        "awaiting-capture" => AwaitingCapture(),
+        "ledger-index" => LedgerIndex(broker),
+        "awaiting-capture" => AwaitingCapture(broker),
         _ => throw new ArgumentOutOfRangeException(nameof(block), block, "No such block."),
     };
 
@@ -106,24 +137,24 @@ public class GeneratedReferenceTests
     /// in the payload a running instance already serves, so the table shows what the endpoint
     /// shows.
     /// </remarks>
-    private static string LedgerIndex()
+    private static string LedgerIndex(string broker)
     {
         string[] header = ["| What | How close | On what evidence | Because |", "| --- | --- | --- | --- |"];
 
-        return Table(header, FidelityLedger.Read(FidelityLedger.Sources)
+        return Table(header, FidelityLedger.ReadFor(broker)
             .OrderBy(e => FidelityLedger.ProvenanceWeight(e.Provenance))
             .ThenBy(e => e.Subject, StringComparer.Ordinal)
             .Select(entry =>
                 $"| `{entry.Subject}` | {entry.Tier}, {entry.Provenance} "
-                + $"| {Cell(entry.Evidence)} | {Because(entry.Reason)} |"));
+                + $"| {Cell(entry.Evidence)} | {Because(broker, entry.Reason)} |"));
     }
 
     /// <summary>What each unsettled entry is waiting for.</summary>
-    private static string AwaitingCapture()
+    private static string AwaitingCapture(string broker)
     {
         string[] header = ["| What | What would settle it |", "| --- | --- |"];
 
-        return Table(header, FidelityLedger.Read(FidelityLedger.Sources)
+        return Table(header, FidelityLedger.ReadFor(broker)
             .Where(e => !string.IsNullOrEmpty(e.AwaitingCapture))
             .OrderBy(e => FidelityLedger.ProvenanceWeight(e.Provenance))
             .ThenBy(e => e.Subject, StringComparer.Ordinal)
@@ -139,7 +170,7 @@ public class GeneratedReferenceTests
     /// would resolve against the document's own directory - so it becomes a bare fragment when it
     /// points into this file, and a relative path when it points anywhere else.
     /// </remarks>
-    private static string Because(string? reason)
+    private static string Because(string broker, string? reason)
     {
         if (string.IsNullOrEmpty(reason))
         {
@@ -149,12 +180,12 @@ public class GeneratedReferenceTests
         var parts = reason.Split('#');
         var anchor = parts.Length > 1 ? "#" + parts[1] : "";
 
-        if (parts[0] == Divergences)
+        if (parts[0] == Divergences(broker))
         {
             return $"[why]({(anchor.Length > 0 ? anchor : "#")})";
         }
 
-        var relative = Path.GetRelativePath(Path.GetDirectoryName(Divergences)!, parts[0])
+        var relative = Path.GetRelativePath(Path.GetDirectoryName(Divergences(broker))!, parts[0])
             .Replace('\\', '/');
 
         return $"[why]({relative}{anchor})";

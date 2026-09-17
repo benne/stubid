@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.Extensions.Time.Testing;
+using StubId.Profiles;
 using StubId.Server.Sessions;
 using StubId.Wire;
 
@@ -137,9 +138,11 @@ internal static class AdminUi
 
         app.MapGet($"{Root}/emulated", (
             HttpContext http, IServiceProvider services, BrokerState state, Keys keys,
-            PublicBaseUrl address, TimeProvider clock, ProfileEndpointDataSource routes) =>
+            PublicBaseUrl address, TimeProvider clock, ProfileEndpointDataSource routes,
+            IBrokerProfile profile) =>
             Layout.Page(http, "What this build emulates", Emulated(
-                services.GetService<ServerCertificate>(), state, keys, address, clock, routes)));
+                services.GetService<ServerCertificate>(), state, keys, address, clock, routes,
+                profile)));
 
         // The form is read rather than bound. Binding IFormCollection attaches anti-forgery
         // metadata to the endpoint, and the framework then refuses to serve it without
@@ -746,7 +749,8 @@ internal static class AdminUi
         Keys keys,
         PublicBaseUrl address,
         TimeProvider clock,
-        ProfileEndpointDataSource routes)
+        ProfileEndpointDataSource routes,
+        IBrokerProfile profile)
     {
         // Value, not the throwing accessor: an instance that has not been told its address
         // answers 503 to everything that needs one, and this page is where somebody goes to find
@@ -828,7 +832,7 @@ internal static class AdminUi
             {table}
 
             <h2>Where it is not the real thing</h2>
-            {Ledger()}
+            {Ledger(profile.Id.Broker)}
             """);
     }
 
@@ -841,9 +845,9 @@ internal static class AdminUi
     /// recording confirmed. A count is never written down here, because the day it stops matching
     /// is the day nobody notices.
     /// </remarks>
-    private static Html Ledger()
+    private static Html Ledger(string broker)
     {
-        var entries = FidelityLedger.Read(FidelityLedger.Sources);
+        var entries = FidelityLedger.ReadFor(broker);
 
         return H($"""
             <table>
