@@ -1,5 +1,5 @@
 HTTP 401 Unauthorized
-Date: Fri, 18 Sep 2026 09:26:42 GMT
+Date: Fri, 18 Sep 2026 10:14:22 GMT
 Cache-Control: no-store, no-cache, max-age=0
 Pragma: no-cache
 WWW-Authenticate: Bearer realm="IdentityServer",error="invalid_token"
@@ -9,12 +9,11 @@ Referrer-Policy: same-origin
 permissions-policy: accelerometer=(),camera=(),geolocation=(),gyroscope=(),magnetometer=(),microphone=(),usb=()
 feature-policy: accelerometer 'none';camera 'none';geolocation 'none';gyroscope 'none';magnetometer 'none';microphone 'none';usb 'none'
 x-permitted-cross-domain-policies: none
-report-to: {"group":"csp-endpoint","max_age":86400,"endpoints":[{"url":"https://o202030.ingest.us.sentry.io/api/4508772389093376/security/?sentry_key=6a25c13d5adaf23097642a7299b3d285&sentry_environment=prod"}],"include_subdomains":true}
-reporting-endpoints: csp-endpoint='https://o202030.ingest.us.sentry.io/api/4508772389093376/security/?sentry_key=6a25c13d5adaf23097642a7299b3d285&sentry_environment=prod'
 Content-Security-Policy: default-src 'self' *.signicat.com *.signicat.io *.idfy.io *.idfy.no cdn.connectis.io;frame-ancestors 'self' *.signicat.com *.signicat.io *.idfy.io *.idfy.no cdn.connectis.io;img-src 'self' *.signicat.com *.signicat.io *.idfy.io *.idfy.no cdn.connectis.io;script-src 'self' 'unsafe-inline' *.signicat.com *.signicat.io *.idfy.io *.idfy.no cdn.connectis.io;style-src 'self' 'unsafe-inline' *.signicat.com *.signicat.io *.idfy.io *.idfy.no cdn.connectis.io fonts.googleapis.com fonts.gstatic.com; report-uri https://o202030.ingest.us.sentry.io/api/4508772389093376/security/?sentry_key=6a25c13d5adaf23097642a7299b3d285&sentry_environment=prod; report-to csp-endpoint
+reporting-endpoints: csp-endpoint='https://o202030.ingest.us.sentry.io/api/4508772389093376/security/?sentry_key=6a25c13d5adaf23097642a7299b3d285&sentry_environment=prod'
+report-to: {"group":"csp-endpoint","max_age":86400,"endpoints":[{"url":"https://o202030.ingest.us.sentry.io/api/4508772389093376/security/?sentry_key=6a25c13d5adaf23097642a7299b3d285&sentry_environment=prod"}],"include_subdomains":true}
 X-Content-Type-Options: nosniff
 Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 Via: 1.1 google
 Alt-Svc: h3=":443"; ma=2592000
-Alt-Svc: h3-29=":443"; ma=2592000
 Content-Length: 0

@@ -1,8 +1,8 @@
 {
   "id": "CAP-044",
   "description": "Key set with its last segment capitalized",
-  "settles": "Whether a path below the root is matched with regard to case, the way both tenant segments are (CAP-007, CAP-008). StubID matches below the root the way ASP.NET routing does, which is without regard to case, so a refusal here is a divergence and a success is the framework agreeing with the broker by accident.",
-  "disposition": "NotFound",
+  "settles": "That a path below the root is matched without regard to case: the key set answers to JWKS as readily as to jwks. Both tenant segments above it are compared exactly (CAP-007, CAP-008), so this broker splits where the first one does - an exact prefix selecting the application, and looser matching beneath it. StubID matches below the root the way ASP.NET routing does, which agrees.",
+  "disposition": "Success",
   "status": 200,
   "contentType": "application/json; charset=UTF-8",
   "byteLength": 11914,

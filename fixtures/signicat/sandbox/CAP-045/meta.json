@@ -1,8 +1,8 @@
 {
   "id": "CAP-045",
   "description": "Userinfo with its own segment capitalized",
-  "settles": "The same question as CAP-044, asked of the other family of paths. A well-known name is often answered by something sitting in front of the application\u0027s own router, so what that does with case cannot be read as what the connect endpoints do with it. CAP-019 is this endpoint spelled the way it is advertised, which is what the answer here is compared against.",
-  "disposition": "NotFound",
+  "settles": "That the connect endpoints match case the same way the well-known names do. A well-known name is often answered by something sitting in front of the application\u0027s own router, so CAP-044 could not speak for this family: asked separately, Userinfo reaches userinfo and earns the challenge CAP-019 records, rather than the 404 a case-sensitive router would give.",
+  "disposition": "Challenge",
   "status": 401,
   "byteLength": 0,
   "volatileHeaders": [],

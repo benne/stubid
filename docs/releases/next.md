@@ -133,8 +133,8 @@ other.
 
 ## Signicat's sandbox is recorded
 
-`fixtures/signicat/sandbox/` holds twenty-three recordings made against a sandbox tenant,
-[CAP-001 to CAP-019, and CAP-040 to CAP-043](https://github.com/benne/stubid/tree/master/fixtures/signicat/sandbox).
+`fixtures/signicat/sandbox/` holds twenty-eight recordings made against a sandbox tenant,
+[CAP-001 to CAP-019, and CAP-040 to CAP-048](https://github.com/benne/stubid/tree/master/fixtures/signicat/sandbox).
 None needs a login. The authorize and token cases use the partner client, the one registration that
 accepts a plain query, except that
 [CAP-009](https://github.com/benne/stubid/tree/master/fixtures/signicat/sandbox/CAP-009)
@@ -239,6 +239,12 @@ headers and the stale claims moved.
 A new theory closes it: every recorded response must classify as the case that recorded it expects.
 It is asserted against the catalog rather than against the committed meta, because the case is the
 live claim and the meta is a copy of it.
+
+A second theory then compares the copy with the claim: a meta's description, what it says the
+recording settles, and the disposition it expects must be its case's own. It found four more metas
+in the condition described above, all of them carrying prose from before the repository's
+conversion to US English. Their recordings are untouched — only the copied text moved, and the
+manifest hashes that cover it.
 
 ## Two crashes that were waiting for a first recording of a second broker
 

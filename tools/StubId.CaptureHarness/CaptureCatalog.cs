@@ -5,11 +5,11 @@ namespace StubId.CaptureHarness;
 /// </summary>
 /// <remarks>
 /// <para>
-/// CAP-001 to CAP-019 are the first round of a pack, CAP-040 onwards a second, added while
-/// building the request surface, and CAP-044 onwards a third, asking how a path is matched
-/// rather than what it answers: every one of them settles a question the code would otherwise
-/// have had to assume. CAP-020 to CAP-030 need a human to complete a login in MitID's test
-/// tool and live in a separate catalog, which is why the numbering skips them.
+/// CAP-001 to CAP-019 are the first round of a pack and CAP-040 onwards a second, added while
+/// building the request surface; the second broker's pack has a third from CAP-044, asking how
+/// a path is matched rather than what it answers. Every one of them settles a question the code
+/// would otherwise have had to assume. CAP-020 to CAP-030 need a human to complete a login in
+/// MitID's test tool and live in a separate catalog, which is why the numbering skips them.
 /// </para>
 /// <para>
 /// The numbering restarts per broker: each broker's unattended pack starts at CAP-001 with its

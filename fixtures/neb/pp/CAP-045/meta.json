@@ -1,7 +1,7 @@
 {
   "id": "CAP-045",
   "description": "End session asking for a post-logout redirect without an id_token_hint",
-  "settles": "Whether post_logout_redirect_uri is honoured without a hint. This is the half of the end-session question that needs no login, and the answer decides whether a client that omits the hint silently stops coming back.",
+  "settles": "That post_logout_redirect_uri is ignored without a hint: the answer is the same bare redirect to the broker's own logout page as CAP-044. A client that omits the hint silently stops coming back, and this is why.",
   "disposition": "Unclassified",
   "status": 302,
   "byteLength": 0,

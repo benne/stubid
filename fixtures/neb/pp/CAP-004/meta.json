@@ -1,6 +1,6 @@
 {
   "id": "CAP-004",
-  "description": "OAuth authorisation-server metadata layout is not served",
+  "description": "OAuth authorization-server metadata layout is not served",
   "settles": "The third layout Spring probes. Also 404.",
   "disposition": "NotFound",
   "status": 404,

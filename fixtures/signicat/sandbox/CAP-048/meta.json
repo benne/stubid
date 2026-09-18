@@ -1,7 +1,7 @@
 {
   "id": "CAP-048",
   "description": "Discovery over POST",
-  "settles": "What a method the document is not served for earns: a refusal naming the method, a plain 404, or the document anyway. StubID declares GET alone, and a per-route method rule is enforced by nothing today, so this is also the recording that says whether enforcing it would change an answer.",
+  "settles": "That a method the document is not served for earns 405 rather than a 404 or the document anyway. The path is matched and the method is not, and the broker says which. StubID declares GET alone on that route, so the framework answers the same status without a rule of its own being enforced.",
   "disposition": "Unclassified",
   "status": 405,
   "byteLength": 0,

@@ -1,7 +1,7 @@
 {
   "id": "CAP-046",
   "description": "Key set with a trailing slash",
-  "settles": "Whether the refusal CAP-006 records for discovery is the rule for every served path or that one path\u0027s own. StubID refuses a trailing slash anywhere under the root, which is one recording generalized to thirteen routes.",
+  "settles": "That the refusal CAP-006 records for discovery is the rule for every served path rather than that one path\u0027s own: the key set refuses a trailing slash the same way. StubID refuses one anywhere below the root, which this turns from one recording generalized to thirteen routes into a measured rule.",
   "disposition": "NotFound",
   "status": 404,
   "byteLength": 0,
