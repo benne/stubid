@@ -46,6 +46,29 @@ public class ContainerAddressTests(StubIdInstance stub, ITestOutputHelper output
             (await stub.Container.Control.Runtime.GetPublicBaseUrlAsync(Ct))?.ToString().TrimEnd('/'));
     }
 
+    /// <summary>
+    /// A broker chosen behind the module's back fails the start, rather than the authority.
+    /// </summary>
+    /// <remarks>
+    /// <c>StubId__Profile</c> reaches the server and not the module, so the authority the module
+    /// composed names a path this instance does not answer on. That used to be corrected during
+    /// start, after a caller had already read it and configured something with it; the
+    /// disagreement is the failure now, and the message names the call that tells both halves.
+    /// </remarks>
+    [Fact]
+    public async Task A_profile_the_module_was_not_told_about_fails_the_start()
+    {
+        await using var mismatched = new StubIdBuilder(await StubIdImage.ResolveAsync(Ct))
+            .WithEnvironment("StubId__Profile", "signicat")
+            .Build();
+
+        var failure = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => mismatched.StartAsync(Ct));
+
+        Assert.Contains("auth/open", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("WithProfile", failure.Message, StringComparison.Ordinal);
+    }
+
     /// <remarks>
     /// The compose case: the browser and the application reach StubID by different names and both
     /// must see one issuer, so the caller pins it and the module has to leave it alone rather than

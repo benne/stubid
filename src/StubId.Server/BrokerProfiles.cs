@@ -42,9 +42,11 @@ public static class BrokerProfiles
     /// <summary>The same choice, made from the name alone.</summary>
     /// <remarks>
     /// For the hosting packages, which know which profile they configured and have to say what
-    /// authority a client library should be pointed at before the instance has started. They read
-    /// it here rather than keeping a table of their own, so there is one place a broker's root is
-    /// written down.
+    /// authority a client library should be pointed at before the instance has started. The
+    /// in-process host reads it here, because it runs this assembly. The Testcontainers module
+    /// cannot - it starts an image, and this assembly is inside it - so it carries a table of its
+    /// own, which <c>ModuleProfileTests</c> compares against these profiles on every build rather
+    /// than leaving two answers to drift.
     /// </remarks>
     public static IBrokerProfile Select(string? name)
     {

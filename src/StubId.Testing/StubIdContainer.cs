@@ -10,13 +10,22 @@ public sealed class StubIdContainer : DockerContainer
 {
     private readonly StubIdConfiguration _configuration;
     private readonly Lock _gate = new();
+    private readonly string? _predicted;
     private StubIdClient? _control;
+    private string? _reported;
 
     /// <summary>
     /// A container over a configuration <see cref="StubIdBuilder.Build" /> has validated.
     /// </summary>
     public StubIdContainer(StubIdConfiguration configuration)
-        : base(configuration) => _configuration = configuration;
+        : base(configuration)
+    {
+        _configuration = configuration;
+
+        // Read here rather than when the authority is asked for, so that a broker this module
+        // cannot place is known to be one before anything has been started around it.
+        _predicted = BrokerRoots.Of(configuration.Profile);
+    }
 
     /// <summary>
     /// The address this instance says it answers at, which every issuer it emits is built from.
@@ -38,14 +47,55 @@ public sealed class StubIdContainer : DockerContainer
     public X509Certificate2? ServerCertificate { get; internal set; }
 
     /// <summary>
-    /// The path the emulated broker's surface sits under, read from the instance during start.
+    /// The path the emulated broker's surface sits under: composed from the broker that was
+    /// chosen, and confirmed by the instance during start.
     /// </summary>
     /// <remarks>
-    /// Asked rather than looked up in a table of this module's own. The profile is the one thing
-    /// that knows where its surface sits, and a module that answered from a second copy of that
-    /// would be right until the day a profile moved and wrong without anything failing.
+    /// Both, deliberately. Where the surface sits is knowable with nothing to ask, and a suite
+    /// that pinned its address reads the whole authority that way, before anything has started -
+    /// the port Docker assigns is what the rest of it waits on. The running instance is still what
+    /// decides the root, so what it reports is compared against what was composed rather than
+    /// quietly replacing it. The table
+    /// that makes the first half possible is kept honest by a test rather than by being the only
+    /// answer; <see cref="BrokerRoots" /> says how.
     /// </remarks>
-    internal string ProfileRoot { get; set; } = "op";
+    internal string ProfileRoot => _reported ?? _predicted ?? throw NotPlaceable();
+
+    /// <summary>What the running instance answered, checked against what was composed.</summary>
+    /// <remarks>
+    /// A disagreement is a failure rather than a correction, because by the time it can be
+    /// detected the authority may already have been read and handed to a client library. The one
+    /// way to reach it is to choose the broker with an environment variable, which the server sees
+    /// and this module does not.
+    /// <para>
+    /// A null root is an instance too old to name one, and the field arrived before any second
+    /// broker did - so such an image is taken to be serving the first broker and checked like any
+    /// other answer. Leaving the composed root standing instead would let the caller's own word go
+    /// unchallenged by the one thing that could challenge it.
+    /// </para>
+    /// </remarks>
+    internal void AcceptRootFromInstance(string? root)
+    {
+        root ??= BrokerRoots.OfDefault;
+
+        if (_predicted is { } predicted && !string.Equals(predicted, root, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"This instance serves its surface under '/{root}', where the module composed an "
+                + $"authority ending in '/{predicted}'. Either the broker was chosen by setting "
+                + $"StubId__Profile directly, which reaches the server and not this module, or this "
+                + $"image does not serve that broker there - one too old to name a root at all is "
+                + $"read as serving {BrokerRoots.Default}. Choose the broker with WithProfile so "
+                + $"both halves are told the same thing.");
+        }
+
+        _reported = root;
+    }
+
+    private InvalidOperationException NotPlaceable() => new(
+        $"This module has no root for the broker '{_configuration.Profile}', so the authority "
+        + $"cannot be composed until the instance has started and been asked for one. Read it after "
+        + $"StartAsync, or name a broker this module knows: {string.Join(", ", BrokerRoots.Known)}.");
 
     /// <summary>Where this process reaches the container: the host and the mapped port.</summary>
     /// <remarks>

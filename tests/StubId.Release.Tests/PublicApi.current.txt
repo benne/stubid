@@ -732,6 +732,7 @@ type public sealed class StubId.Testing.StubIdConfiguration : DotNet.Testcontain
   ctor (StubId.Testing.StubIdConfiguration oldValue, StubId.Testing.StubIdConfiguration newValue)
   ctor (StubId.Testing.StubIdConfiguration resourceConfiguration)
   ctor (System.Uri? publicBaseUrl = null, bool? tls = null)
+  property string? Profile { get; init; }
   property System.Uri? PublicBaseUrl { get; }
   property bool? Tls { get; }
 

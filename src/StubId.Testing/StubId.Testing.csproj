@@ -10,6 +10,16 @@
 </PropertyGroup>
 
   <ItemGroup>
+    <!-- The roots this module composes an authority from are compared against the server's own
+         profiles by ModuleProfileTests. That test is what lets the module answer before an
+         instance exists without keeping an answer that can go stale unnoticed. -->
+    <InternalsVisibleTo Include="StubId.Release.Tests" />
+    <!-- And to the module's own tests, for the two paths a container cannot be built to show:
+         an image that names no root, and one serving a broker published after this package. -->
+    <InternalsVisibleTo Include="StubId.Testing.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- The container lifecycle, and nothing else. This is the only reason this package needs a
          Docker daemon; StubId.Client below works against any instance that is already running. -->
     <PackageReference Include="Testcontainers" />
