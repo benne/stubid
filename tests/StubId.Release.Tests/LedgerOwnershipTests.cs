@@ -133,6 +133,54 @@ public class LedgerOwnershipTests
 
     public static TheoryData<string> Brokers() => [.. BrokerProfiles.Available];
 
+    /// <summary>
+    /// An entry about a broker's own code is filed under that broker.
+    /// </summary>
+    /// <remarks>
+    /// The rule reads paths, and an annotation that carries none is the first broker's by design -
+    /// which means an annotation on the second broker's own code that forgets to name a path is
+    /// filed under the first, and every check still passes because the first broker is a broker
+    /// this build serves. That happened: the annotation saying which of this broker's paths were
+    /// never probed carried only what would settle them, and its row appeared on the other
+    /// broker's page. A subject is the declaring type's name, so it says which code the entry is
+    /// about.
+    /// </remarks>
+    [Theory]
+    [MemberData(nameof(BrokersWithCodeOfTheirOwn))]
+    public void An_entry_about_a_brokers_own_code_is_filed_under_that_broker(string broker)
+    {
+        // A subject is the declaring type's name, or its full name for a type-level entry, so the
+        // broker's own types are found segment by segment rather than by the whole string.
+        var name = char.ToUpperInvariant(broker[0]) + broker[1..];
+
+        var about = FidelityLedger.Read(FidelityLedger.Sources)
+            .Where(entry => entry.Subject.Split('.').Any(s => s.StartsWith(name, StringComparison.Ordinal)))
+            .ToList();
+
+        Assert.True(about.Count > 0,
+            $"Nothing in the ledger is about {broker}, so this checks nothing. If its code was "
+            + "renamed, rename what this looks for.");
+
+        var misfiled = about
+            .Where(entry => FidelityLedger.OwnerOf(entry) != broker)
+            .Select(entry => $"{entry.Subject} -> {FidelityLedger.OwnerOf(entry)}")
+            .ToList();
+
+        Assert.True(misfiled.Count == 0,
+            $"These are about {broker} and are filed elsewhere, so they argue their case on a page "
+            + "nobody reading that instance would open: " + string.Join(", ", misfiled));
+    }
+
+    /// <summary>
+    /// Brokers whose own code this build carries, which is every one but the default.
+    /// </summary>
+    /// <remarks>
+    /// The engine was written against the first broker and is filed under it by the same rule, so
+    /// looking for its name would claim every entry the seam has not moved.
+    /// </remarks>
+    public static TheoryData<string> BrokersWithCodeOfTheirOwn() =>
+        [.. BrokerProfiles.Available.Where(broker => broker != BrokerProfiles.Default)];
+
     private static FidelityEntry Entry(string? reason, string? evidence) =>
         new("Subject.Member", "Exact", "Divergent", evidence, reason, null, true);
 }

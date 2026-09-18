@@ -60,16 +60,24 @@
     </Task>
   </UsingTask>
 
+  <!-- One target, one substitution per broker. The second broker's recording already carries a
+       placeholder where its tenant name was, because the tenant is in the hostname there and
+       nothing committed may name the account a recording came from. -->
   <Target Name="DeriveDiscoveryTemplate" BeforeTargets="AssignTargetPaths"
-          Inputs="../../fixtures/neb/pp/CAP-001/response.raw"
-          Outputs="$(IntermediateOutputPath)discovery.template.json">
+          Inputs="../../fixtures/neb/pp/CAP-001/response.raw;../../fixtures/signicat/sandbox/CAP-001/response.raw"
+          Outputs="$(IntermediateOutputPath)discovery.template.json;$(IntermediateOutputPath)discovery.signicat.template.json">
     <!-- stubid.invalid is reserved by RFC 2606, so nothing resolves it if one ever escapes. -->
     <SubstituteInFile Source="../../fixtures/neb/pp/CAP-001/response.raw"
                       Destination="$(IntermediateOutputPath)discovery.template.json"
                       Find="https://pp.netseidbroker.dk"
                       ReplaceWith="https://stubid.invalid" />
+    <SubstituteInFile Source="../../fixtures/signicat/sandbox/CAP-001/response.raw"
+                      Destination="$(IntermediateOutputPath)discovery.signicat.template.json"
+                      Find="https://{{SIGNICAT_DOMAIN}}.sandbox.signicat.com"
+                      ReplaceWith="https://stubid.invalid" />
     <ItemGroup>
       <EmbeddedResource Include="$(IntermediateOutputPath)discovery.template.json" LogicalName="discovery.json" />
+      <EmbeddedResource Include="$(IntermediateOutputPath)discovery.signicat.template.json" LogicalName="discovery.signicat.json" />
     </ItemGroup>
   </Target>
 

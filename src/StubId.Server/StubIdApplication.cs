@@ -160,8 +160,15 @@ public static class StubIdApplication
     /// no placement survives that.
     /// </para>
     /// </remarks>
+    /// <remarks>
+    /// Twice, once per broker. The header is added whichever broker an instance serves, and the
+    /// ledger is filed by the page a reason names, so a single annotation would leave the other
+    /// broker's instance saying nothing about a header it sends on every answer.
+    /// </remarks>
     [Fidelity(FidelityTier.Exact, FidelityProvenance.Divergent,
         Reason = "docs/brokers/neb/divergences.md#emulator-header")]
+    [Fidelity(FidelityTier.Exact, FidelityProvenance.Divergent,
+        Reason = "docs/brokers/signicat/divergences.md#emulator-header")]
     private static Task AnnounceTheEmulator(HttpContext http, RequestDelegate next)
     {
         http.Response.Headers["X-StubID-Emulator"] = "1";

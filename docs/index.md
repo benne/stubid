@@ -30,6 +30,10 @@ Written from recordings rather than from the vendor's documentation, because the
 often and the recording won every time. [The broker reference](brokers/neb/index.md) has the
 tokens, the refusals, the request parameters, and every place StubID differs on purpose.
 
+An instance serves one broker, chosen with `StubId:Profile`. The second,
+[Signicat](brokers/signicat/index.md), is declared rather than emulated: it answers on
+`/auth/open` with what its recordings settle, and says plainly what it does not reproduce.
+
 ## Why things are the way they are
 
 [CPR numbers and test data](explanation/cpr-and-test-data.md) explains why the personal numbers

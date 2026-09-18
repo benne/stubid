@@ -99,8 +99,13 @@ public class RouteCollisionTests
     [Fact]
     public void The_working_profiles_load_together_without_colliding()
     {
-        // Nets eID Broker serves everything under /op and Idura at the host root, so they can
-        // share one host. That they do not collide is a fact worth pinning rather than assuming.
-        Load(new NetsEidBrokerProfile(), new IduraProfile([new IduraClient("urn:idura:dev")]));
+        // Nets eID Broker serves everything under /op, Signicat under /auth/open, and Idura at the
+        // host root, so they can share one host. That they do not collide is a fact worth pinning
+        // rather than assuming - and the second broker is the one that could, since a root of two
+        // segments is the first thing here that is not one literal segment or none.
+        Load(
+            new NetsEidBrokerProfile(),
+            BrokerProfiles.Select("signicat"),
+            new IduraProfile([new IduraClient("urn:idura:dev")]));
     }
 }

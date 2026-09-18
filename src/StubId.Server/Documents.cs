@@ -21,20 +21,43 @@ public sealed class Documents
 {
     private const string PlaceholderHost = "https://stubid.invalid";
 
-    private readonly string _discoveryTemplate;
-
-    public Documents()
+    /// <summary>
+    /// One template per broker, each derived from that broker's own recording.
+    /// </summary>
+    /// <remarks>
+    /// Read once rather than per request, and both are read whichever broker this
+    /// instance serves: a resource that had gone missing from the build would otherwise be found
+    /// only by whoever ran that profile.
+    /// </remarks>
+    private readonly Dictionary<string, string> _discoveryTemplates = new(StringComparer.Ordinal)
     {
-        using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("discovery.json")
-            ?? throw new InvalidOperationException("The derived discovery template is missing.");
-        using var reader = new StreamReader(stream, Encoding.UTF8);
-        _discoveryTemplate = reader.ReadToEnd();
-    }
+        ["neb"] = Template("discovery.json"),
+        ["signicat"] = Template("discovery.signicat.json"),
+    };
 
     /// <summary>
-    /// The discovery document for a given public base URL, e.g. <c>http://localhost:5000</c>.
-    /// The issuer keeps the recorded path segment, so it ends in <c>/op</c>.
+    /// The first broker's discovery document for a given public base URL, e.g.
+    /// <c>http://localhost:5000</c>. The issuer keeps the recorded path segment, so it ends in
+    /// <c>/op</c>.
     /// </summary>
-    public string Discovery(string baseUrl) =>
-        _discoveryTemplate.Replace(PlaceholderHost, baseUrl.TrimEnd('/'), StringComparison.Ordinal);
+    public string Discovery(string baseUrl) => Discovery(BrokerProfiles.Default, baseUrl);
+
+    /// <summary>
+    /// The named broker's discovery document, whose issuer ends with that broker's own root.
+    /// </summary>
+    /// <remarks>
+    /// Internal because a caller outside this assembly reaches the document through the instance
+    /// it is served by, which already knows which broker it is.
+    /// </remarks>
+    internal string Discovery(string broker, string baseUrl) =>
+        _discoveryTemplates[broker].Replace(PlaceholderHost, baseUrl.TrimEnd('/'), StringComparison.Ordinal);
+
+    private static string Template(string resource)
+    {
+        using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resource)
+            ?? throw new InvalidOperationException($"The derived template {resource} is missing.");
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+
+        return reader.ReadToEnd();
+    }
 }

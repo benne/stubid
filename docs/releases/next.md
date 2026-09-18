@@ -3,6 +3,27 @@
 Notes accumulate here as changes land, and this file is renamed to the version when a release
 goes out. The dated files beside it are history and are never edited.
 
+## A second broker can be served
+
+`StubId:Profile=signicat`, or `WithProfile("signicat")` on either hosting package, starts an
+instance that answers on `/auth/open` instead of `/op`. It serves what Signicat's unattended
+recordings settle — the discovery document and a key set in that broker's member shape — and
+answers 501 with a link to the reason for everything else the document advertises. No login can be
+completed there yet, because no login has been recorded: that sitting needs a person in MitID's
+test tool.
+
+The discovery document is derived from the recording at build time, the way the first broker's is,
+and served with the instance's address in place of the tenant's. Its `claims_supported` is the
+recorded account's own configuration rather than a fact about the platform, which is said on the
+broker's page rather than smoothed over. The key set is published with `alg` named and no
+certificate chain, which is the other way round from the first broker's, and it is the same two
+keys on every request where the broker serves a different subset each time — a divergence recorded
+rather than imitated, because reproducing it would mean inventing keys nothing signs with.
+
+A ledger entry is filed under the broker whose page argues it or whose pack its evidence cites, so
+an instance answers with its own broker's divergences and each broker's reference page carries its
+own.
+
 ## A citation names the broker it came from
 
 Capture numbers restart per broker, so a number alone no longer says which recording it means:

@@ -20,7 +20,7 @@ a suite may rely on, and what will move under it, is written down at
 ## The problem
 
 If your application signs users in with MitID, you reach it through a broker —
-Signaturgruppen ("Nets eID Broker"), Idura, NemLog-in for the public sector. Their
+Signaturgruppen ("Nets eID Broker"), Signicat, Idura, NemLog-in for the public sector. Their
 pre-production environments work, but every login has to be approved by hand in MitID's
 Test Tool, and the MitID widget blocks browser automation on purpose. A pre-production
 login takes 20-30 seconds when the environment is up.
@@ -90,7 +90,7 @@ established is written up in [docs/brokers/neb/claims.md](https://github.com/ben
 ## Not affiliated
 
 StubID is an independent project. It is not affiliated with, endorsed by, or connected to
-Digitaliseringsstyrelsen, Signaturgruppen, Idura, or IN Groupe. It performs no
+Digitaliseringsstyrelsen, Signaturgruppen, Signicat, Idura, or IN Groupe. It performs no
 authentication, verifies no identity, and produces no signature with any legal effect. Do
 not point it at real people or real personal data. See [NOTICE](https://github.com/benne/stubid/blob/master/NOTICE) and
 [TRADEMARKS.md](https://github.com/benne/stubid/blob/master/TRADEMARKS.md).

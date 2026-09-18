@@ -32,6 +32,11 @@ job built. A copied example that has quietly stopped working is worse than no ex
 string character for character, which is the comparison `openid-client` and Spring Security both
 make and neither forgives.
 
+It carries the root of whichever broker the instance serves, so a container built with
+`WithProfile("signicat")` hands out an address ending in `/auth/open` rather than `/op`. Read it
+after `StartAsync` has returned: the module asks the running instance which broker it is, which it
+cannot do before there is one.
+
 ## Why the address has to be told to it
 
 An emulated broker cannot derive its own issuer from the request that asked for it. A browser
