@@ -35,21 +35,20 @@ internal sealed class SignicatProfile : IBrokerProfile
     /// Two segments, both compared exactly, and a trailing slash refused.
     /// </summary>
     /// <remarks>
-    /// Measured, and not the same rule as the first broker's: there the root segment is ordinal and
-    /// everything below it is not. Here a request that capitalizes either segment is refused, and
-    /// one that adds a trailing slash to a path that otherwise answers is refused as well.
+    /// Measured, and the same shape as the first broker's over a longer prefix: the segments of the
+    /// root are compared exactly, what sits below them is not compared at all - the key set answers
+    /// to JWKS and userinfo to Userinfo - and a trailing slash below the root is refused wherever it
+    /// appears rather than on discovery alone. The deployment showing through in both cases:
+    /// something selects the application by an exact prefix, and the application beneath it matches
+    /// loosely.
     /// </remarks>
     [Fidelity(FidelityTier.Exact, FidelityProvenance.VerifiedLive,
         Evidence = "fixtures/signicat/sandbox/CAP-005, fixtures/signicat/sandbox/CAP-006, "
-                   + "fixtures/signicat/sandbox/CAP-007, fixtures/signicat/sandbox/CAP-008")]
+                   + "fixtures/signicat/sandbox/CAP-007, fixtures/signicat/sandbox/CAP-008, "
+                   + "fixtures/signicat/sandbox/CAP-044, fixtures/signicat/sandbox/CAP-045, "
+                   + "fixtures/signicat/sandbox/CAP-046, fixtures/signicat/sandbox/CAP-047")]
     [Fidelity(FidelityTier.OutOfContract, FidelityProvenance.Divergent,
         Reason = "docs/brokers/signicat/divergences.md#the-404-outside-the-root")]
-    [Fidelity(FidelityTier.Exact, FidelityProvenance.Assumed,
-        Reason = "docs/brokers/signicat/divergences.md#awaiting-capture",
-        AwaitingCapture = "An unattended batch that varies the case of a segment below the root, "
-                          + "adds a trailing slash to an endpoint other than discovery, and posts "
-                          + "to discovery. None of the three was probed, so what StubID does with "
-                          + "them is the framework's answer rather than the broker's.")]
     public TenantRoot Root { get; } = new("auth/open", StringComparison.Ordinal, TrailingSlash.Refuse);
 
     public IReadOnlyList<RouteDeclaration> DeclareRoutes(ProfileContext context) =>

@@ -1,0 +1,14 @@
+{
+  "id": "CAP-044",
+  "description": "Key set with its last segment capitalized",
+  "settles": "That a path below the root is matched without regard to case: the key set answers to JWKS as readily as to jwks. Both tenant segments above it are compared exactly (CAP-007, CAP-008), so this broker splits where the first one does - an exact prefix selecting the application, and looser matching beneath it. StubID matches below the root the way ASP.NET routing does, which agrees.",
+  "disposition": "Success",
+  "status": 200,
+  "contentType": "application/json; charset=UTF-8",
+  "byteLength": 11914,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": [
+    "\\{\u0022kty\u0022:\u0022RSA\u0022,\u0022use\u0022:\u0022(?:sig|enc)\u0022,\u0022kid\u0022:\u0022[^\u0022]\u002B\u0022,\u0022e\u0022:\u0022[^\u0022]\u002B\u0022,\u0022n\u0022:\u0022[^\u0022]\u002B\u0022,\u0022alg\u0022:\u0022[^\u0022]\u002B\u0022\\}",
+    "\u003Cvolatile\u003E(?:,\u003Cvolatile\u003E)*"
+  ]
+}

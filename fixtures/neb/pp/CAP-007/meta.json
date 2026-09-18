@@ -1,6 +1,6 @@
 {
   "id": "CAP-007",
-  "description": "Error code catalogue",
+  "description": "Error code catalog",
   "settles": "The PascalCase envelope, the code count, and that per-code members are sparse rather than uniform.",
   "disposition": "Success",
   "status": 200,

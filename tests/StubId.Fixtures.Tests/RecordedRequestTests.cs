@@ -80,6 +80,33 @@ public class RecordedRequestTests
     }
 
     /// <summary>
+    /// And the meta beside a recording still describes the case that recorded it.
+    /// </summary>
+    /// <remarks>
+    /// A <c>meta.json</c> is a copy of the case as it stood when the case was last recorded, so
+    /// editing a case without re-recording it leaves a committed file claiming something the
+    /// recording beside it contradicts. That was found by hand once, in the first broker's pack,
+    /// and nothing was left watching for the next one: the classification theory deliberately
+    /// asserts against the catalog, because the case is the live claim and the meta is the copy -
+    /// which leaves the copy compared with nothing.
+    /// </remarks>
+    [Theory]
+    [MemberData(nameof(Cases))]
+    public void The_meta_still_describes_the_case_that_recorded_it(string broker, string id)
+    {
+        var target = BrokerTarget.Select(broker);
+        var @case = CaptureCatalog.For(target.Broker).Single(c => c.Id == id);
+        using var recorded = JsonDocument.Parse(
+            File.ReadAllText(Repository.Fixture(target, id, "meta.json")));
+
+        var meta = recorded.RootElement;
+
+        Assert.Equal(@case.Description, meta.GetProperty("description").GetString());
+        Assert.Equal(@case.Settles, meta.GetProperty("settles").GetString());
+        Assert.Equal(@case.Expected.ToString(), meta.GetProperty("disposition").GetString());
+    }
+
+    /// <summary>
     /// Every case has a recording, and every recording has a case.
     /// </summary>
     /// <remarks>

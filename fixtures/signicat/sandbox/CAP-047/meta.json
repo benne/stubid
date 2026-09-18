@@ -1,0 +1,10 @@
+{
+  "id": "CAP-047",
+  "description": "Userinfo with a trailing slash",
+  "settles": "The trailing slash on the other family, where a 401 would have said the path still matched. The 404 says it does not: the slash is refused before the endpoint is reached, on both families. ASP.NET Core would otherwise match a trailing slash to the route written without one, which is why StubID refuses it in the gate that runs ahead of routing rather than leaving it to a route.",
+  "disposition": "NotFound",
+  "status": 404,
+  "byteLength": 0,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}

@@ -66,6 +66,13 @@ It publishes none of the first broker's clients, either. The three client ids St
 this one answers with an empty list and says why, because reaching a registration of its own takes
 a login and no login of it has been recorded.
 
+An unattended batch then settled what that profile's path rule had only assumed. Below the two
+exact segments of `/auth/open` nothing is compared — the key set answers to `JWKS` and userinfo to
+`Userinfo` — a trailing slash is refused on every served path rather than on discovery alone, and a
+method the document is not served for earns `405` rather than a `404`. StubID already answered each
+of those the same way; what changed is that the answers are recorded rather than inherited from the
+framework, so the broker's page no longer lists anything waiting on a capture.
+
 ## A citation names the broker it came from
 
 Capture numbers restart per broker, so a number alone no longer says which recording it means:
@@ -126,8 +133,8 @@ other.
 
 ## Signicat's sandbox is recorded
 
-`fixtures/signicat/sandbox/` holds twenty-three recordings made against a sandbox tenant,
-[CAP-001 to CAP-019, and CAP-040 to CAP-043](https://github.com/benne/stubid/tree/master/fixtures/signicat/sandbox).
+`fixtures/signicat/sandbox/` holds twenty-eight recordings made against a sandbox tenant,
+[CAP-001 to CAP-019, and CAP-040 to CAP-048](https://github.com/benne/stubid/tree/master/fixtures/signicat/sandbox).
 None needs a login. The authorize and token cases use the partner client, the one registration that
 accepts a plain query, except that
 [CAP-009](https://github.com/benne/stubid/tree/master/fixtures/signicat/sandbox/CAP-009)
@@ -232,6 +239,12 @@ headers and the stale claims moved.
 A new theory closes it: every recorded response must classify as the case that recorded it expects.
 It is asserted against the catalog rather than against the committed meta, because the case is the
 live claim and the meta is a copy of it.
+
+A second theory then compares the copy with the claim: a meta's description, what it says the
+recording settles, and the disposition it expects must be its case's own. It found four more metas
+in the condition described above, all of them carrying prose from before the repository's
+conversion to US English. Their recordings are untouched — only the copied text moved, and the
+manifest hashes that cover it.
 
 ## Two crashes that were waiting for a first recording of a second broker
 

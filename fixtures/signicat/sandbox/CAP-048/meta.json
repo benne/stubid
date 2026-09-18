@@ -1,0 +1,10 @@
+{
+  "id": "CAP-048",
+  "description": "Discovery over POST",
+  "settles": "That a method the document is not served for earns 405 rather than a 404 or the document anyway. The path is matched and the method is not, and the broker says which. StubID declares GET alone on that route, so the framework answers the same status without a rule of its own being enforced.",
+  "disposition": "Unclassified",
+  "status": 405,
+  "byteLength": 0,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}
