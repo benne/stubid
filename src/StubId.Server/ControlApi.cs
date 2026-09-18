@@ -40,12 +40,16 @@ public static class ControlApi
             entries = FidelityLedger.ReadFor(profile.Id.Broker),
         }));
 
-        // The three clients this broker publishes, which a reader currently finds by grepping the
+        // The clients this broker publishes, which a reader currently finds by grepping the
         // source for a GUID. They are the emulated surface rather than state: read-only, and no
         // route registers a fourth, because the real broker's are fixed too.
-        api.MapGet("/clients", (BrokerState state) => Results.Json(new
+        //
+        // Read for the broker being served rather than off the roster directly. The roster is the
+        // first broker's, and an instance serving another one publishes none of it - answering
+        // otherwise hands a suite three ids that every route on that instance refuses.
+        api.MapGet("/clients", (BrokerState state, IBrokerProfile profile) => Results.Json(new
         {
-            clients = state.Clients.Values
+            clients = state.ClientsFor(profile.Id.Broker)
                 .OrderBy(client => client.ClientId, StringComparer.Ordinal)
                 .Select(client => new
                 {

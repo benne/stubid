@@ -128,6 +128,10 @@ public sealed class StubIdClient : IDisposable
     /// Read rather than written down: a suite that pins one of these in a constant has pinned a
     /// GUID it found by grepping, and finding out it moved is a failure at the authorize hop
     /// rather than here.
+    /// <para>
+    /// Empty on an instance serving a broker whose own registrations have not been recorded. The
+    /// roster belongs to the broker that published it, and is not lent to the others.
+    /// </para>
     /// </remarks>
     public async Task<IReadOnlyList<RegisteredClient>> ClientsAsync(CancellationToken ct = default)
     {

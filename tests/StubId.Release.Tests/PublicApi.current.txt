@@ -364,6 +364,7 @@ type public sealed class StubId.Server.BrokerState
   ctor ()
   field const int PushedRequestLifetimeSeconds = 600
   method bool Allows (string clientId, string responseType)
+  method System.Collections.Generic.IEnumerable<StubId.Server.BrokerState+Client> ClientsFor (string broker)
   method void EndSession (string sessionId)
   method bool EndsSession (string idTokenHint)
   method void Forget ()

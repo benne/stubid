@@ -61,6 +61,11 @@ A ledger entry is filed under the broker whose page argues it or whose pack its 
 an instance answers with its own broker's divergences and each broker's reference page carries its
 own.
 
+It publishes none of the first broker's clients, either. The three client ids StubID hands out at
+`GET /_stubid/v1/clients`, and lists on its admin page, are the first broker's; an instance serving
+this one answers with an empty list and says why, because reaching a registration of its own takes
+a login and no login of it has been recorded.
+
 ## A citation names the broker it came from
 
 Capture numbers restart per broker, so a number alone no longer says which recording it means:

@@ -62,6 +62,23 @@ nothing signs with.
 **What this costs.** A test that asserts a client refetches on an unknown `kid` cannot be written
 against this profile.
 
+## It publishes none of its own clients
+
+<a id="no-clients-of-its-own"></a>
+
+`GET /_stubid/v1/clients` answers with an empty list on an instance serving this broker, and the
+admin page says so where it otherwise lists three.
+
+**Why.** The client ids StubID publishes are the first broker's, which that broker publishes for
+anyone to use against its pre-production environment. This broker's own registrations are not
+known: reaching one takes a login, and no login of this broker has been recorded. Handing them out
+anyway would be worse than an empty list, because they are ids every route on this instance
+refuses.
+
+**What this costs.** A test that reads the roster for a client id to drive gets nothing here, which
+is the honest answer until the sitting. The first broker's profile is where a client id comes from
+meanwhile.
+
 ## A refusal outside the root has no body
 
 <a id="the-404-outside-the-root"></a>
@@ -110,6 +127,7 @@ recording confirmed. The same list an instance serving this broker answers at
 <!-- generated:begin ledger-index -->
 | What | How close | On what evidence | Because |
 | --- | --- | --- | --- |
+| `BrokerState.ClientsFor` | OutOfContract, NotEmulated | - | [why](#no-clients-of-its-own) |
 | `SignicatEndpoints.Authorize` | OutOfContract, NotEmulated | fixtures/signicat/sandbox/CAP-001, fixtures/signicat/sandbox/CAP-009, fixtures/signicat/sandbox/CAP-013 | [why](#no-login-yet) |
 | `SignicatEndpoints.CheckSession` | OutOfContract, NotEmulated | fixtures/signicat/sandbox/CAP-001 | [why](#no-login-yet) |
 | `SignicatEndpoints.Ciba` | OutOfContract, NotEmulated | fixtures/signicat/sandbox/CAP-001 | [why](#ciba) |

@@ -203,6 +203,32 @@ public sealed class BrokerState
                 new("93ed8e0d-93ad-405c-b1ac-8bf13d484941", ["id_token"], "published-test-clients"),
         };
 
+    /// <summary>The broker whose registrations those are.</summary>
+    /// <remarks>
+    /// Written down rather than left implied. The roster is the first broker's - three client ids
+    /// that broker publishes for anyone to use against its pre-production environment - and a
+    /// surface that says "the clients this instance publishes" has to be able to tell whether it
+    /// is speaking for the broker being served.
+    /// <para>
+    /// Internal, because both surfaces that ask are in this assembly. A public spelling of it
+    /// would be a second name for <see cref="BrokerProfiles.Default" /> on a surface that cannot
+    /// drop one again without a release saying so.
+    /// </para>
+    /// </remarks>
+    internal static string ClientsBroker => BrokerProfiles.Default;
+
+    /// <summary>The clients an instance serving <paramref name="broker" /> publishes.</summary>
+    /// <remarks>
+    /// Empty for any broker but the one the roster belongs to, because a second broker's clients
+    /// are not known: reaching one takes a login, and no login of another broker has been
+    /// recorded. Handing out the first broker's three would be worse than an empty list - they are
+    /// ids every route on such an instance refuses.
+    /// </remarks>
+    [Fidelity(FidelityTier.OutOfContract, FidelityProvenance.NotEmulated,
+        Reason = "docs/brokers/signicat/divergences.md#no-clients-of-its-own")]
+    public IEnumerable<Client> ClientsFor(string broker) =>
+        string.Equals(broker, ClientsBroker, StringComparison.Ordinal) ? Clients.Values : [];
+
     /// <summary>
     /// Whether an id_token_hint is shaped like a token that carries a session, which is what
     /// decides if a post-logout redirect is honored.
