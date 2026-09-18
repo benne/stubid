@@ -123,14 +123,27 @@ public sealed class StubIdBuilder : ContainerBuilder<StubIdBuilder, StubIdContai
 
     /// <summary>Which broker this instance emulates.</summary>
     /// <remarks>
-    /// One instance serves one broker, and this is how it is chosen. Setting the environment
-    /// variable directly reaches the server but not <see cref="StubIdContainer.Authority" />, which has to know
-    /// the same answer before the instance has said anything - so a build that does one without
-    /// the other hands a client library the wrong path and the failure arrives as a discovery
-    /// error with the broker's name nowhere in it.
+    /// One instance serves one broker, and this is how it is chosen. It is also how
+    /// <see cref="StubIdContainer.Authority" /> knows what to end in: the module composes the root
+    /// from this name rather than waiting to be told, so an instance whose address was pinned has
+    /// an authority before it starts, and the running instance is asked during start whether that
+    /// was right. Setting the environment variable directly reaches the
+    /// server and not the module, so the two answers part company - which fails the start now,
+    /// rather than handing a client library a path the instance does not answer on.
+    /// <para>
+    /// A name this module has not heard of is still passed through, because the package and the
+    /// image are versioned apart and an image may serve a broker published after this build. What
+    /// the module will not do is guess a root for one, so the authority refuses to answer until the
+    /// instance has been asked.
+    /// </para>
     /// </remarks>
-    public StubIdBuilder WithProfile(string profile) =>
-        WithEnvironment("StubId__Profile", profile ?? throw new ArgumentNullException(nameof(profile)));
+    public StubIdBuilder WithProfile(string profile)
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+
+        return Merge(DockerResourceConfiguration, new StubIdConfiguration { Profile = profile })
+            .WithEnvironment("StubId__Profile", profile);
+    }
 
     /// <summary>
     /// A clock a test can move, so a five-minute timeout is reached in milliseconds.
@@ -224,14 +237,12 @@ public sealed class StubIdBuilder : ContainerBuilder<StubIdBuilder, StubIdContai
             await WaitForLivenessAsync(control, ct);
             container.ServerCertificate = await control.Runtime.GetTlsCertificateAsync(ct);
 
-            // Matched on the root rather than on the profile, because an instance old enough to
-            // omit the field is still new enough to report a profile - and the empty string is a
-            // real root, so a missing field cannot be allowed to read as one. What is left in
-            // place is the only broker such an instance can be serving.
-            if (await control.ProfileAsync(ct) is { Root: { } root })
-            {
-                container.ProfileRoot = root;
-            }
+            // The root rather than the profile, because the empty string is a real root - a
+            // broker served at the host root reports one - so a missing field must not read as
+            // one. An instance that names no root at all is answered for by the container rather
+            // than here, so that what such an image is taken to be serving is compared against
+            // what was composed instead of leaving the caller's own word standing unchecked.
+            container.AcceptRootFromInstance((await control.ProfileAsync(ct))?.Root);
 
             if (configuration.PublicBaseUrl is not null)
             {
