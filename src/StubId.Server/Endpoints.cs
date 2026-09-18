@@ -33,10 +33,10 @@ public static class Endpoints
             });
 
         Map("op/.well-known/openid-configuration", ["GET"], RouteRole.Discovery, (HttpContext http, Documents documents) =>
-            Json(documents.Discovery(BaseUrl(http))));
+            Json(documents.Discovery(BaseUrl(http)), JsonType));
 
         Map("op/.well-known/openid-configuration/jwks", ["GET"], RouteRole.Jwks, (HttpContext http, Keys keys) =>
-            Json(keys.Ring.ToJwks()));
+            Json(keys.Ring.ToJwks(), JsonType));
 
         Map("op/connect/par", ["POST"], RouteRole.Par, async (
             HttpContext http, BrokerState state, TimeProvider clock) =>
@@ -70,7 +70,7 @@ public static class Endpoints
             {
                 request_uri = requestUri,
                 expires_in = BrokerState.PushedRequestLifetimeSeconds,
-            }));
+            }), JsonType);
         });
 
         Map("op/connect/authorize", ["GET", "POST"], RouteRole.Authorize, async (
@@ -243,7 +243,7 @@ public static class Endpoints
                 body["transaction_token_ocsp_resp"] = tokens.TransactionTokenOcspResponse();
             }
 
-            return Json(JsonSerializer.Serialize(body));
+            return Json(JsonSerializer.Serialize(body), JsonType);
         });
 
         Map("op/connect/userinfo", ["GET", "POST"], RouteRole.UserInfo, (HttpContext http, BrokerState state, Tokens tokens) =>
@@ -274,7 +274,7 @@ public static class Endpoints
                 json.WriteEndObject();
             }
 
-            return Json(Encoding.UTF8.GetString(buffer.ToArray()));
+            return Json(Encoding.UTF8.GetString(buffer.ToArray()), JsonType);
         });
 
         // Declared so that what the discovery document advertises has an answer behind it.
@@ -308,17 +308,18 @@ public static class Endpoints
                 // CAP-021: its own envelope, not an OAuth error. A different endpoint family
                 // on the same host, and it answers in a different shape.
                 http.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-                return Json("""{"errorMessage":"Missing Cpr parameter"}""");
+                return Json("""{"errorMessage":"Missing Cpr parameter"}""", CprMatchJsonType);
             }
 
             if (!attempts.TryAttempt(issued.SessionId))
             {
                 http.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-                return Json(JsonSerializer.Serialize(new { errorMessage = CprMatch.Exceeded }));
+                return Json(JsonSerializer.Serialize(new { errorMessage = CprMatch.Exceeded }), CprMatchJsonType);
             }
 
-            return Json(Matched(
-                submitted.Replace("-", "", StringComparison.Ordinal) == issued.Citizen.Cpr));
+            return Json(
+                Matched(submitted.Replace("-", "", StringComparison.Ordinal) == issued.Citizen.Cpr),
+                CprMatchJsonType);
         });
 
         // The broker's own way to end a session from the back channel, which its documentation
@@ -883,20 +884,45 @@ public static class Endpoints
     /// client that cached a token response would reuse a code, so this is behavior rather
     /// than decoration.
     /// </summary>
-    private static IResult Json(string body) => new CachelessJson(body);
+    private static IResult Json(string body, string contentType) => new CachelessJson(body, contentType);
+
+    /// <summary>How the broker spells it on everything but one endpoint family.</summary>
+    private const string JsonType = "application/json; charset=UTF-8";
+
+    /// <summary>
+    /// And how it spells it on the CPR-match endpoint, which is not the same.
+    /// </summary>
+    /// <remarks>
+    /// A different endpoint family on one host, answering in its own envelope with its own bare
+    /// challenge - and, it turns out, its own spelling of the charset. Nothing about it is derived
+    /// from the rest, which is the point of recording each surface rather than one of them.
+    /// </remarks>
+    private const string CprMatchJsonType = "application/json; charset=utf-8";
 
     /// <remarks>
-    /// The charset is part of what the recordings carry, and the uppercase spelling is the
-    /// broker's. Passing the literal keeps it; the encoding overload would lowercase it.
+    /// The charset's case is part of what the recordings carry, and the broker does not spell it
+    /// one way: twenty-eight recordings say <c>UTF-8</c> and the two under <c>op/api/v1</c> say
+    /// <c>utf-8</c>. So the type is written as the header rather than handed to
+    /// <c>Results.Text</c>, which parses it and lowercases the parameter - which is how every
+    /// answer here went out lowercase, the matching one included, with nothing asserting it.
+    /// <para>
+    /// Writing the header means writing the length too. <c>Results.Text</c> set one from the
+    /// encoded body, and without it Kestrel frames the answer as chunked - a header no recording
+    /// carries, in place of one every recorded answer has.
+    /// </para>
     /// </remarks>
-    private sealed class CachelessJson(string body) : IResult
+    private sealed class CachelessJson(string body, string contentType) : IResult
     {
         public Task ExecuteAsync(HttpContext http)
         {
+            ArgumentNullException.ThrowIfNull(http);
+
             http.Response.Headers.CacheControl = "no-store, no-cache, max-age=0";
             http.Response.Headers.Pragma = "no-cache";
+            http.Response.ContentType = contentType;
+            http.Response.ContentLength = Encoding.UTF8.GetByteCount(body);
 
-            return Results.Text(body, "application/json; charset=UTF-8").ExecuteAsync(http);
+            return http.Response.WriteAsync(body);
         }
     }
 
@@ -947,7 +973,7 @@ public static class Endpoints
     private static IResult OAuthError(HttpContext http, string error)
     {
         http.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-        return Json($"{{\"error\":\"{error}\"}}");
+        return Json($"{{\"error\":\"{error}\"}}", JsonType);
     }
 
     /// <summary>
@@ -963,7 +989,7 @@ public static class Endpoints
     private static IResult OAuthError(HttpContext http, string error, string description)
     {
         http.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-        return Json($"{{\"error\":\"{error}\",\"error_description\":\"{description}\"}}");
+        return Json($"{{\"error\":\"{error}\",\"error_description\":\"{description}\"}}", JsonType);
     }
 
     private static IResult ErrorPage(HttpContext http, IDataProtectionProvider protection, string code, string description)
