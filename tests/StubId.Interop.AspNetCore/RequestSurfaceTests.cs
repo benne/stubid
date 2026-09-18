@@ -189,6 +189,7 @@ public class RequestSurfaceTests
         Assert.Equal(JsonValueKind.False,
             JsonDocument.Parse(await wrong.Content.ReadAsStringAsync(Ct))
                 .RootElement.GetProperty("cprNumberMatch").ValueKind);
+
     }
 
     [Fact]
@@ -230,7 +231,20 @@ public class RequestSurfaceTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("""{"errorMessage":"Missing Cpr parameter"}""",
             (await response.Content.ReadAsStringAsync(Ct)).Trim());
+
+        // And its own spelling of the charset, in lower case where every other recorded answer on
+        // this host says UTF-8. Read from the sitting that recorded this exact refusal rather than
+        // written out here, since one literal for two spellings is how the difference got lost.
+        Assert.Equal(await RecordedCprMatchTypeAsync(), response.Content.Headers.ContentType?.ToString());
     }
+
+    /// <summary>The content type the sitting recorded for this endpoint family's refusal.</summary>
+    private static async Task<string> RecordedCprMatchTypeAsync() =>
+        (await File.ReadAllLinesAsync(Path.Combine(
+                Root(), "fixtures", "neb", "pp-session", "CAP-021", "cpr-match", "response.head"), Ct))
+            .First(line => line.StartsWith("Content-Type:", StringComparison.OrdinalIgnoreCase))
+            .Split(':', 2)[1]
+            .Trim();
 
     [Fact]
     public async Task Ending_a_session_from_the_back_channel_kills_the_token()

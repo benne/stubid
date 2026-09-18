@@ -69,6 +69,75 @@ public class RecordedDispositionTests(WebApplicationFactory<Program> factory)
         return data;
     }
 
+    /// <summary>
+    /// The content type is the one recorded, down to the case of the charset.
+    /// </summary>
+    /// <remarks>
+    /// Nothing asserted this until a second broker's document was compared byte for byte and its
+    /// header was not. Every JSON answer here went out <c>charset=utf-8</c> where twenty-eight of
+    /// these recordings say <c>UTF-8</c>, because the helper handed the type to a call that parses
+    /// it and lowercases the parameter. A client is unlikely to care; a stub that says it matches
+    /// the recording byte for byte is making a claim about this too.
+    /// <para>
+    /// Only the recordings that carry the header, which is a minority of them: a refusal that
+    /// redirects and one with no body send none, and the two documents are replayed separately
+    /// below because this theory leaves them out.
+    /// </para>
+    /// </remarks>
+    [Theory]
+    [MemberData(nameof(Recorded))]
+    public async Task The_content_type_is_the_one_recorded(string id)
+    {
+        var recorded = await RecordedContentTypeAsync(id);
+
+        Assert.SkipWhen(recorded is null, $"{id} records no content type.");
+
+        using var response = await ReplayAsync(id);
+
+        Assert.Equal(recorded, response.Content.Headers.ContentType?.ToString());
+    }
+
+    /// <summary>
+    /// The documents the replay above leaves out, which are the ones this was found on.
+    /// </summary>
+    /// <remarks>
+    /// Discovery and the key set are excluded there because their bytes are compared elsewhere,
+    /// and their header was compared nowhere: an instance served both as <c>charset=utf-8</c>
+    /// where the recordings say <c>UTF-8</c>. They are named here rather than folded into that
+    /// theory, so the exclusion above keeps meaning what it says.
+    /// </remarks>
+    [Theory]
+    [InlineData("CAP-001")]
+    [InlineData("CAP-002")]
+    public async Task A_served_documents_content_type_is_the_one_recorded(string id)
+    {
+        using var response = await ReplayAsync(id);
+
+        Assert.Equal(await RecordedContentTypeAsync(id), response.Content.Headers.ContentType?.ToString());
+    }
+
+    private async Task<string?> RecordedContentTypeAsync(string id) => Header(
+        await File.ReadAllLinesAsync(
+            Path.Combine(Root(), "fixtures", "neb", "pp", id, "response.head"), Ct),
+        "Content-Type");
+
+    /// <summary>The recorded request, sent again at this instance.</summary>
+    private async Task<HttpResponseMessage> ReplayAsync(string id)
+    {
+        using var recorded = JsonDocument.Parse(await File.ReadAllTextAsync(
+            Path.Combine(Root(), "fixtures", "neb", "pp", id, "request.json"), Ct));
+
+        var root = recorded.RootElement;
+        var url = new Uri(root.GetProperty("url").GetString()!);
+
+        using var request = new HttpRequestMessage(
+            new HttpMethod(root.GetProperty("method").GetString()!), url.PathAndQuery);
+
+        Attach(request, root);
+
+        return await _client.SendAsync(request, Ct);
+    }
+
     [Theory]
     [MemberData(nameof(Recorded))]
     public async Task StubId_answers_the_way_the_broker_did(string id)

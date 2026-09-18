@@ -127,19 +127,20 @@ the other case: a build bump that moved nothing under `/op` at all.
 
 Pinning the three-part build version covers both, which is why the advice is stated that way.
 
-## No fidelity correction has shipped yet
+## What a fidelity correction costs
 
 The argument for a dated version is that a fidelity correction — StubID emitting what the broker
 really sends, where it previously did not — breaks anyone asserting on the bytes it corrects, and
 that this is not a distinction a semantic minor can carry.
 
-That argument is the reason for the version scheme. It is not yet a description of anything that
-has happened: across four releases the recordings have not changed and the profile version has
-not moved. The change to CIBA above is not one of these — it moved *away* from the broker, to a
-declared out-of-contract answer, rather than closer to it.
+The first one is in the unreleased notes: every JSON answer under `/op` sent the charset in the
+wrong case, and now sends the case the recordings carry. It is as small as a correction gets, and
+it still breaks a suite that pinned the header by hand, which is the point. Across the four
+releases before it the recordings did not change and the profile version did not move. The change
+to CIBA above is not one of these — it moved *away* from the broker, to a declared
+out-of-contract answer, rather than closer to it.
 
-The first real correction will break a suite that asserts on the bytes it touches, and the release
-note will say so. Where one is most likely is not a guess: the fidelity ledger marks its own
+A correction breaks a suite that asserts on the bytes it touches, and the release note says so. Where one is most likely is not a guess: the fidelity ledger marks its own
 weakest claims, and [the divergences](brokers/neb/divergences.md) list every entry that rests on
 the broker's documentation rather than on a recording, together with the ones still awaiting a
 capture that would settle them.

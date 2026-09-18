@@ -1,3 +1,4 @@
+using System.Text;
 using StubId.Abstractions;
 using StubId.Profiles;
 
@@ -152,7 +153,9 @@ internal static class SignicatEndpoints
     /// <para>
     /// The content type is written as the header rather than handed to <c>Results.Text</c>, which
     /// parses it and lowercases the charset. The broker spells it <c>UTF-8</c>, and a document
-    /// compared byte for byte is worth a header spelled the same way.
+    /// compared byte for byte is worth a header spelled the same way. Writing it means writing the
+    /// length as well: without one Kestrel frames the answer as chunked, which is a header no
+    /// recording carries in place of one every recorded answer has.
     /// </para>
     /// </remarks>
     private static IResult Served(string body) => new SignicatDocument(body);
@@ -164,6 +167,7 @@ internal static class SignicatEndpoints
             ArgumentNullException.ThrowIfNull(http);
 
             http.Response.ContentType = "application/json; charset=UTF-8";
+            http.Response.ContentLength = Encoding.UTF8.GetByteCount(body);
 
             return http.Response.WriteAsync(body);
         }

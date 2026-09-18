@@ -3,6 +3,21 @@
 Notes accumulate here as changes land, and this file is renamed to the version when a release
 goes out. The dated files beside it are history and are never edited.
 
+## The broker's bytes have moved again
+
+Every JSON answer under `/op` carried `Content-Type: application/json; charset=utf-8`. Twenty-eight
+of the first broker's recordings spell it `UTF-8`, so the emulator had the charset in the wrong
+case on discovery, the key set, the token and userinfo responses, pushed authorization, and every
+refusal. The header is written directly now rather than handed to a helper that parses it and
+lowercases the parameter.
+
+One endpoint family keeps the lower-case spelling, because that is what its own recording carries:
+the CPR-match endpoint, which already answers in its own envelope and challenges in its own way.
+
+A suite that pinned the served content type by hand may see this. Nothing else changes: the bodies,
+the statuses and every other header are what they were — including the length, which a first
+attempt at this dropped, leaving the answers chunked until a test over a real server caught it.
+
 ## A second broker can be served
 
 `StubId:Profile=signicat`, or `WithProfile("signicat")` on either hosting package, starts an
