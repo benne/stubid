@@ -59,8 +59,8 @@ outside, and this is where you look. Reading it does not consume it.
 ## What this build is, and what it has handed out
 
 Two pages that are generated rather than written. The first reads the routes this instance actually
-loaded, the fidelity ledger from the attributes on the code that emits each answer, the three
-clients it publishes, its signing key ids and its certificate. Nothing on it is a list somebody
+loaded, the fidelity ledger from the attributes on the code that emits each answer, the clients
+it publishes, its signing key ids and its certificate. Nothing on it is a list somebody
 maintains beside the code, so it cannot describe a build that no longer exists.
 
 The second is what the instance has issued: the pushed requests, codes and access tokens, with who
@@ -119,8 +119,9 @@ with no address to open in a browser, which [the in-process guide](in-process.md
 It does not push. The table polls, and closing the page stops it; there is no stream to keep open
 and nothing to reconnect.
 
-It does not register clients. The three are fixed and StubID refuses any other client id, which is
-the same for every guide here.
+It does not register clients. The first broker's three are fixed and StubID refuses any other
+client id, which is the same for every guide here; an instance serving a broker whose clients have
+not been recorded publishes none and says so.
 
 And it shows no token values, ever, for the reason above.
 

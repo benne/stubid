@@ -57,6 +57,42 @@ public class SignicatProfileTests : IClassFixture<WebApplicationFactory<Program>
         return JsonDocument.Parse(await response.Content.ReadAsStringAsync(Ct)).RootElement.Clone();
     }
 
+    /// <summary>
+    /// The clients it publishes are its own, and it has none.
+    /// </summary>
+    /// <remarks>
+    /// The roster in the engine is the first broker's three, and an instance serving this broker
+    /// handed them out at <c>/_stubid/v1/clients</c> and listed them on the admin page - ids every
+    /// route here refuses. An empty list is the answer until a login of this broker is recorded,
+    /// and the first broker's instance still publishes three, which ControlClientTests holds.
+    /// </remarks>
+    [Fact]
+    public async Task It_publishes_none_of_the_first_brokers_clients()
+    {
+        var clients = (await JsonAsync("/_stubid/v1/clients")).GetProperty("clients");
+
+        Assert.Empty(clients.EnumerateArray());
+    }
+
+    /// <summary>And the page a person reads does not list them either.</summary>
+    /// <remarks>
+    /// The emulated page rather than the landing one: it is where the roster is rendered, so it is
+    /// the only page where listing another broker's clients is possible in the first place.
+    /// </remarks>
+    [Fact]
+    public async Task The_admin_page_lists_no_clients_for_this_broker()
+    {
+        using var page = await _client.GetAsync("/_stubid/admin/emulated", Ct);
+
+        // Asserted, so that a page which stopped answering could not pass the absence below.
+        Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+
+        var html = await page.Content.ReadAsStringAsync(Ct);
+
+        Assert.DoesNotContain("0a775a87-878c-4b83-abe3-ee29c720c3e7", html, StringComparison.Ordinal);
+        Assert.Contains("have not been recorded", html, StringComparison.Ordinal);
+    }
+
     /// <summary>What is served is the recording with the tenant's host swapped for this address.</summary>
     [Fact]
     public async Task Discovery_is_the_recording_with_the_host_swapped()
