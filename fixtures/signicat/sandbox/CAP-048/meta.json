@@ -1,0 +1,10 @@
+{
+  "id": "CAP-048",
+  "description": "Discovery over POST",
+  "settles": "What a method the document is not served for earns: a refusal naming the method, a plain 404, or the document anyway. StubID declares GET alone, and a per-route method rule is enforced by nothing today, so this is also the recording that says whether enforcing it would change an answer.",
+  "disposition": "Unclassified",
+  "status": 405,
+  "byteLength": 0,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}

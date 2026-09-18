@@ -1,0 +1,6 @@
+{
+  "method": "POST",
+  "url": "https://{{SIGNICAT_DOMAIN}}.sandbox.signicat.com/auth/open/.well-known/openid-configuration",
+  "headers": [],
+  "body": ""
+}

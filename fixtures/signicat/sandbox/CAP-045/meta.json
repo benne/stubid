@@ -1,0 +1,10 @@
+{
+  "id": "CAP-045",
+  "description": "Userinfo with its own segment capitalized",
+  "settles": "The same question as CAP-044, asked of the other family of paths. A well-known name is often answered by something sitting in front of the application\u0027s own router, so what that does with case cannot be read as what the connect endpoints do with it. CAP-019 is this endpoint spelled the way it is advertised, which is what the answer here is compared against.",
+  "disposition": "NotFound",
+  "status": 401,
+  "byteLength": 0,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}

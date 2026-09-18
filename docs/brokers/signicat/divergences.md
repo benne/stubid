@@ -6,7 +6,7 @@ behavior, so this document and the running system cannot disagree.
 
 This broker is declared rather than emulated: two endpoints are served and the rest say what they
 are. [The whole ledger](#the-whole-ledger) is at the end, and [what a recording would
-settle](#awaiting-capture) collects what the next capture session could close.
+settle](#awaiting-capture) lists anything the ledger is still waiting on.
 
 ## A login has not been recorded
 
@@ -66,8 +66,9 @@ against this profile.
 
 <a id="the-404-outside-the-root"></a>
 
-Both segments of `/auth/open` are compared exactly and a trailing slash is refused, which the
-recordings settle. What differs is the body of the refusal.
+Both segments of `/auth/open` are compared exactly, what sits below them is not compared at all,
+and a trailing slash below the root is refused wherever it appears — all of which the recordings
+settle. What differs is the body of the refusal.
 
 The broker answers a request below its root with an empty 404, and one outside it — the host root,
 an RFC 8414 layout, a capitalized segment — with a 3428-byte HTML page from its edge, which the
@@ -90,12 +91,12 @@ precisely why an instance has to be able to say what it is.
 
 <a id="awaiting-capture"></a>
 
-Each of these names what would answer it, so the next capture session has a list to work from.
+Anything this broker's ledger is still waiting on is listed here, beside what would answer it. An
+empty table means nothing is: every entry rests on a recording or on a divergence argued above.
 
 <!-- generated:begin awaiting-capture -->
 | What | What would settle it |
 | --- | --- |
-| `SignicatProfile.Root` | An unattended batch that varies the case of a segment below the root, adds a trailing slash to an endpoint other than discovery, and posts to discovery. None of the three was probed, so what StubID does with them is the framework's answer rather than the broker's. |
 <!-- generated:end awaiting-capture -->
 
 ## The whole ledger
@@ -124,8 +125,7 @@ recording confirmed. The same list an instance serving this broker answers at
 | `SignicatKeySet.Write` | Shape, Divergent | - | [why](#the-key-set) |
 | `SignicatProfile.Root` | OutOfContract, Divergent | - | [why](#the-404-outside-the-root) |
 | `StubIdApplication.AnnounceTheEmulator` | Exact, Divergent | - | [why](#emulator-header) |
-| `SignicatProfile.Root` | Exact, Assumed | - | [why](#awaiting-capture) |
-| `SignicatEndpoints.Discovery` | Exact, VerifiedLive | fixtures/signicat/sandbox/CAP-001 | - |
+| `SignicatEndpoints.Discovery` | Exact, VerifiedLive | fixtures/signicat/sandbox/CAP-001, fixtures/signicat/sandbox/CAP-048 | - |
 | `SignicatEndpoints.KeySet` | Exact, VerifiedLive | fixtures/signicat/sandbox/CAP-002 | - |
-| `SignicatProfile.Root` | Exact, VerifiedLive | fixtures/signicat/sandbox/CAP-005, fixtures/signicat/sandbox/CAP-006, fixtures/signicat/sandbox/CAP-007, fixtures/signicat/sandbox/CAP-008 | - |
+| `SignicatProfile.Root` | Exact, VerifiedLive | fixtures/signicat/sandbox/CAP-005, fixtures/signicat/sandbox/CAP-006, fixtures/signicat/sandbox/CAP-007, fixtures/signicat/sandbox/CAP-008, fixtures/signicat/sandbox/CAP-044, fixtures/signicat/sandbox/CAP-045, fixtures/signicat/sandbox/CAP-046, fixtures/signicat/sandbox/CAP-047 | - |
 <!-- generated:end ledger-index -->

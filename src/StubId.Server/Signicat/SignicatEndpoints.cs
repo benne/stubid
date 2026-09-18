@@ -40,9 +40,10 @@ internal static class SignicatEndpoints
             routes.Add(new RouteDeclaration(pattern, methods, role, handler)
             {
                 // The two root segments are compared exactly, where the first broker compares only
-                // its own: a request that capitalizes either one is refused by this broker. What
-                // happens below them was never probed, so the rest keeps the default rather than
-                // claiming a strictness nothing measured.
+                // its own: a request that capitalizes either one is refused by this broker. Below
+                // them case is not compared at all - the key set answers to JWKS (CAP-044) and
+                // userinfo to Userinfo (CAP-045) - so the default is the measured rule here rather
+                // than the absence of a measurement.
                 Exactness = new SegmentExactness(
                     [StringComparison.Ordinal, StringComparison.Ordinal], TrailingSlash.Refuse),
             });
@@ -76,7 +77,7 @@ internal static class SignicatEndpoints
     /// invent a list.
     /// </remarks>
     [Fidelity(FidelityTier.Exact, FidelityProvenance.VerifiedLive,
-        Evidence = "fixtures/signicat/sandbox/CAP-001")]
+        Evidence = "fixtures/signicat/sandbox/CAP-001, fixtures/signicat/sandbox/CAP-048")]
     private static IResult Discovery(HttpContext http, Documents documents) =>
         Served(documents.Discovery("signicat", BaseUrl(http)));
 

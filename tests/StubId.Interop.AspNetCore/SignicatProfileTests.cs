@@ -258,11 +258,50 @@ public class SignicatProfileTests : IClassFixture<WebApplicationFactory<Program>
     [InlineData("/Auth/open/.well-known/openid-configuration")]
     [InlineData("/auth/Open/.well-known/openid-configuration")]
     [InlineData("/auth/open/.well-known/openid-configuration/")]
+    [InlineData("/auth/open/.well-known/openid-configuration/jwks/")]
+    [InlineData("/auth/open/connect/userinfo/")]
     public async Task A_path_the_broker_refuses_is_refused_here(string path)
     {
         using var response = await _client.GetAsync(path, Ct);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    /// <summary>
+    /// Case below the root does not decide whether a path is matched, on either family.
+    /// </summary>
+    /// <remarks>
+    /// Both tenant segments above it are compared exactly, and the recordings say the broker stops
+    /// being strict below them: the key set answers to JWKS (CAP-044), and Userinfo reaches
+    /// userinfo rather than a 404 (CAP-045). What is checked here is that the path was matched -
+    /// the served document is served, and the endpoint that is not emulated answers for itself
+    /// rather than reporting that nothing is there.
+    /// </remarks>
+    [Theory]
+    [InlineData("/auth/open/.well-known/openid-configuration/JWKS", HttpStatusCode.OK)]
+    [InlineData("/auth/open/connect/Userinfo", HttpStatusCode.NotImplemented)]
+    public async Task Case_below_the_root_does_not_decide_whether_a_path_is_matched(
+        string path, HttpStatusCode expected)
+    {
+        using var response = await _client.GetAsync(path, Ct);
+
+        Assert.Equal(expected, response.StatusCode);
+    }
+
+    /// <summary>A method the document is not served for is refused as one.</summary>
+    /// <remarks>
+    /// CAP-048: the broker answers 405, where a 404 would tell a client the document is not there
+    /// at all. The route declares GET alone, so the framework answers the same status - this is
+    /// what says the two agree, rather than a rule of StubID's own being enforced.
+    /// </remarks>
+    [Fact]
+    public async Task Discovery_refuses_a_method_it_does_not_serve()
+    {
+        using var content = new StringContent("");
+        using var response = await _client.PostAsync(
+            "/auth/open/.well-known/openid-configuration", content, Ct);
+
+        Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
     }
 
     /// <summary>Every answer says it came from an emulator.</summary>

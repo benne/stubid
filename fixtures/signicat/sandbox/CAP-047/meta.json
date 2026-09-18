@@ -1,0 +1,10 @@
+{
+  "id": "CAP-047",
+  "description": "Userinfo with a trailing slash",
+  "settles": "The trailing slash on the other family, where a 401 says the path matched and a 404 says it did not. ASP.NET Core matches a trailing slash to the route written without one, so if this broker\u0027s router does the same, StubID\u0027s refusal is the divergence rather than the reproduction.",
+  "disposition": "NotFound",
+  "status": 404,
+  "byteLength": 0,
+  "volatileHeaders": [],
+  "volatileBodyPatterns": []
+}

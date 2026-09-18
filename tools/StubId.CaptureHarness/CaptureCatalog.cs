@@ -5,10 +5,11 @@ namespace StubId.CaptureHarness;
 /// </summary>
 /// <remarks>
 /// <para>
-/// CAP-001 to CAP-019 are the first round of a pack, and CAP-040 onwards a second, added
-/// while building the request surface: every one of them settles a question the code would
-/// otherwise have had to assume. CAP-020 to CAP-030 need a human to complete a login in
-/// MitID's test tool and live in a separate catalog, which is why the numbering skips them.
+/// CAP-001 to CAP-019 are the first round of a pack, CAP-040 onwards a second, added while
+/// building the request surface, and CAP-044 onwards a third, asking how a path is matched
+/// rather than what it answers: every one of them settles a question the code would otherwise
+/// have had to assume. CAP-020 to CAP-030 need a human to complete a login in MitID's test
+/// tool and live in a separate catalog, which is why the numbering skips them.
 /// </para>
 /// <para>
 /// The numbering restarts per broker: each broker's unattended pack starts at CAP-001 with its
@@ -708,6 +709,75 @@ public static class CaptureCatalog
             Settles = "What end session does when it is given nothing: a redirect to the broker's "
                 + "own logout page, with no query.",
             Url = $"{Sandbox}/connect/endsession",
+        },
+        new()
+        {
+            Id = "CAP-044",
+            Expected = Disposition.Success,
+            Description = "Key set with its last segment capitalized",
+            Settles = "That a path below the root is matched without regard to case: the key set "
+                + "answers to JWKS as readily as to jwks. Both tenant segments above it are "
+                + "compared exactly (CAP-007, CAP-008), so this broker splits where the first one "
+                + "does - an exact prefix selecting the application, and looser matching beneath "
+                + "it. StubID matches below the root the way ASP.NET routing does, which agrees.",
+            Url = $"{Sandbox}/.well-known/openid-configuration/JWKS",
+
+            // Carried over from CAP-002 for the case where this is served after all. The key set
+            // is a different document on every request, and an unmasked copy of one would fail
+            // verify for a reason that has nothing to do with the question being asked here.
+            VolatileBodyPatterns =
+            [
+                """\{"kty":"RSA","use":"(?:sig|enc)","kid":"[^"]+","e":"[^"]+","n":"[^"]+","alg":"[^"]+"\}""",
+                "<volatile>(?:,<volatile>)*",
+            ],
+        },
+        new()
+        {
+            Id = "CAP-045",
+            Expected = Disposition.Challenge,
+            Description = "Userinfo with its own segment capitalized",
+            Settles = "That the connect endpoints match case the same way the well-known names do. "
+                + "A well-known name is often answered by something sitting in front of the "
+                + "application's own router, so CAP-044 could not speak for this family: asked "
+                + "separately, Userinfo reaches userinfo and earns the challenge CAP-019 records, "
+                + "rather than the 404 a case-sensitive router would give.",
+            Url = $"{Sandbox}/connect/Userinfo",
+        },
+        new()
+        {
+            Id = "CAP-046",
+            Expected = Disposition.NotFound,
+            Description = "Key set with a trailing slash",
+            Settles = "That the refusal CAP-006 records for discovery is the rule for every "
+                + "served path rather than that one path's own: the key set refuses a trailing "
+                + "slash the same way. StubID refuses one anywhere below the root, which this "
+                + "turns from one recording generalized to thirteen routes into a measured rule.",
+            Url = $"{Sandbox}/.well-known/openid-configuration/jwks/",
+        },
+        new()
+        {
+            Id = "CAP-047",
+            Expected = Disposition.NotFound,
+            Description = "Userinfo with a trailing slash",
+            Settles = "The trailing slash on the other family, where a 401 would have said the "
+                + "path still matched. The 404 says it does not: the slash is refused before the "
+                + "endpoint is reached, on both families. ASP.NET Core would otherwise match a "
+                + "trailing slash to the route written without one, which is why StubID refuses "
+                + "it in the gate that runs ahead of routing rather than leaving it to a route.",
+            Url = $"{Sandbox}/connect/userinfo/",
+        },
+        new()
+        {
+            Id = "CAP-048",
+            Expected = Disposition.Unclassified,
+            Description = "Discovery over POST",
+            Settles = "That a method the document is not served for earns 405 rather than a 404 "
+                + "or the document anyway. The path is matched and the method is not, and the "
+                + "broker says which. StubID declares GET alone on that route, so the framework "
+                + "answers the same status without a rule of its own being enforced.",
+            Method = "POST",
+            Url = $"{Sandbox}/.well-known/openid-configuration",
+            Form = new Dictionary<string, string>(),
         },
     ];
 }

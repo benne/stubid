@@ -39,6 +39,13 @@ A ledger entry is filed under the broker whose page argues it or whose pack its 
 an instance answers with its own broker's divergences and each broker's reference page carries its
 own.
 
+An unattended batch then settled what that profile's path rule had only assumed. Below the two
+exact segments of `/auth/open` nothing is compared — the key set answers to `JWKS` and userinfo to
+`Userinfo` — a trailing slash is refused on every served path rather than on discovery alone, and a
+method the document is not served for earns `405` rather than a `404`. StubID already answered each
+of those the same way; what changed is that the answers are recorded rather than inherited from the
+framework, so the broker's page no longer lists anything waiting on a capture.
+
 ## A citation names the broker it came from
 
 Capture numbers restart per broker, so a number alone no longer says which recording it means:
