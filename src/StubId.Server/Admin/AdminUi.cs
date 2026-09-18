@@ -784,7 +784,7 @@ internal static class AdminUi
         var clients = H($"""
             <table>
             <tr><th>Client</th><th>Asks for</th><th>Organization</th></tr>
-            {Join(state.Clients.Values
+            {Join(state.ClientsFor(profile.Id.Broker)
                 .OrderBy(client => client.ClientId, StringComparer.Ordinal)
                 .Select(client => H($"""
                     <tr>
@@ -821,11 +821,13 @@ internal static class AdminUi
             {instance}
 
             <h2>Signing keys</h2>
+            <p class="dim">What this instance signs with, which is not always what its broker
+            publishes. A key set is written in that broker's own shape: it may name these keys
+            differently, and it may leave one out - the served document is the answer.</p>
             {signing}
 
             <h2>Clients it publishes</h2>
-            <p class="dim">Three, fixed, and it refuses any other client id outright. The secret is
-            not checked.</p>
+            {ClientNote(profile)}
             {clients}
 
             <h2>Routes it answers on</h2>
@@ -835,6 +837,25 @@ internal static class AdminUi
             {Ledger(profile.Id.Broker)}
             """);
     }
+
+    /// <summary>What this instance publishes for the broker it serves, and why.</summary>
+    /// <remarks>
+    /// The roster is the first broker's. An instance serving another broker publishes none of it,
+    /// and saying so is the point: a page that showed an empty table and nothing else would read
+    /// as a broken instance rather than as a broker whose clients nobody has recorded.
+    /// </remarks>
+    private static Html ClientNote(IBrokerProfile profile) =>
+        string.Equals(profile.Id.Broker, BrokerState.ClientsBroker, StringComparison.Ordinal)
+            ? H($"""
+                <p class="dim">Three, fixed, and it refuses any other client id outright. The
+                secret is not checked.</p>
+                """)
+            : H($"""
+                <p class="dim">None. The client ids StubID publishes are the first broker's, and
+                this broker's own have not been recorded - reaching one takes a login, and no login
+                of this broker has been recorded. Every route here refuses the other broker's
+                three, so listing them would be worse than listing nothing.</p>
+                """);
 
     /// <summary>
     /// The fidelity ledger, read from the attributes rather than from a list of them.

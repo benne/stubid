@@ -3,6 +3,28 @@
 Notes accumulate here as changes land, and this file is renamed to the version when a release
 goes out. The dated files beside it are history and are never edited.
 
+## A container's authority names the broker it was told about
+
+`StubIdContainer.Authority` is what a client library is configured with. On a container built with
+`WithProfile("signicat")` and a pinned address, it answered `/op` until the instance had started
+and corrected it — the wrong answer in the window where a suite reads it to configure a relying
+party.
+
+The module composes that path from the broker it was told about now, the way the in-process host
+already did, and the running instance still decides: if what it reports is not what the module
+composed, the start fails and names the call that tells both halves, rather than moving the address
+under a caller who already has it. Choosing the broker by setting `StubId__Profile` directly is
+that case, since the variable reaches the server and not the module. An instance too old to name a
+root at all is read as serving the first broker, and checked the same way.
+
+The path is what is known early. The rest of the address is not, unless you pinned one with
+`WithPublicBaseUrl`: Docker assigns the host port at start, so on an unpinned container `Authority`
+is readable once `StartAsync` has returned, as it was before.
+
+A broker this package has not heard of still runs — the package and the image are versioned apart —
+but its root cannot be composed, so the authority refuses to answer until the instance has been
+asked, and names `StartAsync` when it does.
+
 ## The broker's bytes have moved again
 
 Every JSON answer under `/op` carried `Content-Type: application/json; charset=utf-8`. Twenty-eight
@@ -38,6 +60,11 @@ rather than imitated, because reproducing it would mean inventing keys nothing s
 A ledger entry is filed under the broker whose page argues it or whose pack its evidence cites, so
 an instance answers with its own broker's divergences and each broker's reference page carries its
 own.
+
+It publishes none of the first broker's clients, either. The three client ids StubID hands out at
+`GET /_stubid/v1/clients`, and lists on its admin page, are the first broker's; an instance serving
+this one answers with an empty list and says why, because reaching a registration of its own takes
+a login and no login of it has been recorded.
 
 An unattended batch then settled what that profile's path rule had only assumed. Below the two
 exact segments of `/auth/open` nothing is compared — the key set answers to `JWKS` and userinfo to
@@ -392,8 +419,8 @@ reading the snapshot would have emitted a stale issuer in every token of every c
 
 ## Two smaller things
 
-`GET /_stubid/v1/fidelity` reports `profile.root` beside the broker and the version, which is how
-the Testcontainers module knows what authority to hand you without keeping a table of its own.
+`GET /_stubid/v1/fidelity` reports `profile.root` beside the broker and the version, which is what
+the Testcontainers module checks the authority it composed against.
 
 The refusal you get for a public base URL with a path in it no longer names `/op`. It names the
 path you actually sent, which is the same help for whichever broker is loaded.

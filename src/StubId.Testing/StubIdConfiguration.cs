@@ -6,10 +6,11 @@ namespace StubId.Testing;
 
 /// <summary>What this module needs to know beyond what any container needs.</summary>
 /// <remarks>
-/// One member, because one decision depends on it: whether the module publishes the mapped address
-/// after start or stands aside because the caller pinned one. Everything else the builder offers is
-/// an environment variable or a mount, and recording those here as well would be a second source of
-/// truth for values Docker already holds.
+/// Only what the module itself decides something from: whether it publishes the mapped address
+/// after start or stands aside because the caller pinned one, which port that address names, and
+/// which broker was chosen - because the authority a caller reads before start is composed from
+/// that broker's root. Everything else the builder offers is an environment variable or a mount,
+/// and recording those here as well would be a second source of truth for values Docker holds.
 /// </remarks>
 public sealed class StubIdConfiguration : ContainerConfiguration
 {
@@ -49,6 +50,7 @@ public sealed class StubIdConfiguration : ContainerConfiguration
     {
         PublicBaseUrl = BuildConfiguration.Combine(oldValue.PublicBaseUrl, newValue.PublicBaseUrl);
         Tls = BuildConfiguration.Combine(oldValue.Tls, newValue.Tls);
+        Profile = BuildConfiguration.Combine(oldValue.Profile, newValue.Profile);
     }
 
     /// <summary>
@@ -58,4 +60,17 @@ public sealed class StubIdConfiguration : ContainerConfiguration
 
     /// <summary>Whether the instance serves TLS, which decides which port the address names.</summary>
     public bool? Tls { get; }
+
+    /// <summary>
+    /// The broker the caller chose, or null when nothing did and the default is being served.
+    /// </summary>
+    /// <remarks>
+    /// Recorded as well as sent to the instance, because <see cref="StubIdContainer.Authority" />
+    /// ends in that broker's root and a caller reads it while there is still nothing to ask.
+    /// <para>
+    /// Set on its own rather than through the constructor above, which shipped taking two values
+    /// and would retire that signature by gaining a third.
+    /// </para>
+    /// </remarks>
+    public string? Profile { get; init; }
 }

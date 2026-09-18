@@ -122,6 +122,29 @@ public class AdminPageTests
     }
 
     /// <summary>
+    /// The broker whose clients these are still sees them listed, and told which case it is in.
+    /// </summary>
+    /// <remarks>
+    /// The other side of the filter that keeps a second broker from advertising this one's client
+    /// ids. Without this, emptying the table for every broker would pass everything that reads the
+    /// control API, because the page is the only place the roster is rendered for a person.
+    /// </remarks>
+    [Fact]
+    public async Task The_first_brokers_page_lists_the_clients_it_publishes()
+    {
+        using var stub = Host(_ => { });
+
+        using var page = await Browser(stub).GetAsync($"{Admin}/emulated", Ct);
+
+        Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+
+        var html = await page.Content.ReadAsStringAsync(Ct);
+
+        Assert.Contains("0a775a87-878c-4b83-abe3-ee29c720c3e7", html, StringComparison.Ordinal);
+        Assert.Contains("Three, fixed", html, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// A string somebody else chose reaches the page as text.
     /// </summary>
     /// <remarks>

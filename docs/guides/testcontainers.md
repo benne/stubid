@@ -33,9 +33,20 @@ string character for character, which is the comparison `openid-client` and Spri
 make and neither forgives.
 
 It carries the root of whichever broker the instance serves, so a container built with
-`WithProfile("signicat")` hands out an address ending in `/auth/open` rather than `/op`. Read it
-after `StartAsync` has returned: the module asks the running instance which broker it is, which it
-cannot do before there is one.
+`WithProfile("signicat")` hands out an address ending in `/auth/open` rather than `/op`. The module
+composes that path from the name `WithProfile` was given rather than waiting to be told, and the
+running instance is asked during start whether it was right; if the two disagree the start fails
+instead of the address moving under something that already read it.
+
+The path is the half that is known early. Read the property after `StartAsync` has returned unless
+you pinned an address with `WithPublicBaseUrl` — on an unpinned container the host and port are
+what it is still waiting for, because Docker assigns them at start.
+
+Two consequences. Choosing the broker with `WithEnvironment("StubId__Profile", …)` reaches the
+server and not the module, so it is that disagreement — use `WithProfile`. And a broker published
+after your copy of this package still runs, because the package and the image are versioned apart,
+but its root cannot be guessed: `Authority` refuses to answer until `StartAsync` has returned, and
+says so.
 
 ## Why the address has to be told to it
 
