@@ -182,6 +182,44 @@ public class ScrubberTests
         Assert.DoesNotContain(original, scrubbed, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Every name on the list is one the pattern finds, and a name that is not on it is left
+    /// alone.
+    /// </summary>
+    /// <remarks>
+    /// The list and the pattern were written out separately until the pattern was derived from the
+    /// list, and nothing held the two together: a third claim added to one would have been blanked
+    /// nowhere, with every check still green. The second half is what makes the first worth having
+    /// - a pattern that matched every claim would satisfy the first half on its own, and would
+    /// blank the recording rather than the recordist.
+    /// </remarks>
+    [Fact]
+    public void The_pattern_finds_exactly_the_claims_on_the_list()
+    {
+        foreach (var (claim, placeholder) in Scrubber.ClientClaims)
+        {
+            var scrubbed = Scrubber.Scrub($$"""{"{{claim}}":"a-value"}""", _ => null, []);
+
+            Assert.Contains(placeholder, scrubbed, StringComparison.Ordinal);
+            Assert.DoesNotContain("a-value", scrubbed, StringComparison.Ordinal);
+        }
+
+        // A name the list does not carry, and one that opens with a name it does: the quotes in
+        // the pattern are what stop the second from matching, and a pattern built by joining
+        // names without them would blank it.
+        const string Other = """{"transaction_client_ip_country":"a-value"}""";
+
+        Assert.Equal(Other, Scrubber.Scrub(Other, _ => null, []));
+
+        // And one that differs from a listed name only where a regex metacharacter sits. The full
+        // stop in mitid.geo_ip_distance_km is escaped, so this is not a match; without the escape
+        // it would be, and the pattern would blank claims nobody put on the list. The case above
+        // cannot catch that - it differs by a suffix, which an unescaped stop does not reach.
+        const string Wildcard = """{"mitidXgeo_ip_distance_km":"a-value"}""";
+
+        Assert.Equal(Wildcard, Scrubber.Scrub(Wildcard, _ => null, []));
+    }
+
     /// <summary>A signed token is not rewritten on its way past.</summary>
     /// <remarks>
     /// The claim lives inside the transaction token too, and that token is signed. Decoding it to

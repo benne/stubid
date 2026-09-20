@@ -87,7 +87,7 @@ public static partial class Scrubber
     /// </summary>
     /// <remarks>
     /// By name and not by value, which is what makes these different from everything else here.
-    /// A redaction keyed on a value needs somebody to know the value first, and neither of these
+    /// A redaction keyed on a value needs somebody to know the value first, and none of these
     /// is knowable in advance: an address can be handed out fresh by a router, and the distance is
     /// computed per sitting. A rule written against either would be right once.
     /// <para>
@@ -96,12 +96,40 @@ public static partial class Scrubber
     /// value is load-bearing - what a recording has to preserve is that the claim is there, in that
     /// slot, as a string.
     /// </para>
+    /// <para>
+    /// Not scoped to a broker, where <see cref="Credentials" /> is. A claim name belongs to one
+    /// broker's vocabulary in practice, so blanking every name everywhere costs nothing and
+    /// removes the question of which list a new name joins. Public for the same reason
+    /// <see cref="Credentials" /> is: the pattern below is built from it, and a test reads it, so
+    /// there is one list rather than a list and a copy of it.
+    /// </para>
     /// </remarks>
-    private static readonly (string Claim, string Placeholder)[] ClientClaims =
+    public static readonly IReadOnlyList<(string Claim, string Placeholder)> ClientClaims =
     [
         ("transaction_client_ip", "{{CLIENT_IP}}"),
         ("mitid.geo_ip_distance_km", "{{GEO_IP_DISTANCE_KM}}"),
     ];
+
+    /// <summary>
+    /// Any claim that describes the client, with whatever value it was given.
+    /// </summary>
+    /// <remarks>
+    /// Built from <see cref="ClientClaims" /> rather than restating it. The two used to be written
+    /// out separately, which is two readers of one fact with nothing holding them together: a third
+    /// name added to the list would have been blanked nowhere, and every check would still have
+    /// passed. Each name is escaped, because one of them contains a full stop that a regex would
+    /// otherwise read as "any character".
+    /// <para>
+    /// The value alternative accepts a number as well as a string, because a broker that stopped
+    /// quoting one of these would otherwise slip through a pattern written for the form it happens
+    /// to send today. A <c>GeneratedRegex</c> cannot be used here: its pattern has to be a literal,
+    /// which is the thing this is getting rid of.
+    /// </para>
+    /// </remarks>
+    private static readonly Regex ClientClaimPattern = new(
+        $"\"({string.Join('|', ClientClaims.Select(claim => Regex.Escape(claim.Claim)))})\"\\s*:\\s*(\"[^\"]*\"|[-0-9.]+)",
+        RegexOptions.None,
+        TimeSpan.FromSeconds(1));
 
     /// <summary>
     /// Every value this machine can recognize, as the name to report it under paired with the
@@ -238,8 +266,8 @@ public static partial class Scrubber
         Func<string, string?> resolve,
         IEnumerable<(string Placeholder, string Value)> redactions)
     {
-        // First, and without consulting any configuration: these two are blanked by name.
-        text = ClientClaimPattern().Replace(text, match =>
+        // First, and without consulting any configuration: these are blanked by name.
+        text = ClientClaimPattern.Replace(text, match =>
         {
             var placeholder = ClientClaims
                 .First(claim => claim.Claim == match.Groups[1].Value)
@@ -349,17 +377,6 @@ public static partial class Scrubber
     /// </summary>
     public static Match FindUnscrubbedCredential(string candidate) =>
         UnscrubbedCredentialPattern().Match(candidate);
-
-    /// <summary>
-    /// Either claim that describes the client, with whatever value it was given.
-    /// </summary>
-    /// <remarks>
-    /// The value alternative accepts a number as well as a string, because a broker that stopped
-    /// quoting one of these would otherwise slip through a pattern written for the form it happens
-    /// to send today.
-    /// </remarks>
-    [GeneratedRegex("\"(transaction_client_ip|mitid\\.geo_ip_distance_km)\"\\s*:\\s*(\"[^\"]*\"|[-0-9.]+)")]
-    private static partial Regex ClientClaimPattern();
 
     /// <summary>A JSON string value that is entirely base64, which is how a claim carries text.</summary>
     [GeneratedRegex("\"([A-Za-z0-9+/]{16,}={0,2})\"")]
