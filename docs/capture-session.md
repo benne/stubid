@@ -1319,10 +1319,10 @@ divergence entry it either closes or makes permanent.
 
 ## Part 7 — The Signicat sitting
 
-Ten steps against the sandbox account's four clients, written into
-`fixtures/signicat/sandbox-session/` as CAP-020 to CAP-029. The numbers restart per broker, so
-these are not the cases of the same numbers in Parts 3 and 6. Budget about an hour: seven steps
-need a MitID authentication, and the timeout runs underneath the rest in a second browser.
+Eleven steps against the sandbox account's four clients, written into
+`fixtures/signicat/sandbox-session/` as CAP-020 to CAP-030. The numbers restart per broker, so
+these are not the cases of the same numbers in Parts 3 and 6. Budget a little over an hour: eight
+steps need a MitID authentication, and the timeout runs underneath the rest in a second browser.
 
 What carries over from the first broker's sitting, and is not repeated here: the HAR and
 transcription conventions in [P7](#p7-conventions-for-every-step), the redact-list rules in
@@ -1525,12 +1525,36 @@ yet. Unknown keys are ignored here, so levels unchanged from S6 mean it was not 
 *This went wrong if:* the login completes at a lower level than asked. That contradicts the page
 above; record what came back rather than repeating the step.
 
+### Step S11. End session, with a hint
+
+Last. It logs in on the primary client and then ends the session it just made, so the hint is a
+token from the session being ended.
+
+It goes at the end as a precaution rather than because the mechanism is known. The request is made
+from this side, through a client carrying none of the browser's cookies, so whether it ends the
+session in the browser as well is one of the things nobody has observed - and S8's finding depends
+on a session still being there. Running it last costs nothing if the answer turns out to be no.
+
+Approve the login as normal. The logout is a back-channel request the harness makes once the code
+has been exchanged, so there is nothing to do in the browser and nothing to follow: what is
+recorded is the answer to that request, and its `Location` is the finding.
+
+*Settles:* whether `post_logout_redirect_uri` is honored when a valid `id_token_hint` is present,
+and where the answer points. CAP-043 settles the other half: given nothing, this broker answers a
+302 to `/auth/open/Account/Logout` with no query. The first broker's sitting recorded the same
+step and its recording carries no query either, so what a hint changes has been observed on
+neither.
+
+*This went wrong if:* `post_logout_redirect_uri` is not registered for the primary client and the
+broker silently drops it, stranding you on its own page. That **is** the finding, the same one the
+first broker's [step 16](#step-16-end-session-terminal-for-profile-1) warns about — but confirm
+the registration before the sitting rather than spending a login on a question the dashboard
+answers. Nothing in `check` or `rehearse` can see it.
+
 ### What has no step here
 
 - **An id_token alone.** Not advertised; S9 is the front-channel recording.
 - **CPR match.** There is no endpoint. The number arrives through `nin` in the login itself.
-- **End session.** Without an `id_token_hint` it is already in the unattended pack as CAP-043.
-  With one, the harness would be carrying a token in a URL, which nothing yet strips.
 - **An unregistered redirect URI.** Refused before any login, so it belongs in the unattended
   pack. A sitting step would capture nothing at the callback, which is all the first broker's
   CAP-028 holds.

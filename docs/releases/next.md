@@ -95,14 +95,15 @@ does not resolve, and neither does a path into the wrong pack.
 
 ## Signicat's sitting can be booked
 
-The second broker's manual catalog has ten steps,
-[CAP-020 to CAP-029](https://github.com/benne/stubid/blob/master/docs/capture-session.md#part-7--the-signicat-sitting),
+The second broker's manual catalog has eleven steps,
+[CAP-020 to CAP-030](https://github.com/benne/stubid/blob/master/docs/capture-session.md#part-7--the-signicat-sitting),
 and the runbook has a Part 7 for them: two aborts and a timeout, a baseline login and one with the
 CPR number, the same login on the client that puts every claim in the identity token, transaction
 consent with a reference text, single sign-on on a second client, a hybrid response for `c_hash`,
-and assurance level High. Nothing is recorded yet. `rehearse --broker=signicat` reports every step
-ready: the six steps that send a request object signed with the key registered for them reach the
-login page, and the redirect back from each carries its `state`.
+assurance level High, and end session with a hint. Nothing is recorded yet.
+`rehearse --broker=signicat` reports every step ready: the seven steps that send a request object
+signed with the key registered for them reach the login page, and the redirect back from each
+carries its `state`.
 
 Five things in the harness would have cost this sitting:
 

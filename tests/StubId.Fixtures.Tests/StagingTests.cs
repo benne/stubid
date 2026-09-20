@@ -257,6 +257,75 @@ public class StagingWriteTests
         Assert.Equal(served.Length, line.Length);
     }
 
+    /// <summary>
+    /// The logout step writes a placeholder where the broker's own token was.
+    /// </summary>
+    /// <remarks>
+    /// End session names the session it ends by carrying that session's token in the query, which
+    /// is why the second broker's sitting had no end-session step until something stripped it. The
+    /// halves land beside the exchange the way a token in a body does, so what the recording has to
+    /// preserve - the header, the claims, the segment lengths - survives without the compact form.
+    /// </remarks>
+    [Fact]
+    public void A_recorded_logout_writes_a_placeholder_where_the_token_was()
+    {
+        var written = WithCredentials(() => Write(LoggedOut()));
+
+        Assert.Contains("{{ID_TOKEN_HINT}}", written["CAP-030/endsession/meta.json"],
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("id_token_hint=ey", written["CAP-030/endsession/meta.json"],
+            StringComparison.Ordinal);
+
+        Assert.Contains("\"sid\"", written["CAP-030/endsession/id_token_hint.payload.json"],
+            StringComparison.Ordinal);
+
+        // What the step exists to settle has to survive the strip.
+        Assert.Contains("post_logout_redirect_uri", written["CAP-030/endsession/meta.json"],
+            StringComparison.Ordinal);
+
+        Assert.All(written, file =>
+            Assert.False(SensitiveContent.FindSignedToken(file.Value).Found,
+                $"{file.Key} carries a signed token"));
+    }
+
+    /// <remarks>
+    /// Staging strips a URL in two places and they are not the same code path: once on the way to
+    /// meta.json, and once here, where /finish decides whether to refuse. Teaching only the writer
+    /// would leave every logout reported as unaccounted for, and the operator's only way past that
+    /// is the query parameter that turns the check off.
+    /// </remarks>
+    [Fact]
+    public void A_logout_carrying_a_hint_is_not_reported_before_the_write()
+    {
+        Assert.Empty(WithCredentials(() => LoggedOut().Suspicious()));
+    }
+
+    /// <summary>The exchange the end-session follow-up produces, with the URL it really sends.</summary>
+    private static Staging LoggedOut()
+    {
+        var staging = new Staging();
+        var @case = ManualCatalog.For(Broker.Signicat).Single(c => c.Id == "CAP-030");
+
+        var hint = Compact(
+            """{"alg":"RS256","kid":"ABC"}""", """{"sub":"a-subject","sid":"a-session"}""");
+
+        staging.Add(@case, "endsession", Exchange(
+            "https://example.invalid/auth/open/connect/endsession"
+            + $"?id_token_hint={Uri.EscapeDataString(hint)}"
+            + "&post_logout_redirect_uri=http%3A%2F%2Flocalhost%3A5099%2Fcallback&state=logout",
+            ""));
+
+        return staging;
+    }
+
+    private static string Compact(string header, string payload)
+    {
+        static string Segment(string json) =>
+            Base64Url.EncodeToString(Encoding.UTF8.GetBytes(json));
+
+        return $"{Segment(header)}.{Segment(payload)}.c2lnbmF0dXJlLWJ5dGVz";
+    }
+
     private static Dictionary<string, string> Record() => Written(null, null);
 
     private static Dictionary<string, string> Written(string? jwks, RSA? key) =>

@@ -140,8 +140,22 @@ public sealed partial class Staging(string? jwks = null)
             // Checked here and nowhere later. Once the broker rotates a key, whether these
             // bytes verified against the published one is unanswerable - and the
             // transaction-signing key has rotated once already.
-            var (withoutTokens, tokens) = TokenFixtures.Extract(
+            var (withoutTokens, bodyTokens) = TokenFixtures.Extract(
                 body, jwks is null ? null : compact => TokenFixtures.Verify(compact, jwks));
+
+            // End session names the session it ends by carrying that session's token in the
+            // query, so the URL is stripped before anything is written. The hint joins the
+            // body's own tokens rather than getting a path of its own: it is the broker's
+            // token, so it earns the same halves beside the exchange, the same certificate
+            // and the same verdict in meta.json.
+            var (afterHint, hint) = IdTokenHint.StripFrom(exchange.Url, jwks);
+
+            var tokens = hint is null
+                ? bodyTokens
+                : new Dictionary<string, ExtractedToken>(bodyTokens, StringComparer.Ordinal)
+                {
+                    [IdTokenHint.Parameter] = hint,
+                };
 
             foreach (var (member, token) in tokens)
             {
@@ -158,7 +172,7 @@ public sealed partial class Staging(string? jwks = null)
             // must not reach a fixture: the guard rejects one, and one has arrived in a fixture
             // twice already. Same treatment as a token in a body - the placeholder holds the
             // position, the decoded halves are written beside it.
-            var (url, requestObject) = RequestObject.StripFrom(exchange.Url);
+            var (url, requestObject) = RequestObject.StripFrom(afterHint);
             if (requestObject is not null)
             {
                 await File.WriteAllTextAsync(Path.Combine(directory, "request_object.header.json"),
@@ -248,11 +262,13 @@ public sealed partial class Staging(string? jwks = null)
                 System.Text.Encoding.UTF8.GetString(exchange.ResponseBody));
 
             // The URL as it will be written, not as it was sent. A signed step's authorize URL
-            // carries a compact JWS of our own making, which StripFrom removes on the way to
-            // meta.json - and if its pattern ever misses a form of the request parameter, the
-            // token lands in a fixture with nothing said here and only the next build to catch
-            // it, by which time the sitting is over and the staged bytes are gone.
-            var (writtenUrl, _) = RequestObject.StripFrom(exchange.Url);
+            // carries a compact JWS of our own making and an end-session URL carries one of the
+            // broker's, and both are removed on the way to meta.json - so both are removed here
+            // too. If either pattern ever misses a form of its parameter, the token lands in a
+            // fixture with nothing said here and only the next build to catch it, by which time
+            // the sitting is over and the staged bytes are gone.
+            var (afterHint, _) = IdTokenHint.StripFrom(exchange.Url);
+            var (writtenUrl, _) = RequestObject.StripFrom(afterHint);
 
             var parts = new List<(string Where, string Text)>
             {

@@ -35,7 +35,8 @@ public static class ManualCatalog
     /// <para>
     /// Some of the first broker's sitting has no counterpart. This broker has no response type of
     /// id_token alone and no CPR-match endpoint. End session without an id_token_hint is already in
-    /// the unattended pack, and a hint would put a token in a URL that nothing yet strips. An
+    /// the unattended pack, so the step here sends one: what a hint and a post-logout address change
+    /// is the half neither broker has recorded. An
     /// unregistered redirect URI is refused before any login, so it belongs in that pack too. A
     /// transaction text is signing, which is out of scope for this broker. Assurance level is asked
     /// for once, at High.
@@ -201,6 +202,23 @@ public static class ManualCatalog
             {
                 ["acr_values"] = "idp:mitid loa:high",
             },
+        },
+        new()
+        {
+            Id = "CAP-030",
+            Step = "Step S11",
+            Title = "End session, with a hint",
+            Settles = "Whether post_logout_redirect_uri is honored when a valid id_token_hint is "
+                + "present, and where the answer points. CAP-043 settles the other half already: "
+                + "given nothing, this broker answers a redirect to its own logout page. The first "
+                + "broker's sitting recorded the same step and its recording carries no query at "
+                + "all, so what a hint changes has never been observed on either.",
+            Operator = "Approve as normal. The logout runs by itself once the code has been "
+                + "exchanged, and is recorded from this side rather than from the browser.",
+            Client = BrokerClient.Signicat.Primary,
+            Scope = "openid profile",
+            SignRequest = true,
+            FollowUps = [FollowUp.EndSession],
         },
     ];
 

@@ -171,7 +171,20 @@ public static partial class TokenFixtures
         return (body, extracted);
     }
 
-    private static ExtractedToken Describe(string name, string value, Func<string, bool?>? verify)
+    /// <summary>
+    /// Turns one compact token into the shape a fixture records it as.
+    /// </summary>
+    /// <remarks>
+    /// Public because a token in a URL needs the same treatment as one in a body, and there is no
+    /// reason for a second reader of what a JWS is made of. The placeholder is derived from the
+    /// name, so <c>id_token_hint</c> becomes <c>{{ID_TOKEN_HINT}}</c> and the caller does not
+    /// choose it.
+    /// </remarks>
+    /// <param name="verify">
+    /// Null where there is nothing to check against, or where the token is ours rather than the
+    /// broker's - a signature we can still recompute says nothing worth recording.
+    /// </param>
+    public static ExtractedToken Describe(string name, string value, Func<string, bool?>? verify)
     {
         var parts = value.Split('.');
 
@@ -185,7 +198,8 @@ public static partial class TokenFixtures
             verify?.Invoke(value));
     }
 
-    private static bool LooksSigned(string value)
+    /// <summary>Whether a value has the three segments of a compact JWS.</summary>
+    public static bool LooksSigned(string value)
     {
         var parts = value.Split('.');
         return parts.Length == 3 && parts[0].Length > 8 && parts[1].Length > 8;
