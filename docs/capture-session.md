@@ -1365,11 +1365,55 @@ broker's keys, so the session fetches it until three requests in a row add nothi
 them, keeping what it has if a later request fails. A token whose `kid` is still missing is
 recorded as `SignatureVerified: null` — unchecked, not failed.
 
+### The canary dry-run. Do not book the sitting until this passes.
+
+The first broker's sitting gates on [B16](#b16-the-canary-dry-run-do-not-book-the-sitting-until-this-passes),
+and this is its counterpart. `check` and `rehearse` prove a great deal, but neither completes a
+login, so neither has ever exercised the path that writes a recording. Two steps here type a real
+CPR number, and two ask for `mitid-extra` — the scope MitID's own attributes arrive in, which no
+login against this broker has ever requested. **No `mitid_*` claim has been observed at all**, so
+nothing that describes the person or the machine rather than the broker can be on the blanking
+list yet.
+
+Run one complete throwaway login **on the claims client**, scope
+`openid profile nin idp-id mitid-extra`, with the second test identity. The claims client is the
+one carrying `mitid-extra`, and seeing those names is the point. There is no published open client
+to borrow here the way there is on the first broker: all four registrations are the account's own.
+
+**The canary values are the throwaway identity's own** — its CPR number, name, birth date and UUID,
+in the redact block, exactly as the sitting's own would be. Nothing is echoed back through the
+request. The first broker fed fake values in as `state` and `nonce`, which is not available here:
+`state` is the case id and the callback is matched on it, and the nonce is fresh random bytes per
+start. It is also unnecessary, because those four values genuinely come back in the identity token
+and at userinfo, which is the path that has to be proved.
+
+**Read `/staged` before finishing, and read it for claim names rather than values.** Anything that
+describes the recordist rather than the broker belongs in `Scrubber.ClientClaims`, which blanks by
+name because a value nobody can know in advance cannot be redacted by value. That is a code change,
+so it belongs here and not in the chair.
+
+Then attack the output. Run `/finish`, then the guard tests over the whole tree, then `git status`
+and `git add -p` read by a human. `Nothing_committed_names_a_value_this_machine_is_configured_with`
+is what turns the seeded values into an armed check. A canary that survives anywhere means the redact list is
+short an entry, or a claim needs blanking by name - which is the whole reason to spend a
+login finding out now. **Delete the written pack afterwards; none of it is
+committed.**
+
+Two things the harness will not do for you, both worth knowing before rather than after:
+
+- **`sanitize` cannot repair a redaction added after the fact.** It re-scrubs a body only where it
+  finds a token that was not extracted, so a `redact` entry added once the fixtures are written
+  never reaches the bodies or the token halves already on disk. The repair for a miss is a
+  re-record, or a history rewrite if it reached git.
+- **`/finish` looks for CPR numbers and signed tokens, and nothing else.** A claim carrying a
+  distance, a device or an address passes it. `/finish?anyway=1` exists for a value you have looked
+  at and understood; it is not the answer to a claim you have never seen before.
+
 ### Preparation
 
-**One identity, with a CPR number**, created in the MitID test tool as in
-[P1](#p1-create-all-three-test-identities-in-advance). Write down its CPR number, user ID and
-UUID.
+**Two identities, each with a CPR number**, created in the MitID test tool as in
+[P1](#p1-create-all-three-test-identities-in-advance). Write down each one's CPR number, user ID
+and UUID. One is the sitting's; the other is spent on the canary above and is never used again.
 
 **The redact list**, in `capture.local.json`, before the harness starts:
 
