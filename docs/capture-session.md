@@ -1337,7 +1337,7 @@ broker, so every step names the one it uses.
 
 | Client | Configuration | Steps |
 | --- | --- | --- |
-| primary | request object required, PKCE, ID token user data `StandardScopes`, force login | S4, S5, S7 |
+| primary | request object required, PKCE, ID token user data `StandardScopes`, force login | S4, S5, S7, S11 |
 | claims | as primary, with ID token user data `All` and the `mitid-extra` scope | S6, S10 |
 | hybrid | as primary, with the hybrid grant | S9 |
 | partner | no request object, no PKCE, single sign-on left on | S1, S2, S3, S8 |
@@ -1375,29 +1375,44 @@ login against this broker has ever requested. **No `mitid_*` claim has been obse
 nothing that describes the person or the machine rather than the broker can be on the blanking
 list yet.
 
-Run one complete throwaway login **on the claims client**, scope
-`openid profile nin idp-id mitid-extra`, with the second test identity. The claims client is the
-one carrying `mitid-extra`, and seeing those names is the point. There is no published open client
-to borrow here the way there is on the first broker: all four registrations are the account's own.
+Run one complete throwaway login **on the claims client**, which is S6's own client and scope:
+
+```
+dotnet run --project tools/StubId.CaptureHarness -- session --broker=signicat --only=CAP-025
+```
+
+The claims client is the one carrying `mitid-extra`, and seeing those names is the point. There is
+no published open client to borrow here the way there is on the first broker: all four
+registrations are the account's own. Do [Preparation](#preparation) first: the second identity, the
+redact block and `capture.local.json` are prerequisites of this run, not only of the sitting.
 
 **The canary values are the throwaway identity's own** — its CPR number, name, birth date and UUID,
-in the redact block, exactly as the sitting's own would be. Nothing is echoed back through the
-request. The first broker fed fake values in as `state` and `nonce`, which is not available here:
+in the redact block **before the run**, exactly as the sitting's own would be. That is what arms the
+check rather than a formality:
+`Nothing_committed_names_a_value_this_machine_is_configured_with` searches only for values the block
+names, so a canary run on an identity the block does not carry passes while proving nothing.
+Nothing is echoed back through the request. The first broker fed fake values in as `state` and `nonce`, which is not available here:
 `state` is the case id and the callback is matched on it, and the nonce is fresh random bytes per
 start. It is also unnecessary, because those four values genuinely come back in the identity token
 and at userinfo, which is the path that has to be proved.
 
-**Read `/staged` before finishing, and read it for claim names rather than values.** Anything that
-describes the recordist rather than the broker belongs in `Scrubber.ClientClaims`, which blanks by
-name because a value nobody can know in advance cannot be redacted by value. That is a code change,
-so it belongs here and not in the chair.
+**Where the claim names actually are.** `/staged` shows each response body scrubbed as it stands,
+which means userinfo as readable JSON and the token response with its identity token still compact:
+`Staging` decodes a token only when it writes, at `/finish`. So read `/staged` for what userinfo
+carries, and read `CAP-025/token/id_token.payload.json` after finishing for what the identity token
+carries. Between them is the answer this run is for — which `mitid_*` claims exist, and which of
+them describe the recordist rather than the broker. `/staged` renders response bodies only, so a
+request URL and a response header are the two things it cannot show you at all: S11's own finding
+is one of each, and it is read from the written files rather than previewed. Those belong in `Scrubber.ClientClaims`, which
+blanks by name because a value nobody can know in advance cannot be redacted by value. That is a
+code change, so it belongs here and not in the chair.
 
 Then attack the output. Run `/finish`, then the guard tests over the whole tree, then `git status`
 and `git add -p` read by a human. `Nothing_committed_names_a_value_this_machine_is_configured_with`
-is what turns the seeded values into an armed check. A canary that survives anywhere means the redact list is
-short an entry, or a claim needs blanking by name - which is the whole reason to spend a
-login finding out now. **Delete the written pack afterwards; none of it is
-committed.**
+is the check those values arm. A canary that survives anywhere means the redact list is short an
+entry, or a claim needs blanking by name - which is the whole reason to spend a login finding out
+now. **Then delete `fixtures/signicat/sandbox-session/` entirely.** None of it is committed, and the
+sitting writes into that same directory.
 
 Two things the harness will not do for you, both worth knowing before rather than after:
 
@@ -1415,13 +1430,15 @@ Two things the harness will not do for you, both worth knowing before rather tha
 [P1](#p1-create-all-three-test-identities-in-advance). Write down each one's CPR number, user ID
 and UUID. One is the sitting's; the other is spent on the canary above and is never used again.
 
-**The redact list**, in `capture.local.json`, before the harness starts:
+**The redact list**, in `capture.local.json`, before the harness starts — **both identities'
+values, the canary's as well as the sitting's**, because the guard searches only for what the block
+names:
 
-- The CPR number in both forms, mapped to the day-shifted replacement described in P2.
-- The identity's names, as fixed fictional replacements of the same length.
-- The birth date as `YYYY-MM-DD`. `birthdate` arrives in the id_token, and its digits are the
+- Each CPR number in both forms, mapped to the day-shifted replacement described in P2.
+- Each identity's names, as fixed fictional replacements of the same length.
+- Each birth date as `YYYY-MM-DD`. `birthdate` arrives in the id_token, and its digits are the
   first six of the CPR number in another order.
-- The UUID. Nothing observed so far says `idp_id` or a `mitid_*` claim carries it, and nothing
+- Each UUID. Nothing observed so far says `idp_id` or a `mitid_*` claim carries it, and nothing
   says they do not.
 
 **Restart the harness after any edit to that file.** A value added to a running process is never
@@ -1584,16 +1601,18 @@ has been exchanged, so there is nothing to do in the browser and nothing to foll
 recorded is the answer to that request, and its `Location` is the finding.
 
 *Settles:* whether `post_logout_redirect_uri` is honored when a valid `id_token_hint` is present,
-and where the answer points. CAP-043 settles the other half: given nothing, this broker answers a
-302 to `/auth/open/Account/Logout` with no query. The first broker's sitting recorded the same
-step and its recording carries no query either, so what a hint changes has been observed on
-neither.
+whether `state` comes back with it, and where the answer points. CAP-043 settles the other half:
+given nothing, this broker answers a 302 to `/auth/open/Account/Logout` with no query. The first
+broker's sitting recorded the same step and its recording carries no query either, so what a hint
+changes has been recorded on neither.
 
 *This went wrong if:* `post_logout_redirect_uri` is not registered for the primary client and the
 broker silently drops it, stranding you on its own page. That **is** the finding, the same one the
 first broker's [step 16](#step-16-end-session-terminal-for-profile-1) warns about — but confirm
 the registration before the sitting rather than spending a login on a question the dashboard
-answers. Nothing in `check` or `rehearse` can see it.
+answers. The value to look for is `http://localhost:5099/callback` — this step reuses the harness's
+own address rather than the first broker's `/signout-callback-oidc`, so confirming the wrong one is
+the easy mistake. Nothing in `check` or `rehearse` can see it.
 
 ### What has no step here
 

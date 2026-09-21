@@ -35,9 +35,9 @@ public static class ManualCatalog
     /// <para>
     /// Some of the first broker's sitting has no counterpart. This broker has no response type of
     /// id_token alone and no CPR-match endpoint. End session without an id_token_hint is already in
-    /// the unattended pack, so the step here sends one: what a hint and a post-logout address change
-    /// is the half neither broker has recorded. An
-    /// unregistered redirect URI is refused before any login, so it belongs in that pack too. A
+    /// the unattended pack, so the step here sends one: what changes when a hint and a post-logout
+    /// address are present is the half neither broker has recorded. An unregistered redirect URI is
+    /// refused before any login, so it belongs in that pack too. A
     /// transaction text is signing, which is out of scope for this broker. Assurance level is asked
     /// for once, at High.
     /// </para>
@@ -405,7 +405,10 @@ public static class ManualCatalog
             Title = "End session",
             Settles = "What end session does with and without an id_token_hint, and whether "
                 + "post_logout_redirect_uri is honored either way.",
-            Operator = "Follow the logout through to wherever it lands.",
+            Operator = "Nothing here. The logout runs by itself once the code has been exchanged, "
+                + "and is recorded from this side rather than from the browser; the browser work "
+                + "this step's runbook entry describes is separate and is not what lands in the "
+                + "fixture.",
             Client = BrokerClient.NetsEidBroker.Private,
             Scope = "openid mitid",
             FollowUps = [FollowUp.EndSession],

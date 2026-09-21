@@ -124,6 +124,61 @@ public sealed partial class Staging(string? jwks = null)
     }
 
     /// <summary>
+    /// One exchange as it will be written: the URL and body with every token taken out, the
+    /// headers likewise, and every token found in any of them.
+    /// </summary>
+    /// <remarks>
+    /// Shared by the writer and by the scan that decides whether <c>/finish</c> refuses, because
+    /// the two disagreeing is the failure this guards. A token reaches a recording by three
+    /// routes - the response body, the request URL, and a response header the broker echoed it
+    /// into - and a reader that knows about two of them reports a clean bill for the third.
+    /// <para>
+    /// Headers are extracted the way the unattended writer does it, and for the reason this step
+    /// exists to measure: the end-session answer is a redirect, and whether this broker echoes
+    /// the hint back in it is exactly the unknown. A cookie is left alone, because its value is
+    /// masked whole and decoding one would write it out.
+    /// </para>
+    /// </remarks>
+    private (string Url, string Body, Dictionary<string, ExtractedToken> Tokens,
+        IReadOnlyList<KeyValuePair<string, string>> Headers, ExtractedToken? RequestObject)
+        Prepared(RecordedExchange exchange, bool check)
+    {
+        var keys = check ? jwks : null;
+
+        var (body, bodyTokens) = TokenFixtures.Extract(
+            System.Text.Encoding.UTF8.GetString(exchange.ResponseBody),
+            keys is null ? null : compact => TokenFixtures.Verify(compact, keys));
+
+        var tokens = new Dictionary<string, ExtractedToken>(bodyTokens, StringComparer.Ordinal);
+
+        var (afterHint, hint) = IdTokenHint.StripFrom(exchange.Url, keys);
+        if (hint is not null)
+        {
+            tokens[IdTokenHint.Parameter] = hint;
+        }
+
+        var (url, requestObject) = RequestObject.StripFrom(afterHint);
+
+        var headers = new List<KeyValuePair<string, string>>();
+        foreach (var (name, value) in exchange.ResponseHeaders)
+        {
+            var written = value;
+            if (!name.Equals("Set-Cookie", StringComparison.OrdinalIgnoreCase))
+            {
+                (written, var found) = TokenFixtures.ExtractFromHeader(value);
+                foreach (var (member, token) in found)
+                {
+                    tokens[member] = token;
+                }
+            }
+
+            headers.Add(new(name, written));
+        }
+
+        return (url, body, tokens, headers, requestObject);
+    }
+
+    /// <summary>
     /// Writes every staged exchange, scrubbed against the complete set of discovered values.
     /// </summary>
     public async Task<int> WriteAsync(FixtureStore store, CancellationToken ct)
@@ -135,27 +190,10 @@ public sealed partial class Staging(string? jwks = null)
             var directory = Path.Combine(store.Root, @case.Id, name);
             Directory.CreateDirectory(directory);
 
-            var body = System.Text.Encoding.UTF8.GetString(exchange.ResponseBody);
-
             // Checked here and nowhere later. Once the broker rotates a key, whether these
             // bytes verified against the published one is unanswerable - and the
             // transaction-signing key has rotated once already.
-            var (withoutTokens, bodyTokens) = TokenFixtures.Extract(
-                body, jwks is null ? null : compact => TokenFixtures.Verify(compact, jwks));
-
-            // End session names the session it ends by carrying that session's token in the
-            // query, so the URL is stripped before anything is written. The hint joins the
-            // body's own tokens rather than getting a path of its own: it is the broker's
-            // token, so it earns the same halves beside the exchange, the same certificate
-            // and the same verdict in meta.json.
-            var (afterHint, hint) = IdTokenHint.StripFrom(exchange.Url, jwks);
-
-            var tokens = hint is null
-                ? bodyTokens
-                : new Dictionary<string, ExtractedToken>(bodyTokens, StringComparer.Ordinal)
-                {
-                    [IdTokenHint.Parameter] = hint,
-                };
+            var (url, withoutTokens, tokens, headers, requestObject) = Prepared(exchange, check: true);
 
             foreach (var (member, token) in tokens)
             {
@@ -172,7 +210,6 @@ public sealed partial class Staging(string? jwks = null)
             // must not reach a fixture: the guard rejects one, and one has arrived in a fixture
             // twice already. Same treatment as a token in a body - the placeholder holds the
             // position, the decoded halves are written beside it.
-            var (url, requestObject) = RequestObject.StripFrom(afterHint);
             if (requestObject is not null)
             {
                 await File.WriteAllTextAsync(Path.Combine(directory, "request_object.header.json"),
@@ -186,7 +223,7 @@ public sealed partial class Staging(string? jwks = null)
             // served value for every exchange of the first sitting.
             await File.WriteAllTextAsync(Path.Combine(directory, "response.head"),
                 string.Join('\n', new[] { $"HTTP {exchange.StatusCode} {exchange.ReasonPhrase}" }
-                    .Concat(exchange.ResponseHeaders.Select(
+                    .Concat(headers.Select(
                         h => $"{h.Key}: {FixtureStore.HeaderValue(h.Key, h.Value, Scrub)}"))) + "\n", ct);
 
             await File.WriteAllTextAsync(Path.Combine(directory, "meta.json"), JsonSerializer.Serialize(new
@@ -254,21 +291,13 @@ public sealed partial class Staging(string? jwks = null)
 
         foreach (var (@case, name, exchange, _, _) in _staged)
         {
-            // Check what will be written, not what was staged. Checking the staged body
-            // reported every token that was about to be extracted correctly — eleven false
-            // alarms in one sitting — while missing the two that genuinely leaked, which is
-            // how a safety net teaches people to walk around it.
-            var (body, tokens) = TokenFixtures.Extract(
-                System.Text.Encoding.UTF8.GetString(exchange.ResponseBody));
-
-            // The URL as it will be written, not as it was sent. A signed step's authorize URL
-            // carries a compact JWS of our own making and an end-session URL carries one of the
-            // broker's, and both are removed on the way to meta.json - so both are removed here
-            // too. If either pattern ever misses a form of its parameter, the token lands in a
-            // fixture with nothing said here and only the next build to catch it, by which time
-            // the sitting is over and the staged bytes are gone.
-            var (afterHint, _) = IdTokenHint.StripFrom(exchange.Url);
-            var (writtenUrl, _) = RequestObject.StripFrom(afterHint);
+            // Check what will be written, not what was staged, and through the same step that
+            // writes it. Checking the staged body reported every token that was about to be
+            // extracted correctly — eleven false alarms in one sitting — while missing the two
+            // that genuinely leaked, which is how a safety net teaches people to walk around it.
+            // Deriving the written form separately was the same mistake one level up: the two
+            // readers drifted, and the files the writer added were the ones this never saw.
+            var (writtenUrl, body, tokens, headers, requestObject) = Prepared(exchange, check: false);
 
             var parts = new List<(string Where, string Text)>
             {
@@ -280,7 +309,15 @@ public sealed partial class Staging(string? jwks = null)
                 ($"{t.Key} header", Scrub(t.Value.Header)),
                 ($"{t.Key} payload", Scrub(t.Value.Payload)),
             }));
-            parts.AddRange(exchange.ResponseHeaders.Select(h => ($"header {h.Key}", Scrub(h.Value))));
+
+            // Written beside the exchange, so read like anything else that is.
+            if (requestObject is not null)
+            {
+                parts.Add(("request object header", Scrub(requestObject.Header)));
+                parts.Add(("request object payload", Scrub(requestObject.Payload)));
+            }
+
+            parts.AddRange(headers.Select(h => ($"header {h.Key}", Scrub(h.Value))));
 
             foreach (var (where, text) in parts)
             {

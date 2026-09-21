@@ -200,13 +200,16 @@ public class ScrubberTests
         {
             var scrubbed = Scrubber.Scrub($$"""{"{{claim}}":"a-value"}""", _ => null, []);
 
-            Assert.Contains(placeholder, scrubbed, StringComparison.Ordinal);
-            Assert.DoesNotContain("a-value", scrubbed, StringComparison.Ordinal);
+            // The whole document, not just the placeholder. A pattern that lost its leading quote
+            // would still replace the value and still satisfy a Contains check, while writing
+            // {""transaction_client_ip":"{{CLIENT_IP}}"} - a recording that is no longer JSON.
+            Assert.Equal($$"""{"{{claim}}":"{{placeholder}}"}""", scrubbed);
         }
 
-        // A name the list does not carry, and one that opens with a name it does: the quotes in
-        // the pattern are what stop the second from matching, and a pattern built by joining
-        // names without them would blank it.
+        // A name the list does not carry, and one that opens with a name it does. What stops this
+        // one is the colon the pattern requires after the name rather than the quotes around it,
+        // so it guards against reaching too far; the escaped separator below is a different
+        // question and has its own case.
         const string Other = """{"transaction_client_ip_country":"a-value"}""";
 
         Assert.Equal(Other, Scrubber.Scrub(Other, _ => null, []));

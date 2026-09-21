@@ -143,7 +143,7 @@ recording, because reaching them needs something the unattended captures cannot 
 
 | Behavior | Why it is unrecorded |
 | --- | --- |
-| End session honoring `post_logout_redirect_uri` with a valid `id_token_hint` | Needs a real id_token, which needs a completed login. The half without a hint *is* recorded, in CAP-044 and CAP-045: the redirect is ignored and the browser goes to the broker's own logout page. |
+| End session honoring `post_logout_redirect_uri` with a valid `id_token_hint` | Needs a real id_token, which needs a completed login. It also needed a harness that could take a token back out of a recorded URL, which is why no sitting had a step for it; that half is no longer in the way. The half without a hint *is* recorded, in CAP-044 and CAP-045: the redirect is ignored and the browser goes to the broker's own logout page. |
 | The CPR-match refusal after three attempts | Needs a fourth call inside one authenticated session. The sitting that could have recorded it spent its attempts on the earlier branches. The sentence StubID returns is the broker's documented one. |
 | `prompt=none` answering `login_required` | Needs a client with single sign-on and a session already open. The specification's answer is used. |
 | `cprNumberMatch` being a JSON boolean | No capture reached a successful match, so the type is the pre-production swagger's. Worth doubting: every value on this broker's userinfo endpoint is a string, including two that are plainly booleans. |

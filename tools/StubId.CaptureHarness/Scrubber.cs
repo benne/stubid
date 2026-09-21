@@ -129,7 +129,11 @@ public static partial class Scrubber
     private static readonly Regex ClientClaimPattern = new(
         $"\"({string.Join('|', ClientClaims.Select(claim => Regex.Escape(claim.Claim)))})\"\\s*:\\s*(\"[^\"]*\"|[-0-9.]+)",
         RegexOptions.None,
-        TimeSpan.FromSeconds(1));
+
+        // Infinite, as the generated regex this replaced was. A timeout here would throw from
+        // inside the write, after files are already on disk and with the staged bytes about to
+        // be discarded - which is the failure the comments around that write exist to prevent.
+        Regex.InfiniteMatchTimeout);
 
     /// <summary>
     /// Every value this machine can recognize, as the name to report it under paired with the

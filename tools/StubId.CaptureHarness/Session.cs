@@ -162,7 +162,8 @@ public static class Session
         });
 
         // Ends the broker session without recording anything, so a step that needs a fresh
-        // authentication can get one. The recorded logout is CAP-027; this is housekeeping.
+        // authentication can get one. The recorded logout is each broker's own end-session step -
+        // CAP-027 on the first, CAP-030 on the second - and this is housekeeping beside them.
         app.MapGet("/logout", async () =>
         {
             using var client = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false });
@@ -390,8 +391,8 @@ public static class Session
             {
                 // With the hint, which is the half no recording holds on either broker. The bare
                 // form is already in both unattended packs, and answers a redirect to the
-                // broker's own logout page; what a token and a post-logout address change is
-                // what this is for. A registered post-logout address is the broker's to honor or
+                // broker's own logout page; what changes when a token and a post-logout address
+                // are present is what this is for. A registered post-logout address is the broker's to honor or
                 // drop, and dropping it silently is itself the finding.
                 //
                 // The token travels in the query, so the written URL has to have it taken out

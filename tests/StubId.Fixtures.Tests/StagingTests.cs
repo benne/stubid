@@ -284,8 +284,89 @@ public class StagingWriteTests
             StringComparison.Ordinal);
 
         Assert.All(written, file =>
+        {
+            Assert.False(SensitiveContent.FindSignedToken(file.Value).Found,
+                $"{file.Key} carries a signed token");
+            Assert.False(SensitiveContent.FindCpr(file.Value).Found,
+                $"{file.Key} carries something shaped like a personal number");
+        });
+    }
+
+    /// <summary>
+    /// A personal number inside the hint is reported before anything is written.
+    /// </summary>
+    /// <remarks>
+    /// The scan used to read the body, the URL and the body's own token halves, while the writer
+    /// also wrote the hint's. So the one file this step adds was the one file the guard never
+    /// read: a number in there passed /finish and reached disk with nothing said. The two now
+    /// share the step that collects tokens, which is what makes this hold rather than a second
+    /// list somebody has to remember to extend.
+    /// </remarks>
+    [Fact]
+    public void A_personal_number_inside_the_hint_is_reported_before_the_write()
+    {
+        // Assembled rather than written out, for the reason the token sample above is: the guard
+        // scans every text file in the tree for a personal number and it is right to, so a sample
+        // that would have to be allowlisted is a worse sample than one that is built. Serials
+        // ending 9995 are Denmark's published test numbers.
+        var number = string.Concat("0101", "70", "9995");
+
+        var found = WithCredentials(() =>
+            LoggedOut(payload: $$"""{"sub":"a-subject","nin":"{{number}}"}""").Suspicious());
+
+        Assert.NotEmpty(found);
+        Assert.Contains(found, f => f.Contains("id_token_hint", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// A token the broker echoes into a response header is taken out of it.
+    /// </summary>
+    /// <remarks>
+    /// The end-session answer is a redirect, and whether this broker echoes the hint back in its
+    /// Location is exactly what the step measures - so the case that needs this is the case that
+    /// cannot be predicted. The unattended writer has always extracted from headers; the sitting's
+    /// writer did not, and the sitting is the pack with an authenticated session behind it.
+    /// </remarks>
+    [Fact]
+    public void A_token_the_broker_echoes_into_a_header_does_not_reach_the_head()
+    {
+        var staging = new Staging();
+        var token = Compact("""{"alg":"RS256"}""", """{"sub":"a-subject","sid":"a-session"}""");
+
+        staging.Add(ManualCatalog.For(Broker.Signicat).Single(c => c.Id == "CAP-030"), "endsession",
+            new RecordedExchange(
+                "GET", "https://example.invalid/auth/open/connect/endsession", [], null, 302, "Found",
+                [new("Location",
+                    $"https://example.invalid/auth/open/Account/Logout?id_token_hint={token}")],
+                []));
+
+        var written = WithCredentials(() => Write(staging));
+
+        Assert.All(written, file =>
             Assert.False(SensitiveContent.FindSignedToken(file.Value).Found,
                 $"{file.Key} carries a signed token"));
+    }
+
+    /// <summary>
+    /// The hint is checked against the key set, and the fixture says which key signed it.
+    /// </summary>
+    /// <remarks>
+    /// Every other assertion about the hint's verdict is a null, which a verifier that was never
+    /// called satisfies just as well. This is the one that observes it running.
+    /// </remarks>
+    [Fact]
+    public void A_hint_is_checked_against_the_key_set_that_was_fetched()
+    {
+        using var key = RSA.Create(2048);
+        var meta = WithCredentials(
+            () => Write(LoggedOut(Jwks(key), key))["CAP-030/endsession/meta.json"]);
+
+        using var document = JsonDocument.Parse(meta);
+        var hint = document.RootElement.GetProperty("tokens").GetProperty("id_token_hint");
+
+        Assert.True(hint.GetProperty("SignatureVerified").GetBoolean());
+        Assert.Contains("StubID Transact Test", hint.GetProperty("Certificate").GetString()!,
+            StringComparison.Ordinal);
     }
 
     /// <remarks>
@@ -301,13 +382,15 @@ public class StagingWriteTests
     }
 
     /// <summary>The exchange the end-session follow-up produces, with the URL it really sends.</summary>
-    private static Staging LoggedOut()
+    private static Staging LoggedOut(string? keySet = null, RSA? key = null, string? payload = null)
     {
-        var staging = new Staging();
+        var staging = new Staging(keySet);
         var @case = ManualCatalog.For(Broker.Signicat).Single(c => c.Id == "CAP-030");
 
         var hint = Compact(
-            """{"alg":"RS256","kid":"ABC"}""", """{"sub":"a-subject","sid":"a-session"}""");
+            $$"""{"alg":"RS256","kid":"{{Kid}}"}""",
+            payload ?? """{"sub":"a-subject","sid":"a-session"}""",
+            key);
 
         staging.Add(@case, "endsession", Exchange(
             "https://example.invalid/auth/open/connect/endsession"
@@ -318,12 +401,17 @@ public class StagingWriteTests
         return staging;
     }
 
-    private static string Compact(string header, string payload)
+    private static string Compact(string header, string payload, RSA? key = null)
     {
         static string Segment(string json) =>
             Base64Url.EncodeToString(Encoding.UTF8.GetBytes(json));
 
-        return $"{Segment(header)}.{Segment(payload)}.c2lnbmF0dXJlLWJ5dGVz";
+        var signing = $"{Segment(header)}.{Segment(payload)}";
+
+        return $"{signing}." + (key is null
+            ? "c2lnbmF0dXJlLWJ5dGVz"
+            : Base64Url.EncodeToString(key.SignData(
+                Encoding.ASCII.GetBytes(signing), HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1)));
     }
 
     private static Dictionary<string, string> Record() => Written(null, null);
