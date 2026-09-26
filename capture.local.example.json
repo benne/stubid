@@ -40,12 +40,28 @@
   "STUBID_SIGNICAT_KEY_ID": "the identifier the imported key carries",
 
   "redact": {
-    "//": "Values that must not reach a fixture, as replacement-to-original. A personal number is replaced by the same number with 60 added to the day (01-09 to 61-69, 10-19 to 70-79, 20-29 to 80-89, 30-31 to 90-91), which cannot be anyone's and keeps the length and shape a fixture depends on. The example below uses the 31st of February, which nobody was born on, so it shows the mapping without printing a number that might be someone's. Register both the bare and the separated form: the scrubber matches exact strings. A transaction token names the receiving organization, so its name and CVR belong here before recording one, as does the test identity's name.",
-    "//blanked": "Two claims are blanked by name and need no entry here: transaction_client_ip and mitid.geo_ip_distance_km, both of which describe the client rather than the broker. Neither value can be known in advance - one is handed out by a router, the other computed per sitting - so a rule keyed on the value would be right once. StubID reproduces neither, so nothing is lost. A test also fails on any routable address anywhere in the repository, and the client identifiers above resolve from the settings themselves.",
-    "{{ORGANIZATION_NAME}}": "Example A/S",
-    "{{ORGANIZATION_CVR}}": "12345678",
+    "//": "Values that must not reach a fixture, as replacement-to-original: the key is what gets written, the value is the real string the broker sends. A personal number is replaced by the same number with 60 added to the day (01-09 to 61-69, 10-19 to 70-79, 20-29 to 80-89, 30-31 to 90-91), which cannot be anyone's and keeps the length and shape a fixture depends on - and the guard's pattern only matches days 01-31, so the replacement is publishable where the original is not. Register both the bare and the separated form: the scrubber matches exact strings and the broker may return either. Every replacement must be the same length as what it replaces, or an exact-string swap desynchronizes a recorded Content-Length from the body it describes.",
+    "//identities": "Four kinds per identity, and each needs its own entry because a plain string replace cannot derive one from another. The personal number in both forms. The birth date, which arrives in the id_token as YYYY-MM-DD - the same six digits in another order, so replacing the number does not touch it; shifting its day by +60 as well keeps it ten characters and keeps the two replacements consistent. The UUID, 36 characters either side. And the name as MitID returns it, whose replacement only you can size.",
+    "//two": "Two identities, because a Signicat sitting is gated on a canary dry-run that spends one of them and never reuses it. Both belong here before the canary runs: the committed-file guard searches only for values this block names, so a canary on an identity it does not carry passes while proving nothing. Give them different fictional names - a deliberately incoherent dossier is the point, where a coherent fake person gets scraped and reused.",
+    "//dates": "The numbers below open on the 31st of February and the 31st of April, which nobody was born on, so they show the mapping without printing something that is probably somebody's: roughly ten million are in use, so a plausible date plus four digits has a high chance of belonging to a real person. One consequence of that choice, when you copy this file: an impossible date is not a personal number to the preflight either, so `check` reports none configured until you put yours in.",
+    "//placeholders": "The descriptive text on the right of the remaining entries is there to be replaced, not kept. Unlike the settings above, a redact entry is not compared against this file - so a line left unedited becomes a live rule searching recordings for that sentence, which `check` then reports as fine while it protects nothing.",
+
     "9102999995": "3102999995",
     "910299-9995": "310299-9995",
-    "Synthetic Testperson": "the identity's name as MitID returns it"
+    "1999-02-91": "1999-02-31",
+    "00000000-0000-4000-8000-000000000001": "the sitting identity's UUID, as the test tool shows it",
+    "Synthetic Testperson": "the sitting identity's name as MitID returns it",
+
+    "9104999996": "3104999996",
+    "910499-9996": "310499-9996",
+    "1999-04-91": "1999-04-31",
+    "00000000-0000-4000-8000-000000000002": "the canary identity's UUID, as the test tool shows it",
+    "Fabricated Standin": "the canary identity's name as MitID returns it",
+
+    "//organization": "The first broker only: a transaction token's recipient_info names the receiving organization, so its name and CVR belong here before recording one. A Signicat sitting produces no transaction token, so these two do nothing for it.",
+    "{{ORGANIZATION_NAME}}": "Example A/S",
+    "{{ORGANIZATION_CVR}}": "12345678",
+
+    "//blanked": "Two claims are blanked by name and need no entry here: transaction_client_ip and mitid.geo_ip_distance_km, both of which describe the client rather than the broker. Neither value can be known in advance - one is handed out by a router, the other computed per sitting - so a rule keyed on the value would be right once. StubID reproduces neither, so nothing is lost. Anything the canary turns up that describes the recordist rather than the broker joins them in Scrubber.ClientClaims, which is a code change rather than an entry here. A test also fails on any routable address anywhere in the repository, and the client identifiers above resolve from the settings themselves."
   }
 }
