@@ -95,14 +95,25 @@ does not resolve, and neither does a path into the wrong pack.
 
 ## Signicat's sitting can be booked
 
-The second broker's manual catalog has ten steps,
-[CAP-020 to CAP-029](https://github.com/benne/stubid/blob/master/docs/capture-session.md#part-7--the-signicat-sitting),
+The second broker's manual catalog has eleven steps,
+[CAP-020 to CAP-030](https://github.com/benne/stubid/blob/master/docs/capture-session.md#part-7--the-signicat-sitting),
 and the runbook has a Part 7 for them: two aborts and a timeout, a baseline login and one with the
 CPR number, the same login on the client that puts every claim in the identity token, transaction
 consent with a reference text, single sign-on on a second client, a hybrid response for `c_hash`,
-and assurance level High. Nothing is recorded yet. `rehearse --broker=signicat` reports every step
-ready: the six steps that send a request object signed with the key registered for them reach the
-login page, and the redirect back from each carries its `state`.
+assurance level High, and end session with a hint. Nothing is recorded yet. Seven of the eleven
+send a request object signed with the key registered for them. `rehearse --broker=signicat`
+reported every step it knew ready on 2026-09-14: each signed one reached the login page, and the
+redirect back from each carried its `state`. The end-session step was added after that run and has
+not been rehearsed, which is why the runbook has the operator run `rehearse` again the day before.
+
+Two of those eleven steps needed the harness to grow first. End session carries the token whose
+session it ends in the query and nothing took it back out again, so the sitting had no end-session
+step at all: a recorded logout now writes a placeholder where the token was and the decoded halves
+beside it, checked against the key set the way a token in a response body already was. And nothing
+runs before a canary dry-run - one throwaway login, on a second test identity, whose only purpose is
+to prove the scrubber before a real CPR number is on disk. The claims it goes looking for have never
+been seen from this broker, so the list of claims blanked by name is now built from one place
+instead of being written out twice, and a name added to it cannot be blanked nowhere.
 
 Five things in the harness would have cost this sitting:
 

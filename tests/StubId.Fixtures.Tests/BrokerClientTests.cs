@@ -226,10 +226,10 @@ public class BrokerClientTests
     /// </remarks>
     [Theory]
     [InlineData("STUBID_SIGNICAT_PARTNER_CLIENT_ID", "CAP-020,CAP-021,CAP-022,CAP-027")]
-    [InlineData("STUBID_SIGNICAT_PRIMARY_CLIENT_SECRET", "CAP-023,CAP-024,CAP-026")]
+    [InlineData("STUBID_SIGNICAT_PRIMARY_CLIENT_SECRET", "CAP-023,CAP-024,CAP-026,CAP-030")]
     [InlineData("STUBID_SIGNICAT_CLAIMS_CLIENT_ID", "CAP-025,CAP-029")]
     [InlineData("STUBID_SIGNICAT_HYBRID_CLIENT_ID", "CAP-028")]
-    [InlineData("STUBID_SIGNICAT_PRIVATE_KEY_PATH", "CAP-023,CAP-024,CAP-025,CAP-026,CAP-028,CAP-029")]
+    [InlineData("STUBID_SIGNICAT_PRIVATE_KEY_PATH", "CAP-023,CAP-024,CAP-025,CAP-026,CAP-028,CAP-029,CAP-030")]
     [InlineData("STUBID_SIGNICAT_KEY_ID", "")]
     public void A_missing_setting_blocks_the_second_brokers_steps_that_need_it(string setting, string blocked)
     {

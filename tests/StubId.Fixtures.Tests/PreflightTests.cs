@@ -104,7 +104,7 @@ public class PreflightTests
 
         Assert.Equal(new Preflight.Tally(0, 1), tally);
         Assert.Contains(
-            "CAP-023, CAP-024, CAP-025, CAP-026, CAP-028, CAP-029 cannot be recorded without it",
+            "CAP-023, CAP-024, CAP-025, CAP-026, CAP-028, CAP-029, CAP-030 cannot be recorded without it",
             report,
             StringComparison.Ordinal);
     }

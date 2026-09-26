@@ -112,23 +112,16 @@ public static partial class RequestObject
         }
 
         var compact = Uri.UnescapeDataString(match.Groups["jwt"].Value);
-        var parts = compact.Split('.');
-        if (parts.Length != 3)
+        if (compact.Split('.').Length != 3)
         {
             return (url, null);
         }
 
-        var extracted = new ExtractedToken(
-            Placeholder,
-            Decode(parts[0]),
-            Decode(parts[1]),
-            Member(parts[0], "alg"),
-            Member(parts[0], "kid"),
-            [.. parts.Select(p => p.Length)],
-
-            // Ours, not the broker's. There is no published key to check it against, and
-            // "verified" would mean no more than that we can still compute our own HMAC.
-            null);
+        // Through the same helper a token in a response body goes through, which derives the
+        // placeholder from the name: "request_object" gives the constant above. No verifier,
+        // because this one is ours - there is no published key to check it against, and
+        // "verified" would mean no more than that we can still compute our own signature.
+        var extracted = TokenFixtures.Describe("request_object", compact, null);
 
         return (url.Remove(match.Groups["jwt"].Index, match.Groups["jwt"].Length)
                    .Insert(match.Groups["jwt"].Index, Placeholder),
@@ -137,31 +130,6 @@ public static partial class RequestObject
 
     private static string Encode(IReadOnlyDictionary<string, object> members) =>
         Base64Url.EncodeToString(JsonSerializer.SerializeToUtf8Bytes(members));
-
-    private static string Decode(string segment)
-    {
-        try
-        {
-            return Encoding.UTF8.GetString(Base64Url.DecodeFromChars(segment));
-        }
-        catch (FormatException)
-        {
-            return "";
-        }
-    }
-
-    private static string? Member(string headerSegment, string name)
-    {
-        try
-        {
-            using var header = JsonDocument.Parse(Decode(headerSegment));
-            return header.RootElement.TryGetProperty(name, out var value) ? value.GetString() : null;
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-    }
 
     /// <summary>
     /// Matches the request parameter's value. Percent-encoding is allowed for, because the URL

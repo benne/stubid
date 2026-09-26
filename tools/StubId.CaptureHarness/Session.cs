@@ -162,7 +162,8 @@ public static class Session
         });
 
         // Ends the broker session without recording anything, so a step that needs a fresh
-        // authentication can get one. The recorded logout is CAP-027; this is housekeeping.
+        // authentication can get one. The recorded logout is each broker's own end-session step -
+        // CAP-027 on the first, CAP-030 on the second - and this is housekeeping beside them.
         app.MapGet("/logout", async () =>
         {
             using var client = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false });
@@ -326,10 +327,11 @@ public static class Session
         staging.DiscoverIn(body);
 
         var accessToken = Member(body, "access_token");
+        var idToken = Member(body, "id_token");
 
         foreach (var followUp in pending.Case.FollowUps)
         {
-            await RunFollowUpAsync(client, followUp, accessToken, code, pending, staging, ct);
+            await RunFollowUpAsync(client, followUp, accessToken, idToken, code, pending, staging, ct);
         }
 
         foreach (var exchange in recorder.Exchanges)
@@ -342,7 +344,7 @@ public static class Session
     }
 
     private static async Task RunFollowUpAsync(
-        HttpClient client, FollowUp followUp, string? accessToken, string code,
+        HttpClient client, FollowUp followUp, string? accessToken, string? idToken, string code,
         Pending pending, Staging staging, CancellationToken ct)
     {
         switch (followUp)
@@ -386,11 +388,30 @@ public static class Session
                 break;
 
             case FollowUp.EndSession:
-                using (await client.GetAsync($"{Authority}/connect/endsession", ct))
+            {
+                // With the hint, which is the half no recording holds on either broker. The bare
+                // form is already in both unattended packs, and answers a redirect to the
+                // broker's own logout page; what changes when a token and a post-logout address
+                // are present is what this is for. A registered post-logout address is the broker's to honor or
+                // drop, and dropping it silently is itself the finding.
+                //
+                // The token travels in the query, so the written URL has to have it taken out
+                // again on the way to a fixture: IdTokenHint does that, at both of the places
+                // Staging writes or inspects a URL.
+                var logout = $"{Authority}/connect/endsession";
+                if (idToken is not null)
+                {
+                    logout += $"?id_token_hint={Uri.EscapeDataString(idToken)}"
+                        + $"&post_logout_redirect_uri={Uri.EscapeDataString(RedirectUri)}"
+                        + "&state=logout";
+                }
+
+                using (await client.GetAsync(logout, ct))
                 {
                 }
 
                 break;
+            }
         }
     }
 
