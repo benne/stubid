@@ -21,6 +21,14 @@ capture.local.json
 *.har
 capture-scratch/
 
+# An editor's swap and backup files hold a copy of the buffer, so one written beside any of the
+# files above carries what they carry. capture.local.json is ignored and .capture.local.json.swp
+# was not - a copy of every credential in it, one `git add -A` away from being staged.
+*.swp
+*.swo
+*.swn
+*~
+
 # Local Claude Code session settings.
 .claude/settings.local.json
 
